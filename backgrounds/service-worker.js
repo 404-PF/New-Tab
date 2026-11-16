@@ -22,6 +22,15 @@ const MIGRATION_LISTING_URL =
 const PENDING_NOTIFIED_MARK = 'pending';
 let reminderCheckInProgress = false;
 const reminderCheckPendingQueue = [];
+// Snooze from a notification button suppresses the reminder for 10 minutes
+// (#1233). The expiry is wall-clock (snoozedUntil) so it survives the SW
+// sleeping; the one-shot alarm below is only a wakeup nudge, and the periodic
+// check remains the fallback when the alarm is dropped.
+const SNOOZE_MINUTES = 10;
+const SNOOZE_ALARM_PREFIX = 'todoSnooze_';
+// SYNC: mirror of RECURRENCE_VALUES in src/features/todo.js — keep in sync
+// with getNextDueDate there when advancing a due date on mark-done.
+const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly'];
 
 // dueDate is written as a local YYYY-MM-DD string, but
 // legacy or hand-edited todos may hold other shapes. Accept only that format and
@@ -103,24 +112,27 @@ async function setToStorage(items) {
   });
 }
 
-async function checkReminders(todosJson, options = {}) {
+// Serializes every reader/writer of todoReminderNotified (and the todo
+// mutations triggered by notification buttons) through one critical section,
+// so a concurrent alarm check can never overwrite a handler's results with its
+// stale copy (#1233). Queued items settle with their own run's outcome, so
+// callers (notably the syncTodos message handler) report the real result
+// instead of acking success before the work has even started.
+async function runExclusive(task) {
   if (reminderCheckInProgress) {
-    // Hand back a promise that settles with the queued run itself, so callers
-    // (notably the syncTodos message handler) report the real outcome instead
-    // of acking success before the check has even started.
     return new Promise((resolve, reject) => {
-      reminderCheckPendingQueue.push({ todosJson, options, resolve, reject });
+      reminderCheckPendingQueue.push({ task, resolve, reject });
     });
   }
   reminderCheckInProgress = true;
   try {
     try {
-      await runReminderCheck(todosJson, options);
+      await task();
     } finally {
       while (reminderCheckPendingQueue.length > 0) {
         const next = reminderCheckPendingQueue.shift();
         try {
-          await runReminderCheck(next.todosJson, next.options);
+          await next.task();
           next.resolve();
         } catch (e) {
           next.reject(e);
@@ -130,6 +142,10 @@ async function checkReminders(todosJson, options = {}) {
   } finally {
     reminderCheckInProgress = false;
   }
+}
+
+async function checkReminders(todosJson, options = {}) {
+  return runExclusive(() => runReminderCheck(todosJson, options));
 }
 
 function parseTodosPayload(todosJson, fallbackJson) {
@@ -231,6 +247,23 @@ function pruneStaleWarned(warnedInvalidDueDates, todos) {
   return warnedUpdated;
 }
 
+// Drop snooze suppressions that no longer apply: expired ones (wall clock
+// passed snoozedUntil) and entries for todos that are gone or completed
+// (#1233). Returns true when the map changed so callers can persist it.
+function pruneStaleSnoozes(snoozedUntil, todos) {
+  let updated = false;
+  const activeIds = new Set(todos.filter((t) => !t.completed).map((t) => t.id));
+  const now = Date.now();
+  for (const id of Object.keys(snoozedUntil)) {
+    const expiry = Number(snoozedUntil[id]);
+    if (!Number.isFinite(expiry) || expiry <= now || !activeIds.has(id)) {
+      delete snoozedUntil[id];
+      updated = true;
+    }
+  }
+  return updated;
+}
+
 function handleInvalidDueDate(todo, warnedInvalidDueDates) {
   const warnedKey = invalidDueDateKey(todo);
   if (!warnedKey) return { skip: false, warnedUpdated: false };
@@ -251,14 +284,21 @@ function handleInvalidDueDate(todo, warnedInvalidDueDates) {
  * (one check interval of late tolerance per #1090); a durable
  * PENDING_NOTIFIED_MARK whose confirmation never landed stays retryable even
  * past graceEnd so a failed notification/cleanup near due cannot strand it.
+ * Todos with an unexpired snooze suppression are skipped entirely (#1233) —
+ * the suppression is checked before the notified key so the pending mark set
+ * by the snooze action does not re-fire while snoozed.
  */
-function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime) {
+function getDueReminderCandidate(todo, notified, snoozedUntil, warnedInvalidDueDates, now, leadTime) {
   if (todo.completed || todo.dueDate === null || todo.dueDate === undefined) {
     return { skip: true, warnedUpdated: false };
   }
   const invalid = handleInvalidDueDate(todo, warnedInvalidDueDates);
   if (invalid.skip) {
     return { skip: true, warnedUpdated: invalid.warnedUpdated };
+  }
+  const snoozeExpiry = Number(snoozedUntil[todo.id]);
+  if (Number.isFinite(snoozeExpiry) && snoozeExpiry > now.getTime()) {
+    return { skip: true, warnedUpdated: false };
   }
   const due = parseDueDate(todo.dueDate, todo.dueTime);
   const reminderTime = new Date(due.getTime() - Math.max(leadTime, CHECK_INTERVAL_MINUTES) * 60 * 1000);
@@ -299,12 +339,12 @@ function getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, lea
  * PENDING_NOTIFIED_MARK is retried by the next check instead of suppressing
  * the reminder forever.
  */
-async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime) {
+async function evaluateDueReminders(todos, notified, snoozedUntil, warnedInvalidDueDates, leadTime) {
   let warnedUpdated = false;
   const now = new Date();
   const pending = [];
   for (const todo of todos) {
-    const candidate = getDueReminderCandidate(todo, notified, warnedInvalidDueDates, now, leadTime);
+    const candidate = getDueReminderCandidate(todo, notified, snoozedUntil, warnedInvalidDueDates, now, leadTime);
     if (candidate.warnedUpdated) warnedUpdated = true;
     if (candidate.skip) continue;
     pending.push({ todo, candidate });
@@ -334,14 +374,21 @@ async function evaluateDueReminders(todos, notified, warnedInvalidDueDates, lead
 }
 
 async function runReminderCheck(todosJson, options = {}) {
-  const keys = ['todoReminderEnabled', 'todoReminderLeadTime', 'todoReminderNotified', 'warnedInvalidDueDates'];
+  const keys = [
+    'todoReminderEnabled',
+    'todoReminderLeadTime',
+    'todoReminderNotified',
+    'todoReminderSnoozedUntil',
+    'warnedInvalidDueDates'
+  ];
   if (!todosJson) keys.push('todos');
   const data = await getFromStorage(keys);
   const todos = parseTodosPayload(todosJson, data.todos);
   const leadTime = getLeadTime(data.todoReminderLeadTime);
   const syncResult = applySyncMutations(data.todoReminderNotified || {}, options);
-  let notified = syncResult.notified;
-  let resetApplied = syncResult.resetApplied;
+  const notified = syncResult.notified;
+  const resetApplied = syncResult.resetApplied;
+  const snoozedUntil = data.todoReminderSnoozedUntil || {};
 
   if (String(data.todoReminderEnabled) !== 'true') {
     if (resetApplied) {
@@ -359,15 +406,17 @@ async function runReminderCheck(todosJson, options = {}) {
 
   const staleNotifiedUpdated = pruneStaleNotified(notified, todos);
   const staleWarnedUpdated = pruneStaleWarned(warnedInvalidDueDates, todos);
+  const staleSnoozeUpdated = pruneStaleSnoozes(snoozedUntil, todos);
+  const snoozeUpdates = staleSnoozeUpdated ? { todoReminderSnoozedUntil: snoozedUntil } : {};
 
   if (todos.length === 0) {
-    if (staleNotifiedUpdated || staleWarnedUpdated || resetApplied) {
-      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+    if (staleNotifiedUpdated || staleWarnedUpdated || staleSnoozeUpdated || resetApplied) {
+      await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates, ...snoozeUpdates });
     }
     return;
   }
 
-  const reminderResult = await evaluateDueReminders(todos, notified, warnedInvalidDueDates, leadTime);
+  const reminderResult = await evaluateDueReminders(todos, notified, snoozedUntil, warnedInvalidDueDates, leadTime);
   // A failed write rejects here on purpose: a check whose notified map could
   // not be persisted has failed, and the callers (alarm listener, queued path,
   // sync response) already surface that rejection. When candidates were
@@ -375,13 +424,22 @@ async function runReminderCheck(todosJson, options = {}) {
   // notification and stores any marks rolled back after a failed creation,
   // keeping those reminders retryable; if the write itself fails, the durable
   // PENDING_NOTIFIED_MARK still retries them on the next check.
-  if (reminderResult.updated || staleNotifiedUpdated || staleWarnedUpdated || reminderResult.warnedUpdated || resetApplied) {
-    await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates });
+  if (
+    reminderResult.updated ||
+    staleNotifiedUpdated ||
+    staleWarnedUpdated ||
+    staleSnoozeUpdated ||
+    reminderResult.warnedUpdated ||
+    resetApplied
+  ) {
+    await setToStorage({ todoReminderNotified: notified, warnedInvalidDueDates, ...snoozeUpdates });
   }
 }
 
 /**
  * Creates a todo reminder notification and reports whether creation succeeded.
+ * The two action buttons (#1233) are handled by the onButtonClicked listener
+ * below; button index is the contract with that handler.
  */
 async function showTodoNotification(todo, dueDisplay) {
   const id = 'todo_reminder_' + todo.id;
@@ -390,12 +448,140 @@ async function showTodoNotification(todo, dueDisplay) {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: chrome.i18n.getMessage('todoReminderTitle'),
-      message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay])
+      message: chrome.i18n.getMessage('todoReminderMessage', [todo.text, dueDisplay]),
+      buttons: [
+        { title: chrome.i18n.getMessage('todoReminderMarkDone') },
+        { title: chrome.i18n.getMessage('todoReminderSnooze') }
+      ]
     });
     return true;
   } catch (e) {
     console.warn('Failed to create todo reminder notification:', e);
     return false;
+  }
+}
+
+// Advance a YYYY-MM-DD due date by one recurrence step until it lands strictly
+// after the current local day (mirror of getNextDueDate in src/features/todo.js,
+// including the month-safe monthly anchor clamp — SYNC), so completing a
+// recurring todo from a notification reschedules it instead of closing it out.
+function advanceDueDate(dueDate, recurrence) {
+  if (!RECURRENCE_VALUES.includes(recurrence)) return dueDate;
+  const parsed = parseDueDate(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const base = parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : new Date(today);
+  base.setHours(0, 0, 0, 0);
+  const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
+  do {
+    if (recurrence === 'daily') {
+      base.setDate(base.getDate() + 1);
+    } else if (recurrence === 'weekly') {
+      base.setDate(base.getDate() + 7);
+    } else {
+      base.setDate(1);
+      base.setMonth(base.getMonth() + 1);
+      const lastDayOfTargetMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+      base.setDate(Math.min(monthlyAnchorDay, lastDayOfTargetMonth));
+    }
+  } while (base.getTime() <= today.getTime());
+  return (
+    base.getFullYear() +
+    '-' +
+    String(base.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(base.getDate()).padStart(2, '0')
+  );
+}
+
+// Mark a todo done from its reminder notification (button 0, #1233).
+// Non-recurring todos are completed outright (same shape as toggleTodo in the
+// page); recurring todos advance dueDate instead so they recur rather than
+// stay completed. Notified/snooze/warned state for the todo is cleared so the
+// reminder cannot re-fire from stale marks. Runs inside runExclusive, so the
+// read-modify-write cannot interleave with a concurrent reminder check.
+async function markTodoDoneFromNotification(todoId) {
+  const data = await getFromStorage([
+    'todos',
+    'todoReminderNotified',
+    'todoReminderSnoozedUntil',
+    'warnedInvalidDueDates'
+  ]);
+  const todos = parseTodosPayload(data.todos, null);
+  const list = Array.isArray(todos) ? todos : [];
+  const notified = data.todoReminderNotified || {};
+  const snoozedUntil = data.todoReminderSnoozedUntil || {};
+  const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
+  let changed = false;
+  if (Array.isArray(todos)) {
+    const todo = list.find((t) => t && t.id === todoId && !t.completed);
+    if (todo) {
+      if (RECURRENCE_VALUES.includes(todo.recurrence)) {
+        todo.dueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+        todo.completed = false;
+        todo.completedAt = null;
+        if (Array.isArray(todo.subtasks)) {
+          todo.subtasks = todo.subtasks.map((sub) => ({ ...sub, checked: false }));
+        }
+      } else {
+        todo.completed = true;
+        todo.completedAt = new Date().toISOString();
+      }
+      changed = true;
+    }
+    // Mirror of runReminderCheck: prune only against a successfully parsed list
+    // so a corrupt payload is never overwritten with [].
+    if (pruneStaleWarned(warnedInvalidDueDates, list)) changed = true;
+  }
+  if (clearEntriesForTodo(notified, todoId)) changed = true;
+  if (Object.prototype.hasOwnProperty.call(snoozedUntil, todoId)) {
+    delete snoozedUntil[todoId];
+    changed = true;
+  }
+  chrome.notifications.clear('todo_reminder_' + todoId);
+  if (changed) {
+    const update = { todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil, warnedInvalidDueDates };
+    if (Array.isArray(todos)) update.todos = JSON.stringify(list);
+    await setToStorage(update);
+  }
+}
+
+// Snooze a reminder from its notification (button 1, #1233). Suppresses the
+// todo's reminder for SNOOZE_MINUTES via a wall-clock expiry (survives the SW
+// sleeping) plus a one-shot alarm nudge, and marks the notified entry pending
+// so the reminder reliably re-fires once the snooze expires — even if the
+// snooze outlives the #1090 late-grace window (deleting the entry alone would
+// re-fire within grace but stay silently dropped past it). Runs inside
+// runExclusive like mark-done above.
+async function snoozeTodoReminderFromNotification(todoId) {
+  const data = await getFromStorage(['todos', 'todoReminderNotified', 'todoReminderSnoozedUntil']);
+  const todos = parseTodosPayload(data.todos, null);
+  const list = Array.isArray(todos) ? todos : [];
+  const notified = data.todoReminderNotified || {};
+  const snoozedUntil = data.todoReminderSnoozedUntil || {};
+  chrome.notifications.clear('todo_reminder_' + todoId);
+  const todo = list.find((t) => t && t.id === todoId && !t.completed);
+  if (!todo) {
+    // Todo vanished or completed between notification and click: nothing to
+    // snooze, just drop stale reminder marks for it.
+    if (clearEntriesForTodo(notified, todoId)) {
+      await setToStorage({ todoReminderNotified: notified });
+    }
+    return;
+  }
+  for (const key of Object.keys(notified)) {
+    if (key.startsWith(todoId + '_')) notified[key] = PENDING_NOTIFIED_MARK;
+  }
+  if (typeof todo.dueDate === 'string') {
+    const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
+    notified[todo.id + '_' + todo.dueDate + timePart] = PENDING_NOTIFIED_MARK;
+  }
+  snoozedUntil[todoId] = Date.now() + SNOOZE_MINUTES * 60 * 1000;
+  await setToStorage({ todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil });
+  try {
+    chrome.alarms.create(SNOOZE_ALARM_PREFIX + todoId, { delayInMinutes: SNOOZE_MINUTES });
+  } catch (e) {
+    console.warn('Failed to schedule snooze alarm:', e);
   }
 }
 
@@ -451,7 +637,10 @@ if (chrome?.runtime?.onStartup) {
 
 if (chrome?.alarms?.onAlarm) {
   chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === ALARM_NAME) {
+    // Snooze alarms (#1233) re-run the check once a snooze should have
+    // expired; the check's wall-clock suppression keeps an early/duplicate
+    // fire from re-showing the reminder.
+    if (alarm.name === ALARM_NAME || alarm.name.startsWith(SNOOZE_ALARM_PREFIX)) {
       checkReminders().catch((e) => {
         console.warn('Reminder check failed:', e);
       });
@@ -465,6 +654,28 @@ if (chrome?.notifications?.onClicked) {
       chrome.tabs.create({ url: 'New-Tab.html' });
       chrome.notifications.clear(notificationId);
     }
+  });
+}
+
+// Action buttons on the reminder notification (#1233): index 0 = mark done,
+// index 1 = snooze. Both run through runExclusive so the read-modify-write of
+// todos/notified state cannot interleave with an in-flight reminder check —
+// a concurrent check loaded a stale copy before the click and would
+// otherwise overwrite the mutation on its final write.
+if (chrome?.notifications?.onButtonClicked) {
+  chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+    if (!notificationId.startsWith('todo_reminder_')) return;
+    const todoId = notificationId.slice('todo_reminder_'.length);
+    let task = null;
+    if (buttonIndex === 0) {
+      task = () => markTodoDoneFromNotification(todoId);
+    } else if (buttonIndex === 1) {
+      task = () => snoozeTodoReminderFromNotification(todoId);
+    }
+    if (!task) return;
+    runExclusive(task).catch((e) => {
+      console.warn('Reminder notification action failed:', e);
+    });
   });
 }
 

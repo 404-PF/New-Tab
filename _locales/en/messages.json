@@ -120,6 +120,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Mark done",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Snooze",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "bgRotation": {
     "message": "Rotation",
     "description": "Section header for background rotation settings"

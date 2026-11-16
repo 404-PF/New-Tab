@@ -200,6 +200,42 @@
     applyFilters();
   }
 
+  // The service worker mutates todos outside the page (notification "Mark
+  // done" / "Snooze" handling, #1233), and a settings import can write from
+  // another context. Without this listener the in-memory list keeps the old
+  // state, and the next saveTodos() would clobber the external change with our
+  // stale copy. Own writes are skipped by the exact-string comparison (the
+  // bridge echoes every set, including ours, synchronously); genuine false ->
+  // true transitions also re-dispatch todoCompleted so stats count an
+  // externally completed todo exactly like a local toggle. Two deliberate
+  // deviations from reloadTodosState(): normalizeTodosInPlace() instead of
+  // migrateTodos() so reloading never triggers a persistence side effect of
+  // its own (a fixture seed or import migrates through its own path), and a
+  // try/catch so a render failure in this listener cannot propagate back into
+  // the chrome.storage.set() call that emitted the event and poison the write.
+  if (globalThis.chrome?.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      try {
+        if (areaName !== 'local' || !changes || !changes.todos) return;
+        const change = changes.todos;
+        if (typeof change.newValue !== 'string') return;
+        if (change.newValue === JSON.stringify(todos)) return;
+        const previous = todos;
+        todos = loadTodos();
+        normalizeTodosInPlace();
+        applyFilters();
+        for (const todo of todos) {
+          const before = previous.find(t => t && t.id === todo.id);
+          if (before && !before.completed && todo.completed) {
+            window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to apply external todo change:', e);
+      }
+    });
+  }
+
   function createReminderAlarmFallback() {
     try {
       if (chrome.alarms) {
@@ -1133,8 +1169,12 @@
   }
 
   // Migrate existing todos to have completedAt property
-  function migrateTodos() {
-    const previousTodos = cloneTodos(todos);
+  // Fill legacy/missing fields (recurrence, completedAt, dueTime) and drop
+  // malformed dueDates, in memory only. Returns whether anything changed.
+  // Split out of migrateTodos so callers that must not trigger a persistence
+  // side effect — notably the external-write listener above — can still
+  // sanitize dirty data before rendering it.
+  function normalizeTodosInPlace() {
     let needsMigration = false;
 
     todos.forEach(todo => {
@@ -1170,6 +1210,13 @@
         needsMigration = true;
       }
     });
+
+    return needsMigration;
+  }
+
+  function migrateTodos() {
+    const previousTodos = cloneTodos(todos);
+    const needsMigration = normalizeTodosInPlace();
 
     if (needsMigration) {
       if (!saveTodos(todos)) {
