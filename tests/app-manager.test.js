@@ -1,6 +1,7 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 import { withWindowOverride } from './helpers/window-override.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/utils.js');
@@ -443,5 +444,92 @@ describe('app grid item-scoped mutators (#934)', () => {
     expect(fragmentInserts[0][1]).toBe(document.getElementById('new-app'));
 
     insertSpy.mockRestore();
+  });
+});
+
+describe('async rejected app-grid writes resync the UI (#1238)', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save app changes. Your last action was not saved.';
+  const restorers = [];
+  let visibilityList;
+
+  beforeEach(() => {
+    visibilityList = document.createElement('div');
+    visibilityList.id = 'default-app-visibility-list';
+    document.body.appendChild(visibilityList);
+    window.showToast = vi.fn();
+  });
+
+  afterEach(async () => {
+    // Drain any failure/resync timers this test scheduled so they cannot
+    // fire against the next test's reset DOM/storage state.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    while (restorers.length > 0) {
+      restorers.pop()();
+    }
+    delete window.showToast;
+    visibilityList.remove();
+  });
+
+  function failWriteFor(key, mode) {
+    const restore = failStorageWritesFor(key, mode);
+    restorers.push(restore);
+    return restore;
+  }
+
+  it('re-paints the grid tile and Settings checkbox after an async rejected hide write', async () => {
+    window.renderAllApps();
+    const checkbox = visibilityList.querySelector('[data-app-id="weather-app"]');
+    expect(checkbox).not.toBeNull();
+    expect(checkbox.checked).toBe(true);
+
+    failWriteFor('hiddenDefaultApps', 'async');
+
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Optimistic half: setItem returned true, so the tile is dropped and
+    // storage reports the app hidden while chrome.storage has not accepted it.
+    expect(document.getElementById('weather-app')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual(['weather-app']);
+    expect(checkbox.checked).toBe(false);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // The bridge rolled its cache back; the resync repaints both the tile and
+    // the rebuilt checkbox from the restored store, with a single toast.
+    expect(localStorage.getItem('hiddenDefaultApps')).toBeNull();
+    expect(document.getElementById('weather-app')).not.toBeNull();
+    expect(visibilityList.querySelector('[data-app-id="weather-app"]').checked).toBe(true);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error', { duration: 3000 });
+  });
+
+  it('drops a ghost custom-app tile after an async rejected customApps write', async () => {
+    window.renderAllApps();
+    const ghost = { id: 'ghost-app', name: 'Ghost', url: 'https://ghost.test', icon: 'ghost.png' };
+
+    failWriteFor('customApps', 'async');
+
+    // Mirrors the add-app success path: the bridge accepts the write
+    // optimistically, then addAppIcon puts the tile on the grid.
+    localStorage.setItem('customApps', JSON.stringify([ghost]));
+    const order = JSON.parse(localStorage.getItem('appOrder'));
+    order.push(ghost.id);
+    localStorage.setItem('appOrder', JSON.stringify(order));
+    expect(window.addAppIcon(ghost)).not.toBeNull();
+    expect(document.getElementById('ghost-app')).not.toBeNull();
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // customApps rolled back: the ghost tile must disappear without a reload.
+    expect(localStorage.getItem('customApps')).toBeNull();
+    expect(document.getElementById('ghost-app')).toBeNull();
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error', { duration: 3000 });
   });
 });

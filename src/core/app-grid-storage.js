@@ -24,10 +24,28 @@ function showAppGridSaveError() {
   console.warn('[app-grid-storage] Save error suppressed (showToast unavailable):', message);
 }
 
+// Async half of #1238: chrome.storage can reject hiddenDefaultApps and
+// customApps through runtime.lastError after setItem already returned true,
+// so the success path has already patched the grid tile and the Settings > Apps
+// checkbox optimistically. The bridge dispatches storageBridgeWriteError
+// before rolling its cache back — wait a macrotask for that rollback, then
+// repaint from the restored store so grid and storage agree without a reload.
+// The shared toast in this listener stays the single appGridSaveError owner
+// for these keys, so the resync pass only repaints.
+const APP_GRID_RESYNC_KEYS = new Set(['hiddenDefaultApps', 'customApps']);
+
 window.addEventListener('storageBridgeWriteError', (event) => {
-  if (event.detail && APP_GRID_STORAGE_KEYS.has(event.detail.key)) {
-    showAppGridSaveError();
-  }
+  if (!event.detail || !APP_GRID_STORAGE_KEYS.has(event.detail.key)) return;
+  showAppGridSaveError();
+  if (!APP_GRID_RESYNC_KEYS.has(event.detail.key)) return;
+  setTimeout(() => {
+    if (typeof window.renderDefaultAppVisibilityList === 'function') {
+      window.renderDefaultAppVisibilityList();
+    }
+    if (typeof window.renderAllApps === 'function') {
+      window.renderAllApps();
+    }
+  });
 });
 
 function readJsonArray(key, fallbackValue, warningLabel, fallbackLabel) {
