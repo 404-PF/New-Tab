@@ -62,6 +62,8 @@ window.i18n.__registerLocale('ja', {
   todoEditTooltip: 'Todoを編集',
   todoEditTitle: 'Todoを編集',
   todoEditText: 'テキスト',
+  todoEditDetails: '詳細',
+  todoDetailsToggle: '詳細',
   todoEditPriority: '優先度',
   todoSubtasks: 'サブタスク',
   todoAddSubtask: 'サブタスクを追加...',

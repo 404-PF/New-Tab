@@ -63,6 +63,8 @@ window.i18n.__registerLocale('zh', {
   todoEditTooltip: '编辑待办',
   todoEditTitle: '编辑待办',
   todoEditText: '内容',
+  todoEditDetails: '详情',
+  todoDetailsToggle: '详情',
   todoEditPriority: '优先级',
   todoSubtasks: '子任务',
   todoAddSubtask: '添加子任务...',

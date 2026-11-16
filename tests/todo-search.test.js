@@ -96,6 +96,27 @@ describe('Todo search', () => {
     expect(visibleItems()[0].dataset.id).toBe('1');
   });
 
+  it('matches free-form details content (issue #1228)', () => {
+    setTodos([
+      { id: '1', text: 'Plan trip', completed: false, createdAt: '2026-01-01', details: 'Book flights to Reykjavik' },
+      { id: '2', text: 'Plan budget', completed: false, createdAt: '2026-01-02', details: 'Track monthly expenses' }
+    ]);
+    initTodo();
+    typeQuery('reykjavik');
+    expect(visibleItems()).toHaveLength(1);
+    expect(visibleItems()[0].dataset.id).toBe('1');
+  });
+
+  it('does not match details of an unrelated todo', () => {
+    setTodos([
+      { id: '1', text: 'Plan trip', completed: false, createdAt: '2026-01-01', details: 'Book flights' },
+      { id: '2', text: 'Plan budget', completed: false, createdAt: '2026-01-02' }
+    ]);
+    initTodo();
+    typeQuery('flights');
+    expect(visibleTexts()).toEqual(['Plan trip']);
+  });
+
   it('combines with a status pill using AND semantics', () => {
     setTodos([
       { id: '1', text: 'Buy milk', completed: false, createdAt: '2026-01-01' },

@@ -786,6 +786,23 @@ describe('Timezone picker truncation hint translations (issue #1199)', () => {
   });
 });
 
+// Todo details/notes field (issue #1228): the Edit modal label and the
+// collapsed row expand/collapse control. Not differFromEnglish because the
+// German copy is legitimately identical to English ("Details"), and
+// allowEnglishCopy covers the same case in _locales.
+describe('Todo details translations (issue #1228)', () => {
+  const TODO_DETAILS_TRANSLATION_KEYS = ['todoEditDetails', 'todoDetailsToggle'];
+
+  it('defines the details strings in every supported language', () => {
+    expectTranslationKeys(TODO_DETAILS_TRANSLATION_KEYS);
+  });
+
+  it('includes the details strings in every _locales messages.json', () => {
+    expectMessagesJsonKey('todoEditDetails', { allowEnglishCopy: true });
+    expectMessagesJsonKey('todoDetailsToggle', { allowEnglishCopy: true });
+  });
+});
+
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

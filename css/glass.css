@@ -430,6 +430,8 @@ body.light-theme :is(
   .todo-edit-body label,
   .todo-edit-subtasks-section label,
   .todo-subtask-progress,
+  .todo-details-toggle,
+  .todo-details-body,
   .todo-stat-label,
   .todo-heatmap-label,
   .calendar-weekdays span,
@@ -478,6 +480,7 @@ body.light-theme :is(
   .settings-section select,
   .todo-edit-field input,
   .todo-edit-field select,
+  .todo-edit-body textarea,
   .todo-edit-subtask-input,
   .ai-topics-search input,
   #ai-chat-input

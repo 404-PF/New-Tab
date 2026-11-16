@@ -62,6 +62,8 @@ window.i18n.__registerLocale('ko', {
   todoEditTooltip: '할 일 편집',
   todoEditTitle: '할 일 편집',
   todoEditText: '내용',
+  todoEditDetails: '세부 정보',
+  todoDetailsToggle: '세부 정보',
   todoEditPriority: '우선순위',
   todoSubtasks: '하위 작업',
   todoAddSubtask: '하위 작업 추가...',

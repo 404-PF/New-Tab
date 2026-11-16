@@ -892,6 +892,20 @@ describe('Todo validateTodoData', () => {
     };
     expect(validateTodoData(data)).toBe(false);
   });
+
+  it('accepts string, null, and absent details (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'line one\nline two' }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: null }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: '' }] })).toBe(true);
+  });
+
+  it('rejects non-string details (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 42 }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: { body: 'x' } }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: ['a'] }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: true }] })).toBe(false);
+  });
 });
 
 describe('Todo import', () => {
@@ -961,6 +975,21 @@ describe('Todo import', () => {
     expect(all).toHaveLength(1);
     expect(all[0].priority).toBe('high');
     expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('merge round-trips the details field (issue #1228)', () => {
+    const imported = [
+      { id: 'd1', text: 'With details', completed: false, details: 'line one\nline two' },
+      { id: 'd2', text: 'Without details', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(2);
+    expect(all.find(t => t.id === 'd1').details).toBe('line one\nline two');
+    expect(all.find(t => t.id === 'd2').details).toBeNull();
   });
 
   it('replace preserves extra fields like priority', () => {
@@ -2948,6 +2977,156 @@ describe('Todo subtasks', () => {
       expect(subtaskInput.value).toBe('');
       expect(subtaskInput.disabled).toBe(false);
     }
+  });
+});
+
+describe('Todo details field (issue #1228)', () => {
+  it('addTodo stores details: null by default', () => {
+    addTodo('Plain todo');
+    expect(loadTodos()[0].details).toBeNull();
+  });
+
+  it('addTodo stores trimmed multiline details from the trailing argument', () => {
+    addTodo('With notes', null, 'medium', null, null, '  line one\nline two  ');
+    expect(loadTodos()[0].details).toBe('line one\nline two');
+  });
+
+  it('addTodo normalizes blank details to null', () => {
+    addTodo('Blank notes', null, 'medium', null, null, '   \n  ');
+    expect(loadTodos()[0].details).toBeNull();
+  });
+
+  it('editTodo sets and clears details while other fields stay intact', () => {
+    addTodo('Task');
+    const id = loadTodos()[0].id;
+
+    expect(editTodo(id, 'Task', 'high', null, null, undefined, 'first\nsecond')).toBe(true);
+    expect(loadTodos()[0].details).toBe('first\nsecond');
+    expect(loadTodos()[0].priority).toBe('high');
+
+    expect(editTodo(id, 'Task', 'high', null, null, undefined, '')).toBe(true);
+    expect(loadTodos()[0].details).toBeNull();
+    expect(loadTodos()[0].priority).toBe('high');
+  });
+
+  it('editTodo without the details argument leaves details unchanged', () => {
+    addTodo('Task', null, 'medium', null, null, 'keep me');
+    const id = loadTodos()[0].id;
+
+    expect(editTodo(id, 'Renamed')).toBe(true);
+    expect(loadTodos()[0].details).toBe('keep me');
+    expect(loadTodos()[0].text).toBe('Renamed');
+  });
+
+  it('details survive a reload of the stored todos', () => {
+    addTodo('Task', null, 'medium', null, null, 'persisted context');
+    initTodo();
+    expect(loadTodos()[0].details).toBe('persisted context');
+  });
+
+  it('migrateTodos gives legacy todos details: null and drops non-strings', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'legacy-1', text: 'Legacy one', completed: false, createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'legacy-2', text: 'Legacy two', completed: false, createdAt: '2026-01-02T00:00:00Z', details: 42 },
+      { id: 'legacy-3', text: 'Legacy three', completed: false, createdAt: '2026-01-03T00:00:00Z', details: '  ' }
+    ]));
+    initTodo();
+
+    const stored = loadTodos();
+    expect(stored[0].details).toBeNull();
+    expect(stored[1].details).toBeNull();
+    expect(stored[2].details).toBeNull();
+  });
+
+  it('openEditModal populates the details textarea and saveEdit persists it', () => {
+    addTodo('Task');
+    const id = loadTodos()[0].id;
+    const detailsInput = document.getElementById('todo-edit-details');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('');
+
+    detailsInput.value = 'step one\nstep two';
+    saveEdit();
+
+    expect(loadTodos()[0].details).toBe('step one\nstep two');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('step one\nstep two');
+  });
+
+  it('saveEdit with an empty details textarea clears stored details', () => {
+    addTodo('Task', null, 'medium', null, null, 'to be cleared');
+    const id = loadTodos()[0].id;
+    const detailsInput = document.getElementById('todo-edit-details');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('to be cleared');
+
+    detailsInput.value = '';
+    saveEdit();
+
+    expect(loadTodos()[0].details).toBeNull();
+    expect(loadTodos()[0].text).toBe('Task');
+  });
+
+  it('renders a collapsed details block only when details are non-empty', () => {
+    addTodo('No details');
+    addTodo('Has details', null, 'medium', null, null, 'some context');
+
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(2);
+    expect(items[0].querySelector('.todo-details')).toBeNull();
+
+    const details = items[1].querySelector('.todo-details');
+    expect(details).not.toBeNull();
+    const body = details.querySelector('.todo-details-body');
+    expect(body.hidden).toBe(true);
+    expect(body.textContent).toBe('some context');
+    const toggle = details.querySelector('.todo-details-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('renders details with textContent so markup stays literal', () => {
+    addTodo('Injection', null, 'medium', null, null, '<img src=x onerror="alert(1)">');
+
+    const body = document.querySelector('.todo-details-body');
+    expect(body.textContent).toBe('<img src=x onerror="alert(1)">');
+    expect(body.querySelector('img')).toBeNull();
+  });
+
+  it('clicking the details toggle expands and collapses the block', () => {
+    addTodo('Task', null, 'medium', null, null, 'context');
+    const toggle = document.querySelector('.todo-details-toggle');
+    const body = document.querySelector('.todo-details-body');
+
+    toggle.click();
+    expect(body.hidden).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+    expect(body.hidden).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('keeps the expanded state across re-renders', () => {
+    addTodo('Task', null, 'medium', null, null, 'context');
+    document.querySelector('.todo-details-toggle').click();
+
+    renderTodos();
+
+    expect(document.querySelector('.todo-details-body').hidden).toBe(false);
+    expect(document.querySelector('.todo-details-toggle').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('drops expansion state once the todo is deleted', () => {
+    addTodo('First', null, 'medium', null, null, 'first context');
+    document.querySelector('.todo-details-toggle').click();
+    deleteTodo(loadTodos()[0].id);
+
+    addTodo('Second', null, 'medium', null, null, 'second context');
+    expect(document.querySelector('.todo-details-body').hidden).toBe(true);
+    expect(document.querySelector('.todo-details-toggle').getAttribute('aria-expanded')).toBe('false');
   });
 });
 

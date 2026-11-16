@@ -802,6 +802,14 @@
     "message": "텍스트",
     "description": "Label for the todo text field in the edit dialog"
   },
+  "todoEditDetails": {
+    "message": "세부 정보",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "세부 정보",
+    "description": "Button that expands or collapses the details block on a todo row"
+  },
   "todoEditPriority": {
     "message": "우선순위",
     "description": "Label for the priority selector in the edit dialog"

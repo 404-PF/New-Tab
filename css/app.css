@@ -1270,7 +1270,8 @@ body.light-theme .todo-edit-body label {
 }
 
 .todo-edit-body input,
-.todo-edit-body select {
+.todo-edit-body select,
+.todo-edit-body textarea {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -1282,16 +1283,26 @@ body.light-theme .todo-edit-body label {
 }
 
 .todo-edit-body input:focus,
-.todo-edit-body select:focus {
+.todo-edit-body select:focus,
+.todo-edit-body textarea:focus {
   border-color: rgba(33, 150, 243, 0.5);
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
 body.light-theme .todo-edit-body input,
-body.light-theme .todo-edit-body select {
+body.light-theme .todo-edit-body select,
+body.light-theme .todo-edit-body textarea {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
   color: #1f2937;
+}
+
+.todo-edit-body textarea {
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  white-space: pre-wrap;
 }
 
 .todo-edit-body select {
@@ -1466,6 +1477,49 @@ body.light-theme .todo-edit-subtask-input {
 
 body.light-theme .todo-edit-subtask-input::placeholder {
   color: rgba(31, 41, 55, 0.35);
+}
+
+/* Free-form details block under a todo row (issue #1228) */
+.todo-details {
+  padding-left: 32px;
+  margin-top: 4px;
+}
+
+.todo-details-toggle {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.todo-details-toggle:hover,
+.todo-details-toggle:focus-visible {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.todo-details-body {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.light-theme .todo-details-toggle {
+  color: rgba(31, 41, 55, 0.45);
+}
+
+body.light-theme .todo-details-toggle:hover,
+body.light-theme .todo-details-toggle:focus-visible {
+  color: rgba(31, 41, 55, 0.85);
+}
+
+body.light-theme .todo-details-body {
+  color: rgba(31, 41, 55, 0.75);
 }
 
 /* Inline subtasks in main todo list */
