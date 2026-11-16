@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "완료로 표시",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "나중에",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "낮음",
     "description": "Low priority label"

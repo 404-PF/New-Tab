@@ -207,7 +207,9 @@
   // stale copy. Own writes are skipped by the exact-string comparison (the
   // bridge echoes every set, including ours, synchronously); genuine false ->
   // true transitions also re-dispatch todoCompleted so stats count an
-  // externally completed todo exactly like a local toggle. Two deliberate
+  // externally completed todo exactly like a local toggle, and a recurring
+  // todo whose dueDate advanced (notification Mark done) counts as a
+  // completion too. Two deliberate
   // deviations from reloadTodosState(): normalizeTodosInPlace() instead of
   // migrateTodos() so reloading never triggers a persistence side effect of
   // its own (a fixture seed or import migrates through its own path), and a
@@ -218,7 +220,9 @@
       try {
         if (areaName !== 'local' || !changes || !changes.todos) return;
         const change = changes.todos;
-        if (typeof change.newValue !== 'string') return;
+        // A replace-mode import can delete the todos key entirely: let an
+        // absent newValue through so loadTodos() refreshes the list to empty.
+        if (change.newValue !== undefined && change.newValue !== null && typeof change.newValue !== 'string') return;
         if (change.newValue === JSON.stringify(todos)) return;
         const previous = todos;
         todos = loadTodos();
@@ -226,7 +230,12 @@
         applyFilters();
         for (const todo of todos) {
           const before = previous.find(t => t && t.id === todo.id);
-          if (before && !before.completed && todo.completed) {
+          if (!before || before.completed) continue;
+          // Recurring todos completed from a notification advance dueDate
+          // instead of flipping completed, so count that as a completion too.
+          const advancedDueDate =
+            RECURRENCE_VALUES.includes(todo.recurrence) && before.dueDate !== todo.dueDate;
+          if (todo.completed || advancedDueDate) {
             window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
           }
         }
