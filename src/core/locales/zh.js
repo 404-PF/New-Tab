@@ -700,6 +700,7 @@ window.i18n.__registerLocale('zh', {
   pomodoroHeatmapCellTitle: '$1$：$2$ 次专注',
   pomodoroStatsToggle: '专注统计',
   pomodoroStatsToggleAriaLabel: '切换专注统计面板',
+  pomodoroStatsSaveError: '无法保存专注统计。您上次的操作未被保存。',
 
 
   // Web grounding

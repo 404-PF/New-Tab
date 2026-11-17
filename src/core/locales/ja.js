@@ -655,6 +655,7 @@ window.i18n.__registerLocale('ja', {
   pomodoroHeatmapCellTitle: '$1$：$2$ セッション',
   pomodoroStatsToggle: '集中統計',
   pomodoroStatsToggleAriaLabel: '集中統計パネルを切り替える',
+  pomodoroStatsSaveError: '集中統計を保存できませんでした。直前の操作は保存されていません。',
 
 
   // Web grounding

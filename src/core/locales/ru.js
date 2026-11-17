@@ -655,6 +655,7 @@ window.i18n.__registerLocale('ru', {
   pomodoroHeatmapCellTitle: '$1$: $2$ сессий',
   pomodoroStatsToggle: 'Статистика фокуса',
   pomodoroStatsToggleAriaLabel: 'Переключить панель статистики фокуса',
+  pomodoroStatsSaveError: 'Не удалось сохранить статистику фокуса. Последнее действие не было сохранено.',
 
 
   // Web grounding

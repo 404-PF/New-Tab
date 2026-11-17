@@ -114,6 +114,16 @@
     try { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
     catch (err) { console.warn('Failed to read pomodoro stats enabled:', err); return false; }
   }
+  function showStatsSaveError() {
+    if (typeof window.showToast === 'function') {
+      const raw = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('pomodoroStatsSaveError')
+        : null;
+      window.showToast(raw && raw !== 'pomodoroStatsSaveError' ? raw : 'Failed to save focus stats. Your last action was not saved.', 'error');
+    } else {
+      console.warn('showToast unavailable: failed to save focus stats');
+    }
+  }
   function todayISO() { return toISO(new Date()); }
   // Drop days (and per-todo attribution) outside the retention window so the key
   // cannot grow without bound — one entry per day forever is the failure mode.
@@ -148,7 +158,13 @@
     pruneOldEntries(store);
     const persisted = write(store);
     const finishRecord = (success) => {
-      if (!success) return false;
+      if (!success) {
+        // Repaint from the rolled-back store and surface the failure so a
+        // rejected write cannot leave stale focus stats on screen (#1239).
+        paint();
+        showStatsSaveError();
+        return false;
+      }
       paint();
       try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
       catch { /* ignore environments without CustomEvent */ }
@@ -274,6 +290,12 @@
     if (parts.length === 0) return '—';
     return parts.join(' · ');
   }
+  // Compact "YYYY-MM-DD (n)" label for the best day card, shared by the
+  // summary paint and the post-failure desync check.
+  function formatBestDay() {
+    const bestDay = window.getPomodoroBestDay();
+    return bestDay && bestDay.sessions > 0 ? bestDay.date + ' (' + bestDay.sessions + ')' : '—';
+  }
   // Summary row below the heatmap: 30-day total, day-over-day trend, best
   // day, 7-day rolling average and per-todo focus minutes (issue #1171).
   function paintSummary() {
@@ -284,8 +306,7 @@
     const byTodo = document.getElementById('pomodoro-stats-by-todo');
     if (total) total.textContent = window.getPomodoroTotalFormatted().formatted;
     if (trend) trend.textContent = formatTrend(window.getPomodoroTrend());
-    const bestDay = window.getPomodoroBestDay();
-    if (best) best.textContent = bestDay && bestDay.sessions > 0 ? bestDay.date + ' (' + bestDay.sessions + ')' : '—';
+    if (best) best.textContent = formatBestDay();
     if (avg) avg.textContent = String(window.getPomodoroRollingAverage(7));
     if (byTodo) byTodo.textContent = formatMinutesByTodo();
   }
@@ -300,7 +321,13 @@
   function wipe() {
     const persisted = write({ days: {}, byDateTodos: {} });
     const finishWipe = (success) => {
-      if (!success) return false;
+      if (!success) {
+        // Mirror record: repaint the surviving stats and report the failed
+        // clear instead of silently keeping the old numbers (#1239).
+        paint();
+        showStatsSaveError();
+        return false;
+      }
       paint();
       return true;
     };
@@ -327,6 +354,39 @@
       window.showToast(raw && raw !== 'pomodoroStatsExportSuccess' ? raw : 'Focus stats download started.', 'success');
     }
   }
+  // A synchronous bridge failure both dispatches storageBridgeWriteError and
+  // settles the write as false, so record/wipe has already repainted from the
+  // rolled-back store and toasted. Only an async rejection leaves the panel
+  // showing the optimistic value, so compare before repainting and notify
+  // just for that — same pattern as todo-stats.js statsPanelDesynced (#1239).
+  function pomodoroStatsPanelDesynced() {
+    if (!enabled()) return false;
+    const store = read();
+    const expected = [
+      ['pomodoro-stats-today', sessionsToday(store)],
+      ['pomodoro-stats-week', sessionsWeek(store)],
+      ['pomodoro-stats-today-minutes', minutesToday(store)],
+      ['pomodoro-stats-week-minutes', minutesWeek(store)],
+      ['pomodoro-stats-total', window.getPomodoroTotalFormatted().formatted],
+      ['pomodoro-stats-trend', formatTrend(window.getPomodoroTrend())],
+      ['pomodoro-stats-best-day', formatBestDay()],
+      ['pomodoro-stats-rolling-avg', String(window.getPomodoroRollingAverage(7))],
+      ['pomodoro-stats-by-todo', formatMinutesByTodo()]
+    ];
+    return expected.some(function (entry) {
+      const el = document.getElementById(entry[0]);
+      return Boolean(el) && el.textContent !== String(entry[1]);
+    });
+  }
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== KEY) return;
+    setTimeout(() => {
+      if (!enabled()) return;
+      const desynced = pomodoroStatsPanelDesynced();
+      paint();
+      if (desynced) showStatsSaveError();
+    }, 0);
+  });
   function boot() {
     syncVisibility();
     const btn = document.getElementById('pomodoro-stats-toggle');

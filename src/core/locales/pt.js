@@ -655,6 +655,7 @@ window.i18n.__registerLocale('pt', {
   pomodoroHeatmapCellTitle: '$1$: $2$ sessões',
   pomodoroStatsToggle: 'Estatísticas de foco',
   pomodoroStatsToggleAriaLabel: 'Alternar painel de estatísticas de foco',
+  pomodoroStatsSaveError: 'Não foi possível salvar as estatísticas de foco. Sua última ação não foi salva.',
 
 
   // Web grounding

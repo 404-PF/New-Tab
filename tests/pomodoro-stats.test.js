@@ -1,4 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
@@ -735,5 +736,117 @@ describe('Focus stats CSV export (issue #1171)', () => {
       delete window.showToast;
       document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
     }
+  });
+});
+
+describe('Focus stats storage bridge write failures (issue #1239)', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save focus stats. Your last action was not saved.';
+  let restoreStorageSet = null;
+  let warnSpy = null;
+
+  beforeEach(() => {
+    localStorage.setItem('pomodoroStatsEnabled', 'true');
+    window.showToast = vi.fn();
+  });
+
+  afterEach(async () => {
+    // Drain any storageBridgeWriteError resync timers this test scheduled so
+    // they cannot fire against the next test's reset DOM/storage state.
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    if (restoreStorageSet) {
+      restoreStorageSet();
+      restoreStorageSet = null;
+    }
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    delete window.showToast;
+  });
+
+  function failWritesFor(key, mode) {
+    restoreStorageSet = failStorageWritesFor(key, mode);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  }
+
+  it('sync rejection of recordPomodoroSession reports failure and repaints the rolled-back stats', async () => {
+    await savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+    failWritesFor('pomodoroStats', 'sync');
+
+    const result = await recordPomodoroSession({ minutes: 25 });
+
+    expect(result).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(loadPomodoroStats().days[getToday()]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // The resync listener must not double-toast once record already repainted.
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(todayEl.textContent).toBe('2');
+  });
+
+  it('async rejection repaints the panel from the rolled-back store and reports it once', async () => {
+    await savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+    failWritesFor('pomodoroStats', 'async');
+
+    const resultPromise = recordPomodoroSession({ minutes: 25 });
+    // The optimistic bridge cache shows the bumped count until the write settles.
+    expect(loadPomodoroStats().days[getToday()]).toEqual({ sessions: 3, minutes: 75 });
+    expect(todayEl.textContent).toBe('2');
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    expect(await resultPromise).toBe(false);
+    expect(loadPomodoroStats().days[getToday()]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(todayEl.textContent).toBe('2');
+  });
+
+  it('clearPomodoroStats reports a rejected clear instead of silently keeping the old stats', async () => {
+    await savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+    failWritesFor('pomodoroStats', 'sync');
+
+    const result = await clearPomodoroStats();
+
+    expect(result).toBe(false);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+    expect(loadPomodoroStats().days[getToday()]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(todayEl.textContent).toBe('2');
   });
 });

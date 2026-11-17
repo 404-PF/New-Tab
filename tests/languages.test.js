@@ -766,6 +766,18 @@ describe('Game saves save error translation (issue #1039)', () => {
   });
 });
 
+// Shared feedback string for a focus stats write the bridge rejected
+// (issue #1239).
+describe('Focus stats save error translation (issue #1239)', () => {
+  it('defines a localized pomodoroStatsSaveError for every supported language', () => {
+    expectTranslationKeys(['pomodoroStatsSaveError'], { differFromEnglish: true });
+  });
+
+  it('includes pomodoroStatsSaveError in every _locales messages.json', () => {
+    expectMessagesJsonKey('pomodoroStatsSaveError');
+  });
+});
+
 // Named AI assistant shortcut (issue #1185): the Settings -> Shortcuts row
 // label ships in every runtime locale table and every chrome.i18n
 // messages.json.
