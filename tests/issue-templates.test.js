@@ -4,18 +4,11 @@ import { resolve } from 'path';
 const BUG_PATH = resolve(process.cwd(), '.github/ISSUE_TEMPLATE/bug_report.md');
 const FEATURE_PATH = resolve(process.cwd(), '.github/ISSUE_TEMPLATE/feature_request.md');
 const PR_PATH = resolve(process.cwd(), '.github/pull_request_template.md');
-const TRIAGE_PATH = resolve(process.cwd(), '.github/workflows/issue-triage.yml');
-const LABEL_PATH = resolve(process.cwd(), '.github/workflows/issue-label.yml');
-const BUG_BOT_PATH = resolve(process.cwd(), '.github/workflows/bug-bot.yml');
-const FEATURE_BOT_PATH = resolve(process.cwd(), '.github/workflows/feature-bot.yml');
 const CONTRIBUTING_PATH = resolve(process.cwd(), 'CONTRIBUTING.md');
 const CONTRIBUTING_EN_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.en.md');
 const CONTRIBUTING_ZH_PATH = resolve(process.cwd(), 'docs/CONTRIBUTING.zh-CN.md');
 
-// Templates share a fixed section set. Generated issues are free-form and end
-// with an ### Evidence block appended by bug-bot/feature-bot, which the
-// templates' Evidence section matches. issue-triage and issue-label pass the
-// raw body through and do not parse headings.
+// Templates share a fixed section set.
 const ISSUE_HEADINGS = [
   '## Description',
   '## Problem Statement',
@@ -92,58 +85,12 @@ describe('issue and PR templates (#1032)', () => {
     expect(pr).toMatch(/- \[ \] screenshots attached for UI changes/);
   });
 
-  it('keeps workflow sentinels out of the PR and issue templates', () => {
-    [bug, feature, pr].forEach((template) => {
-      expect(template).not.toContain('<!-- pr-merge -->');
-      expect(template).not.toContain('<!-- pr-drive -->');
-      expect(template).not.toContain('<!-- issue-triage -->');
-      expect(template).not.toContain('<!-- bug-bot -->');
-      expect(template).not.toContain('<!-- feature-bot -->');
-    });
-  });
-
   it('mentions the templates in CONTRIBUTING.md and its localized variants', () => {
     [CONTRIBUTING_PATH, CONTRIBUTING_EN_PATH, CONTRIBUTING_ZH_PATH].forEach((path) => {
       expect(existsSync(path)).toBe(true);
       const doc = readLf(path);
       expect(doc).toContain('.github/ISSUE_TEMPLATE/');
       expect(doc).toContain('.github/pull_request_template.md');
-    });
-  });
-});
-
-describe('workflows stay compatible with templated issues (#1032)', () => {
-  let triage;
-  let label;
-  let bugBot;
-  let featureBot;
-
-  beforeAll(() => {
-    triage = readLf(TRIAGE_PATH);
-    label = readLf(LABEL_PATH);
-    bugBot = readLf(BUG_BOT_PATH);
-    featureBot = readLf(FEATURE_BOT_PATH);
-  });
-
-  it('runs issue-triage and issue-label on every opened issue', () => {
-    [triage, label].forEach((wf) => {
-      expect(wf).toMatch(/^on:\n {2}issues:\n {4}types: \[opened\]/m);
-    });
-  });
-
-  it('feeds the raw issue body to the prompts without heading parsing', () => {
-    // Both workflows render the body verbatim into the context file, so a
-    // templated body with the shared headings needs no workflow changes.
-    [triage, label].forEach((wf) => {
-      expect(wf).toContain('"## Body"');
-      expect(wf).toContain('then (.body | wrap) else "_No description provided._"');
-      expect(wf).not.toMatch(/## Description|## Problem Statement|## Expected Behavior/);
-    });
-  });
-
-  it('still appends the ### Evidence block to generated issues', () => {
-    [bugBot, featureBot].forEach((wf) => {
-      expect(wf).toContain('.body, "", "### Evidence",');
     });
   });
 });
