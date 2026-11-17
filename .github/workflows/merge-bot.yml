@@ -1,0 +1,56 @@
+name: merge-bot
+
+on:
+  pull_request_review:
+    types: [submitted]
+  check_run:
+    types: [completed]
+  status:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: merge-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ secrets.GH_PAT }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Merge ready PRs
+        run: |
+          set -euo pipefail
+          OWNER=${GH_REPO%%/*}
+          REPO=${GH_REPO##*/}
+          READY=$(gh pr list --state open --limit 100 --json number,isDraft,mergeable,statusCheckRollup --jq '
+            [.[] | select(.isDraft | not)
+              | select(.mergeable == "MERGEABLE")
+              | select((.statusCheckRollup | length) > 0)
+              | select(all(.statusCheckRollup[];
+                  if .__typename == "StatusContext" then .state == "SUCCESS"
+                  else .status == "COMPLETED" and (.conclusion | IN("SUCCESS", "NEUTRAL", "SKIPPED")) end))
+              | .number]')
+          for N in $(jq -r '.[]' <<< "$READY"); do
+            UNRESOLVED=$(gh api graphql -F owner="$OWNER" -F repo="$REPO" -F number="$N" -f query='
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } }
+                  }
+                }
+              }' --jq '.data.repository.pullRequest.reviewThreads | if .pageInfo.hasNextPage then 1 else ([.nodes[] | select(.isResolved | not)] | length) end')
+            if [ "$UNRESOLVED" != "0" ]; then
+              echo "Skipping #$N: unresolved review threads"
+              continue
+            fi
+            gh pr merge "$N" --squash || echo "Could not merge #$N (branch protection or other rule)"
+          done
