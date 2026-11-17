@@ -228,6 +228,11 @@
         todos = loadTodos();
         normalizeTodosInPlace();
         applyFilters();
+        // renderTodos() replaced every row: rebuild any open inline date
+        // picker so its handlers capture the current todo object and anchor
+        // instead of the pre-replacement ones — otherwise a later time change
+        // persists the stale due date over the external advance (#1233).
+        refreshInlineDatePickers();
         for (const todo of todos) {
           const before = previous.find(t => t && t.id === todo.id);
           if (!before || before.completed) continue;
