@@ -818,6 +818,14 @@
     "message": "Text",
     "description": "Label for the todo text field in the edit dialog"
   },
+  "todoEditDetails": {
+    "message": "Details",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "Details",
+    "description": "Button that expands or collapses the details block on a todo row"
+  },
   "todoEditPriority": {
     "message": "Priority",
     "description": "Label for the priority selector in the edit dialog"

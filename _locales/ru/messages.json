@@ -802,6 +802,14 @@
     "message": "Текст",
     "description": "Label for the todo text field in the edit dialog"
   },
+  "todoEditDetails": {
+    "message": "Детали",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "Детали",
+    "description": "Button that expands or collapses the details block on a todo row"
+  },
   "todoEditPriority": {
     "message": "Приоритет",
     "description": "Label for the priority selector in the edit dialog"

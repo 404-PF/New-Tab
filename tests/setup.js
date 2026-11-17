@@ -429,6 +429,8 @@ globalThis.window.i18n = {
       editTodo: 'Edit Todo',
       todoEditTitle: 'Edit Todo',
       todoEditText: 'Text',
+      todoEditDetails: 'Details',
+      todoDetailsToggle: 'Details',
       todoEditPriority: 'Priority',
       newAppTitle: 'Add New App',
       newAppDescription: 'Enter a website URL to add it to your apps',
@@ -912,6 +914,7 @@ document.body.appendChild(dataImportDialog);
 // Edit modal stubs
 document.body.appendChild(createStubElement('div', 'todo-edit-modal'));
 document.body.appendChild(createStubElement('input', 'todo-edit-text'));
+document.body.appendChild(createStubElement('textarea', 'todo-edit-details'));
 document.body.appendChild(createStubElement('select', 'todo-edit-priority'));
 const recurrenceSelect = createStubElement('select', 'todo-edit-recurrence');
 ['', 'daily', 'weekly', 'monthly'].forEach(value => {

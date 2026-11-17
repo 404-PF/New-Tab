@@ -36,6 +36,11 @@
   const selectedIds = new Set();
   let selectionAnchorId = null;
 
+  // Rows whose free-form details block is expanded (issue #1228). Memory
+  // only, like todoSearchQuery; re-rendered rows restore it so toggling a
+  // subtask or filter never silently collapses an open details block.
+  const expandedDetailsIds = new Set();
+
   // Undo window for deletes (issue #1135). A single slot holds one group of
   // removed todos with their pre-delete indices: a later delete replaces it
   // (last wins, mirroring the single-toast model in toast.js). The slot lives
@@ -753,15 +758,17 @@
     }
 
     // Text search (issue #1060). AND with the pill filters: match the todo
-    // text or any subtask text, case-insensitively. The sort below still runs
-    // on whatever survives, so all five sort modes compose unchanged.
+    // text, any subtask text, or the free-form details (issue #1228),
+    // case-insensitively. The sort below still runs on whatever survives, so
+    // all five sort modes compose unchanged.
     if (todoSearchQuery) {
       const query = todoSearchQuery.toLowerCase();
       filtered = filtered.filter(todo => {
         const textMatch = typeof todo.text === 'string' && todo.text.toLowerCase().includes(query);
         const subtaskMatch = Array.isArray(todo.subtasks) &&
           todo.subtasks.some(subtask => typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(query));
-        return textMatch || subtaskMatch;
+        const detailsMatch = typeof todo.details === 'string' && todo.details.toLowerCase().includes(query);
+        return textMatch || subtaskMatch || detailsMatch;
       });
     }
 
@@ -807,6 +814,14 @@
     const emptyState = elements.emptyState;
 
     if (!todoList || !emptyState) return;
+
+    // Drop details expansion state for todos that no longer exist (issue #1228).
+    if (expandedDetailsIds.size > 0) {
+      const liveIds = new Set(todos.map(todo => todo.id));
+      expandedDetailsIds.forEach(id => {
+        if (!liveIds.has(id)) expandedDetailsIds.delete(id);
+      });
+    }
 
     // Get existing element positions (First step of FLIP)
     const existingItems = {};
@@ -981,6 +996,31 @@
 
       li.appendChild(todoItemRow);
 
+      // Free-form details (issue #1228). Only rendered when non-empty so
+      // plain rows stay exactly as they were, collapsed by default, and built
+      // with textContent so stored text can never inject markup.
+      if (typeof todo.details === 'string' && todo.details.trim()) {
+        const detailsContainer = document.createElement('div');
+        detailsContainer.className = 'todo-details';
+
+        const detailsToggle = document.createElement('button');
+        detailsToggle.type = 'button';
+        detailsToggle.className = 'todo-details-toggle';
+        detailsToggle.dataset.todoId = todo.id;
+        const detailsExpanded = expandedDetailsIds.has(todo.id);
+        detailsToggle.setAttribute('aria-expanded', detailsExpanded ? 'true' : 'false');
+        detailsToggle.textContent = window.i18n ? window.i18n.t('todoDetailsToggle') : 'Details';
+
+        const detailsBody = document.createElement('div');
+        detailsBody.className = 'todo-details-body';
+        detailsBody.hidden = !detailsExpanded;
+        detailsBody.textContent = todo.details;
+
+        detailsContainer.appendChild(detailsToggle);
+        detailsContainer.appendChild(detailsBody);
+        li.appendChild(detailsContainer);
+      }
+
       // Subtasks
       if (todo.subtasks && todo.subtasks.length > 0) {
         const subtasksContainer = document.createElement('div');
@@ -1094,8 +1134,16 @@
     return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
   }
 
+  // Free-form context on a task (issue #1228). Blank or non-string input
+  // collapses to null so "no details" has one canonical stored shape.
+  function normalizeTodoDetails(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
   // Add a new todo
-  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null) {
+  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null, details = null) {
     if (!text.trim()) return;
 
     // Seed the next order from the same scale getManualOrderValue compares on
@@ -1115,6 +1163,7 @@
       dueTime: normalizedDueTime,
       priority: priority || 'medium',
       recurrence: RECURRENCE_VALUES.includes(recurrence) ? recurrence : null,
+      details: normalizeTodoDetails(details),
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
     };
@@ -1169,6 +1218,13 @@
         todo.dueTime = null;
         needsMigration = true;
       }
+      // Same normalization for free-form details (issue #1228): legacy rows
+      // gain `details: null`, blank strings collapse, non-strings are dropped.
+      const normalizedDetails = normalizeTodoDetails(todo.details);
+      if (todo.details !== normalizedDetails) {
+        todo.details = normalizedDetails;
+        needsMigration = true;
+      }
     });
 
     if (needsMigration) {
@@ -1196,8 +1252,10 @@
     }
   }
 
-  // Edit a todo
-  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime) {
+  // Edit a todo. `newDetails` is a trailing optional argument so every
+  // existing positional call site keeps its meaning (issue #1228): pass
+  // undefined to leave details untouched, a string to set/clear them.
+  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime, newDetails) {
     const todo = todos.find(t => t.id === id);
     if (!todo) {
       return false;
@@ -1211,6 +1269,9 @@
     applyDueDateAndTime(todo, newDueDate, newDueTime);
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
+    }
+    if (newDetails !== undefined) {
+      todo.details = normalizeTodoDetails(newDetails);
     }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
@@ -2150,6 +2211,25 @@ function handleTodoListClick(event) {
     return;
   }
 
+  // Expand/collapse the free-form details block under the row (issue #1228)
+  const detailsToggle = target.closest('.todo-details-toggle');
+  if (detailsToggle) {
+    event.stopPropagation();
+    const detailsContainer = detailsToggle.closest('.todo-details');
+    const detailsBody = detailsContainer ? detailsContainer.querySelector('.todo-details-body') : null;
+    if (detailsBody) {
+      const expanded = detailsBody.hidden;
+      detailsBody.hidden = !expanded;
+      detailsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      if (expanded) {
+        expandedDetailsIds.add(detailsToggle.dataset.todoId);
+      } else {
+        expandedDetailsIds.delete(detailsToggle.dataset.todoId);
+      }
+    }
+    return;
+  }
+
   // Ctrl/Cmd or Shift click on the row body selects instead of activating a
   // control, so multi-select also works without hitting the checkbox (issue #942).
   if (event.ctrlKey || event.metaKey || event.shiftKey) {
@@ -2766,9 +2846,11 @@ function openEditModal(id) {
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
   const modal = document.getElementById('todo-edit-modal');
+  const detailsInput = document.getElementById('todo-edit-details');
 
   if (textInput) textInput.value = todo.text;
   if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
+  if (detailsInput) detailsInput.value = todo.details || '';
   const recurrenceSelect = document.getElementById('todo-edit-recurrence');
   if (recurrenceSelect) recurrenceSelect.value = todo.recurrence || '';
 
@@ -2817,11 +2899,15 @@ function saveEdit() {
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  const detailsInput = document.getElementById('todo-edit-details');
 
   const newText = textInput ? textInput.value.trim() : '';
   const newPriority = prioritySelect ? prioritySelect.value : null;
   const recurrenceSelect = document.getElementById('todo-edit-recurrence');
   const newRecurrence = recurrenceSelect ? (recurrenceSelect.value || null) : null;
+  // Undefined (no textarea in the DOM) leaves stored details untouched; an
+  // empty value deliberately clears them (issue #1228).
+  const newDetails = detailsInput ? detailsInput.value : undefined;
 
   if (!newText) {
     // Show error or focus on text input
@@ -2849,7 +2935,7 @@ function saveEdit() {
     }
   }
 
-  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence)) {
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence, undefined, newDetails)) {
     // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
     editModalState.pendingSubtaskIds.clear();
     closeEditModal(false);
@@ -3128,6 +3214,10 @@ function validateTodoData(data) {
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
     if (item.recurrence !== undefined && item.recurrence !== null && !RECURRENCE_VALUES.includes(item.recurrence)) return false;
+    // Free-form details (issue #1228): optional, but must be a string when
+    // present and within the edit modal's 2000-character maxlength so a
+    // hostile export can't store objects/arrays or oversized text here.
+    if (item.details !== undefined && item.details !== null && (typeof item.details !== 'string' || item.details.length > 2000)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
       const subtaskIds = new Set();
@@ -3228,6 +3318,9 @@ function showImportDialog(importedTodos) {
     todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
     todo.createdAt = item.createdAt || new Date().toISOString();
     todo.order = order;
+    // Always materialize details so imported rows share the same shape as
+    // addTodo output (null when absent or blank).
+    todo.details = normalizeTodoDetails(item.details);
     return todo;
   }
 
@@ -3273,16 +3366,7 @@ function showImportDialog(importedTodos) {
   };
 
   const handleReplace = () => {
-    const newTodos = importedTodos.map((item, index) => {
-      const todo = { ...item };
-      todo.completed = !!item.completed;
-      todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
-      todo.dueDate = item.dueDate || null;
-      todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
-      todo.createdAt = item.createdAt || new Date().toISOString();
-      todo.order = index;
-      return todo;
-    });
+    const newTodos = importedTodos.map((item, index) => createImportedTodo(item, index));
     
     closeAllInlineDatePickers();
     if (!saveTodos(newTodos)) {

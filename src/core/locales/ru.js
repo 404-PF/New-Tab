@@ -62,6 +62,8 @@ window.i18n.__registerLocale('ru', {
   todoEditTooltip: 'Редактировать дело',
   todoEditTitle: 'Редактировать дело',
   todoEditText: 'Текст',
+  todoEditDetails: 'Детали',
+  todoDetailsToggle: 'Детали',
   todoEditPriority: 'Приоритет',
   todoSubtasks: 'Подзадачи',
   todoAddSubtask: 'Добавить подзадачу...',

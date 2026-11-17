@@ -132,6 +132,8 @@ const translations = {
     todoEditTooltip: 'Edit Todo',
     todoEditTitle: 'Edit Todo',
     todoEditText: 'Text',
+    todoEditDetails: 'Details',
+    todoDetailsToggle: 'Details',
     todoEditPriority: 'Priority',
     todoSubtasks: 'Subtasks',
     todoAddSubtask: 'Add subtask...',

@@ -62,6 +62,8 @@ window.i18n.__registerLocale('pt', {
   todoEditTooltip: 'Editar tarefa',
   todoEditTitle: 'Editar tarefa',
   todoEditText: 'Texto',
+  todoEditDetails: 'Detalhes',
+  todoDetailsToggle: 'Detalhes',
   todoEditPriority: 'Prioridade',
   todoSubtasks: 'Subtarefas',
   todoAddSubtask: 'Adicionar subtarefa...',
