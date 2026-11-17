@@ -24,10 +24,40 @@ function showAppGridSaveError() {
   console.warn('[app-grid-storage] Save error suppressed (showToast unavailable):', message);
 }
 
+// Async half of #1238: chrome.storage can reject hiddenDefaultApps and
+// customApps through runtime.lastError after setItem already returned true,
+// so the success path has already patched the grid tile and the Settings > Apps
+// checkbox optimistically. The bridge dispatches storageBridgeWriteError
+// before rolling its cache back — wait a macrotask for that rollback, then
+// repaint from the restored store so grid and storage agree without a reload.
+// The shared toast in this listener stays the single appGridSaveError owner
+// for these keys, so the resync pass only repaints.
+const APP_GRID_RESYNC_KEYS = new Set(['hiddenDefaultApps', 'customApps']);
+// Set only while the recovery repaint below runs: loadCustomApps() persists
+// its URL migration during the read, so a rejected migration write would
+// dispatch storageBridgeWriteError again and loop repaint → migration →
+// failure for as long as the rejection lasts. The recovery read still
+// normalizes URLs for rendering; the write happens on the next read outside
+// recovery (page load or user action).
+let recoveryRepaintInProgress = false;
+
 window.addEventListener('storageBridgeWriteError', (event) => {
-  if (event.detail && APP_GRID_STORAGE_KEYS.has(event.detail.key)) {
-    showAppGridSaveError();
-  }
+  if (!event.detail || !APP_GRID_STORAGE_KEYS.has(event.detail.key)) return;
+  showAppGridSaveError();
+  if (!APP_GRID_RESYNC_KEYS.has(event.detail.key)) return;
+  setTimeout(() => {
+    recoveryRepaintInProgress = true;
+    try {
+      if (typeof window.renderDefaultAppVisibilityList === 'function') {
+        window.renderDefaultAppVisibilityList();
+      }
+      if (typeof window.renderAllApps === 'function') {
+        window.renderAllApps();
+      }
+    } finally {
+      recoveryRepaintInProgress = false;
+    }
+  });
 });
 
 function readJsonArray(key, fallbackValue, warningLabel, fallbackLabel) {
@@ -161,7 +191,8 @@ const AppGridStorage = {
 
   loadCustomApps() {
     const apps = readJsonArray('customApps', [], 'customApps', '[]');
-    if (migrateCustomAppUrls(apps)) {
+    const migrated = migrateCustomAppUrls(apps);
+    if (migrated && !recoveryRepaintInProgress) {
       writeJson('customApps', apps);
     }
     return apps;
