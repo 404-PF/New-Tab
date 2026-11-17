@@ -906,6 +906,11 @@ describe('Todo validateTodoData', () => {
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: ['a'] }] })).toBe(false);
     expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: true }] })).toBe(false);
   });
+
+  it('caps imported details at the edit modal maxlength (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'x'.repeat(2000) }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'x'.repeat(2001) }] })).toBe(false);
+  });
 });
 
 describe('Todo import', () => {

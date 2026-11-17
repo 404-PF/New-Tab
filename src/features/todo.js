@@ -3215,8 +3215,9 @@ function validateTodoData(data) {
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
     if (item.recurrence !== undefined && item.recurrence !== null && !RECURRENCE_VALUES.includes(item.recurrence)) return false;
     // Free-form details (issue #1228): optional, but must be a string when
-    // present so a hostile export can't store objects/arrays in the field.
-    if (item.details !== undefined && item.details !== null && typeof item.details !== 'string') return false;
+    // present and within the edit modal's 2000-character maxlength so a
+    // hostile export can't store objects/arrays or oversized text here.
+    if (item.details !== undefined && item.details !== null && (typeof item.details !== 'string' || item.details.length > 2000)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
       const subtaskIds = new Set();

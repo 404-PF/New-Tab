@@ -1197,6 +1197,10 @@ body.light-theme .todo-priority-badge.priority-low {
   padding: 24px;
   width: 90%;
   max-width: min(var(--modal-width-md), calc(100vw - 32px));
+  max-height: var(--overlay-max-height);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
@@ -1257,6 +1261,8 @@ body.light-theme .todo-edit-close:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .todo-edit-body label {
