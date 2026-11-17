@@ -138,4 +138,44 @@ describe('auto-theme fallback async rollback without toast.js (#1081)', () => {
     expect(visibilityIntervals).toHaveLength(1);
     expect(visibilityIntervals[0].destroyed).toBe(false);
   });
+
+  it('re-applies the rolled-back theme and re-arms the scheduler after an async rejected theme write (#1242)', async () => {
+    // Learn the scheduled theme with one accepted write, then point storage
+    // at the other one so the next boundary crossing must write. The
+    // disable/enable refresh resets the boundary left by earlier specs.
+    localStorage.setItem('autoTheme', 'false');
+    window.refreshAutoTheme();
+    localStorage.setItem('autoTheme', 'true');
+    localStorage.setItem('autoThemeLightTime', '07:00');
+    localStorage.setItem('autoThemeDarkTime', '19:00');
+    window.refreshAutoTheme();
+    const scheduled = localStorage.getItem('theme');
+    const other = scheduled === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', other);
+
+    const restore = failWriteFor('theme', 'async');
+    // Re-saving the current light time resets lastScheduledTheme and re-runs
+    // checkAndApply without changing the schedule.
+    const lightInput = document.getElementById('auto-theme-light-time');
+    lightInput.value = '07:00';
+    lightInput.dispatchEvent(new Event('change'));
+
+    // Accepted optimistically until the bridge callback reports the failure.
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+    window.applyTheme.mockClear();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // Without toast.js the fallback listener owns the resync: the bridge
+    // rolled its cache back and applyTheme must re-run so radios/body class
+    // match storage instead of keeping the optimistic theme.
+    expect(localStorage.getItem('theme')).toBe(other);
+    expect(window.applyTheme).toHaveBeenCalledTimes(1);
+
+    // The boundary was re-armed, so the next tick persists the switch.
+    restore();
+    window.refreshAutoTheme();
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+  });
 });
