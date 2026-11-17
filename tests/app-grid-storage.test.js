@@ -1,5 +1,5 @@
 import { injectScript } from './helpers/inject-script.js';
-import { flushDeferredFailureSync } from './helpers/storage-write-failures.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   // toast.js provides window.showToast for app-grid-storage's save errors.
@@ -55,6 +55,70 @@ describe('AppGridStorage', () => {
     } finally {
       delete window.renderAllApps;
       delete window.renderDefaultAppVisibilityList;
+    }
+  });
+
+  it('does not let a recovery repaint retry a failing customApps migration (#1238)', async () => {
+    // Legacy stored URL: every loadCustomApps() read normalizes it and would
+    // normally persist the normalized value, so a recovery repaint that
+    // persisted the migration would fail, repaint, and fail forever while the
+    // write rejection lasts.
+    const legacyApps = [{ id: 'legacy-app', name: 'Legacy', url: 'example.com' }];
+    localStorage.setItem('customApps', JSON.stringify(legacyApps));
+
+    const restoreWrites = failStorageWritesFor('customApps', 'async');
+    const originals = {
+      showToast: window.showToast,
+      renderAllApps: window.renderAllApps,
+      renderDefaultAppVisibilityList: window.renderDefaultAppVisibilityList
+    };
+    let renderedApps = null;
+    // Mirror the real render path: renderAllApps reads customApps through
+    // AppGridStorage.loadCustomApps() during the repaint.
+    const renderAllApps = vi.fn(() => {
+      renderedApps = window.AppGridStorage.loadCustomApps();
+    });
+    const renderDefaultAppVisibilityList = vi.fn();
+    const showToast = vi.fn();
+    window.showToast = showToast;
+    window.renderAllApps = renderAllApps;
+    window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
+
+    try {
+      // Simulate the original rejected customApps write.
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'customApps' } }));
+      expect(showToast).toHaveBeenCalledTimes(1);
+
+      // Drive several failure/repaint cycles. Without a non-persisting
+      // recovery read, each cycle re-attempts the migration, fails again,
+      // and repaints again.
+      for (let cycle = 0; cycle < 4; cycle++) {
+        await flushDeferredFailureSync();
+      }
+
+      // Exactly one repaint and one toast: no endless retry cycle.
+      expect(renderAllApps).toHaveBeenCalledTimes(1);
+      expect(renderDefaultAppVisibilityList).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledTimes(1);
+      // The recovery still renders the normalized URL in memory...
+      expect(renderedApps).toEqual([
+        { id: 'legacy-app', name: 'Legacy', url: 'https://example.com' }
+      ]);
+      // ...without persisting it while the write rejection persists.
+      expect(JSON.parse(localStorage.getItem('customApps'))).toEqual(legacyApps);
+    } finally {
+      restoreWrites();
+      for (const [name, original] of Object.entries(originals)) {
+        if (original === undefined) {
+          delete window[name];
+        } else {
+          window[name] = original;
+        }
+      }
+      // Drain any failure/resync timers this test scheduled so they cannot
+      // fire against the next test's state.
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
     }
   });
 });

@@ -33,17 +33,29 @@ function showAppGridSaveError() {
 // The shared toast in this listener stays the single appGridSaveError owner
 // for these keys, so the resync pass only repaints.
 const APP_GRID_RESYNC_KEYS = new Set(['hiddenDefaultApps', 'customApps']);
+// Set only while the recovery repaint below runs: loadCustomApps() persists
+// its URL migration during the read, so a rejected migration write would
+// dispatch storageBridgeWriteError again and loop repaint → migration →
+// failure for as long as the rejection lasts. The recovery read still
+// normalizes URLs for rendering; the write happens on the next read outside
+// recovery (page load or user action).
+let recoveryRepaintInProgress = false;
 
 window.addEventListener('storageBridgeWriteError', (event) => {
   if (!event.detail || !APP_GRID_STORAGE_KEYS.has(event.detail.key)) return;
   showAppGridSaveError();
   if (!APP_GRID_RESYNC_KEYS.has(event.detail.key)) return;
   setTimeout(() => {
-    if (typeof window.renderDefaultAppVisibilityList === 'function') {
-      window.renderDefaultAppVisibilityList();
-    }
-    if (typeof window.renderAllApps === 'function') {
-      window.renderAllApps();
+    recoveryRepaintInProgress = true;
+    try {
+      if (typeof window.renderDefaultAppVisibilityList === 'function') {
+        window.renderDefaultAppVisibilityList();
+      }
+      if (typeof window.renderAllApps === 'function') {
+        window.renderAllApps();
+      }
+    } finally {
+      recoveryRepaintInProgress = false;
     }
   });
 });
@@ -179,7 +191,8 @@ const AppGridStorage = {
 
   loadCustomApps() {
     const apps = readJsonArray('customApps', [], 'customApps', '[]');
-    if (migrateCustomAppUrls(apps)) {
+    const migrated = migrateCustomAppUrls(apps);
+    if (migrated && !recoveryRepaintInProgress) {
       writeJson('customApps', apps);
     }
     return apps;
