@@ -1165,3 +1165,441 @@ describe('Background rotation "Every new tab" cadence (issue #1173)', () => {
     );
   });
 });
+
+describe('Background rotation "Time of day" cadence (issue #1234)', () => {
+  let applyBg;
+  let OriginalVisibilityInterval;
+  let VisibilityIntervalMock;
+
+  beforeEach(() => {
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationInterval', 'tod');
+    localStorage.setItem('bgRotationDayTime', '07:00');
+    localStorage.setItem('bgRotationNightTime', '19:00');
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1', 'Day BG 2']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Night BG 1', 'Night BG 2']));
+    localStorage.removeItem('bgRotationSelection');
+    localStorage.removeItem('homepageBg');
+    window._backgrounds = [
+      { id: 'Day BG 1', title: 'Day BG 1', thumb: 'd1.jpg', url: 'd1-full.jpg' },
+      { id: 'Day BG 2', title: 'Day BG 2', thumb: 'd2.jpg', url: 'd2-full.jpg' },
+      { id: 'Night BG 1', title: 'Night BG 1', thumb: 'n1.jpg', url: 'n1-full.jpg' },
+      { id: 'Night BG 2', title: 'Night BG 2', thumb: 'n2.jpg', url: 'n2-full.jpg' },
+    ];
+    applyBg = vi.fn();
+    window.applyBg = applyBg;
+    OriginalVisibilityInterval = window.VisibilityInterval;
+    VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+  });
+
+  afterEach(() => {
+    BackgroundRotation.stop();
+    window.VisibilityInterval = OriginalVisibilityInterval;
+    vi.useRealTimers();
+  });
+
+  function fakeTime(year, month, day, hours, minutes) {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(year, month, day, hours, minutes, 0, 0));
+  }
+
+  it('defaults to a 07:00 day boundary and a 19:00 night boundary', () => {
+    localStorage.removeItem('bgRotationDayTime');
+    localStorage.removeItem('bgRotationNightTime');
+
+    expect(BackgroundRotation.getDayTime()).toBe('07:00');
+    expect(BackgroundRotation.getNightTime()).toBe('19:00');
+  });
+
+  it('reads custom boundaries and side selections from storage', () => {
+    localStorage.setItem('bgRotationDayTime', '08:30');
+    localStorage.setItem('bgRotationNightTime', '21:15');
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 2']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Night BG 2']));
+
+    expect(BackgroundRotation.getDayTime()).toBe('08:30');
+    expect(BackgroundRotation.getNightTime()).toBe('21:15');
+    expect(BackgroundRotation.getDaySelection()).toEqual(['Day BG 2']);
+    expect(BackgroundRotation.getNightSelection()).toEqual(['Night BG 2']);
+  });
+
+  it('keeps an explicit empty side selection distinct from an unconfigured one', () => {
+    localStorage.setItem('bgRotationDaySelection', '[]');
+    localStorage.setItem('bgRotationNightSelection', 'not-json');
+
+    expect(BackgroundRotation.getDaySelection()).toEqual([]);
+    expect(BackgroundRotation.getNightSelection()).toBeNull();
+  });
+
+  it('ships the tod option and schedule controls in New-Tab.html', () => {
+    const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
+
+    expect(html).toMatch(
+      /<option value="tod" data-i18n="bgRotationTod">Time of day<\/option>/
+    );
+    expect(html).toMatch(/<div id="bg-rotation-tod" hidden>/);
+    expect(html).toMatch(/<input type="time" id="bg-rotation-day-time" value="07:00" \/>/);
+    expect(html).toMatch(/<input type="time" id="bg-rotation-night-time" value="19:00" \/>/);
+    expect(html).toMatch(/<div class="bg-rotation-picker" id="bg-rotation-day-picker"><\/div>/);
+    expect(html).toMatch(/<div class="bg-rotation-picker" id="bg-rotation-night-picker"><\/div>/);
+  });
+
+  it('applies the active side pool on start and repaints a wrong-side background', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0); // noon: inside the 07:00-19:00 day window
+    localStorage.setItem('homepageBg', 'Night BG 1');
+
+    BackgroundRotation.start();
+
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Day BG/);
+    expect(applyBg).toHaveBeenCalled();
+    expect(VisibilityIntervalMock).toHaveBeenCalledWith(expect.any(Function), 30000);
+  });
+
+  it('leaves the background untouched when it already belongs to the active side pool', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+
+    BackgroundRotation.start();
+
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+    expect(applyBg).not.toHaveBeenCalled();
+  });
+
+  it('swaps into the night pool exactly once when the schedule crosses night time', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+
+    vi.setSystemTime(new Date(2026, 0, 5, 19, 0, 0));
+    applyBg.mockClear();
+    checkTodSide();
+
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
+    expect(applyBg).toHaveBeenCalled();
+
+    // The boundary is consumed: another check at the same side is a no-op.
+    applyBg.mockClear();
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
+    expect(applyBg).not.toHaveBeenCalled();
+  });
+
+  it('does not swap while the scheduled side is unchanged', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+
+    vi.setSystemTime(new Date(2026, 0, 5, 15, 0, 0));
+    checkTodSide();
+
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+    expect(applyBg).not.toHaveBeenCalled();
+  });
+
+  it('forces the boundary swap off the displayed background when the pools overlap', () => {
+    // Both sides rotate the same pool, so a naive boundary advance could
+    // redraw the background already on screen.
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Day BG 1', 'Day BG 2']));
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+
+    vi.setSystemTime(new Date(2026, 0, 5, 19, 0, 0));
+    checkTodSide();
+
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 2');
+  });
+
+  it('treats equal day and night boundaries as night', () => {
+    localStorage.setItem('bgRotationDayTime', '12:00');
+    localStorage.setItem('bgRotationNightTime', '12:00');
+    localStorage.setItem('homepageBg', 'Day BG 1');
+
+    BackgroundRotation.start();
+
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
+  });
+
+  it('arms no boundary timer when the combined pools hold a single background', () => {
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Day BG 1']));
+    localStorage.setItem('homepageBg', 'Day BG 1');
+
+    BackgroundRotation.start();
+
+    expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+    expect(applyBg).not.toHaveBeenCalled();
+  });
+
+  it('does not arm or apply anything while rotation is disabled', () => {
+    localStorage.setItem('bgRotationEnabled', 'false');
+    localStorage.setItem('homepageBg', 'Night BG 1');
+
+    BackgroundRotation.start();
+
+    expect(VisibilityIntervalMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem('homepageBg')).toBe('Night BG 1');
+    expect(applyBg).not.toHaveBeenCalled();
+  });
+
+  it('corrects a wrong-side background once on a fresh load', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Night BG 1');
+    const previous = window.BackgroundRotation;
+
+    try {
+      injectScript('src/features/background-rotation.js');
+
+      expect(localStorage.getItem('homepageBg')).toMatch(/^Day BG/);
+      expect(applyBg).toHaveBeenCalledOnce();
+    } finally {
+      BackgroundRotation.stop();
+      previous.stop();
+    }
+  });
+
+  it('does not churn homepageBg on a fresh load when the displayed background already matches the side', () => {
+    fakeTime(2026, 0, 5, 12, 0, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    const previous = window.BackgroundRotation;
+
+    try {
+      injectScript('src/features/background-rotation.js');
+
+      expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+      expect(applyBg).not.toHaveBeenCalled();
+    } finally {
+      BackgroundRotation.stop();
+      previous.stop();
+    }
+  });
+});
+
+describe('Background rotation time-of-day controls (issue #1234)', () => {
+  const SAVE_ERROR_MESSAGE = 'Failed to save background rotation settings. Your last action was not saved.';
+
+  let toggle;
+  let intervalSelect;
+  let optionsEl;
+  let pickerWrap;
+  let todEl;
+  let dayInput;
+  let nightInput;
+  let dayPicker;
+  let nightPicker;
+  let showToast;
+  let restoreWrites = null;
+
+  beforeEach(() => {
+    window._backgrounds = [
+      { id: 'Day BG 1', title: 'Day BG 1', thumb: 'd1.jpg', url: 'd1-full.jpg' },
+      { id: 'Day BG 2', title: 'Day BG 2', thumb: 'd2.jpg', url: 'd2-full.jpg' },
+      { id: 'Night BG 1', title: 'Night BG 1', thumb: 'n1.jpg', url: 'n1-full.jpg' },
+      { id: 'Night BG 2', title: 'Night BG 2', thumb: 'n2.jpg', url: 'n2-full.jpg' },
+    ];
+    localStorage.setItem('bgRotationEnabled', 'true');
+    localStorage.setItem('bgRotationInterval', 'tod');
+    localStorage.setItem('bgRotationDayTime', '07:00');
+    localStorage.setItem('bgRotationNightTime', '19:00');
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1', 'Day BG 2']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Night BG 1', 'Night BG 2']));
+    localStorage.removeItem('bgRotationSelection');
+    localStorage.removeItem('homepageBg');
+
+    optionsEl = document.createElement('div');
+    optionsEl.id = 'bg-rotation-options';
+    pickerWrap = document.createElement('div');
+    pickerWrap.id = 'bg-rotation-picker-wrap';
+    const picker = document.createElement('div');
+    picker.id = 'bg-rotation-picker';
+    pickerWrap.appendChild(picker);
+    todEl = document.createElement('div');
+    todEl.id = 'bg-rotation-tod';
+    todEl.hidden = true;
+    dayInput = document.createElement('input');
+    dayInput.type = 'time';
+    dayInput.id = 'bg-rotation-day-time';
+    nightInput = document.createElement('input');
+    nightInput.type = 'time';
+    nightInput.id = 'bg-rotation-night-time';
+    dayPicker = document.createElement('div');
+    dayPicker.id = 'bg-rotation-day-picker';
+    nightPicker = document.createElement('div');
+    nightPicker.id = 'bg-rotation-night-picker';
+    todEl.append(dayInput, nightInput, dayPicker, nightPicker);
+    toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.id = 'bg-rotation-toggle';
+    intervalSelect = document.createElement('select');
+    intervalSelect.id = 'bg-rotation-interval';
+    ['5min', '15min', '30min', '1hour', 'hourly', 'daily', 'newtab', 'tod'].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      intervalSelect.appendChild(option);
+    });
+    document.body.append(optionsEl, pickerWrap, todEl, toggle, intervalSelect);
+
+    showToast = vi.fn();
+    window.showToast = showToast;
+
+    BackgroundRotation.initUI();
+  });
+
+  afterEach(async () => {
+    await flushDeferredFailureSync();
+    BackgroundRotation.stop();
+    [optionsEl, pickerWrap, todEl, toggle, intervalSelect].forEach((el) => {
+      if (el) el.remove();
+    });
+    delete window.showToast;
+    if (restoreWrites) {
+      restoreWrites();
+      restoreWrites = null;
+    }
+    vi.useRealTimers();
+  });
+
+  function checkedValues(container) {
+    return Array.from(container.querySelectorAll('input[type="checkbox"]'))
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
+  }
+
+  it('seeds the schedule controls from storage on init', () => {
+    expect(toggle.checked).toBe(true);
+    expect(intervalSelect.value).toBe('tod');
+    expect(dayInput.value).toBe('07:00');
+    expect(nightInput.value).toBe('19:00');
+    expect(optionsEl.hidden).toBe(false);
+    expect(todEl.hidden).toBe(false);
+    expect(pickerWrap.hidden).toBe(true);
+  });
+
+  it('shows only the interval controls when the cadence is not time of day', () => {
+    localStorage.setItem('bgRotationInterval', '30min');
+
+    BackgroundRotation.syncUI();
+
+    expect(intervalSelect.value).toBe('30min');
+    expect(todEl.hidden).toBe(true);
+    expect(pickerWrap.hidden).toBe(false);
+    expect(optionsEl.hidden).toBe(false);
+  });
+
+  it('hides every section while rotation is disabled', () => {
+    localStorage.setItem('bgRotationEnabled', 'false');
+
+    BackgroundRotation.syncUI();
+
+    expect(toggle.checked).toBe(false);
+    expect(optionsEl.hidden).toBe(true);
+    expect(todEl.hidden).toBe(true);
+    expect(pickerWrap.hidden).toBe(true);
+  });
+
+  it('flips to the schedule section when the interval changes to time of day', () => {
+    localStorage.setItem('bgRotationInterval', '30min');
+    BackgroundRotation.syncUI();
+    expect(todEl.hidden).toBe(true);
+
+    const OriginalVisibilityInterval = window.VisibilityInterval;
+    const VisibilityIntervalMock = vi.fn(function () {
+      return { destroy: vi.fn() };
+    });
+    window.VisibilityInterval = VisibilityIntervalMock;
+    try {
+      intervalSelect.value = 'tod';
+      intervalSelect.dispatchEvent(new Event('change'));
+
+      expect(BackgroundRotation.getInterval()).toBe('tod');
+      expect(todEl.hidden).toBe(false);
+      expect(pickerWrap.hidden).toBe(true);
+      expect(VisibilityIntervalMock).toHaveBeenCalledWith(expect.any(Function), 30000);
+      expect(showToast).not.toHaveBeenCalled();
+    } finally {
+      BackgroundRotation.stop();
+      window.VisibilityInterval = OriginalVisibilityInterval;
+    }
+  });
+
+  it('persists an edited day boundary and re-evaluates the schedule immediately', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 5, 12, 0, 0));
+    BackgroundRotation.start();
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Day BG/);
+
+    // Noon sits inside the stored 07:00-19:00 day window; moving the day
+    // boundary to 13:00 pushes the current minute into the night side, so
+    // the edit must swap right away instead of waiting for a check tick.
+    dayInput.value = '13:00';
+    dayInput.dispatchEvent(new Event('change'));
+
+    expect(BackgroundRotation.getDayTime()).toBe('13:00');
+    expect(localStorage.getItem('bgRotationDayTime')).toBe('13:00');
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('rolls the day boundary input back and toasts when the write fails', async () => {
+    restoreWrites = failStorageWritesFor('bgRotationDayTime');
+
+    dayInput.value = '08:00';
+    dayInput.dispatchEvent(new Event('change'));
+
+    expect(BackgroundRotation.getDayTime()).toBe('07:00');
+    expect(dayInput.value).toBe('07:00');
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent when a bridge error reports a boundary that already matches storage', async () => {
+    window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+      detail: { key: 'bgRotationDayTime', message: 'superseded' },
+    }));
+    await flushDeferredFailureSync();
+
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('renders the day and night pickers from their stored selections', () => {
+    BackgroundRotation.renderPicker();
+
+    expect(checkedValues(dayPicker)).toEqual(['Day BG 1', 'Day BG 2']);
+    expect(checkedValues(nightPicker)).toEqual(['Night BG 1', 'Night BG 2']);
+  });
+
+  it('persists a day-picker edit to the day selection key', () => {
+    BackgroundRotation.renderPicker();
+    const checkbox = dayPicker.querySelector('input[value="Day BG 2"]');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(BackgroundRotation.getDaySelection()).toEqual(['Day BG 1']);
+    expect(localStorage.getItem('bgRotationDaySelection')).toBe(JSON.stringify(['Day BG 1']));
+    expect(localStorage.getItem('bgRotationNightSelection')).toBe(JSON.stringify(['Night BG 1', 'Night BG 2']));
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('rolls a rejected night-picker edit back to the stored selection', () => {
+    BackgroundRotation.renderPicker();
+    restoreWrites = failStorageWritesFor('bgRotationNightSelection');
+    const checkbox = nightPicker.querySelector('input[value="Night BG 2"]');
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(BackgroundRotation.getNightSelection()).toEqual(['Night BG 1', 'Night BG 2']);
+    expect(nightPicker.querySelector('input[value="Night BG 2"]').checked).toBe(true);
+    expect(showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+});

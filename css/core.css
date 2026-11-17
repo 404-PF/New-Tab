@@ -1916,6 +1916,20 @@ body.light-theme #bg-overlay-section .bg-overlay-range output {
   overflow-y: auto;
 }
 
+/* Time-of-day schedule card group (issue #1234): stacked setting cards
+   that appear only while the "Time of day" cadence is selected. The
+   [hidden] rule must repeat because the id rule would otherwise win over
+   the UA stylesheet's display:none. */
+#bg-rotation-tod {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#bg-rotation-tod[hidden] {
+  display: none;
+}
+
 .bg-rotation-pick-item {
   display: flex;
   align-items: center;

@@ -212,13 +212,33 @@
     "message": "Ежедневно",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "Дневные фоны",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "День начинается в",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "При каждой новой вкладке",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "Ночные фоны",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "Ночь начинается в",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "Выберите фоны для смены",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "Время суток",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "Ваши загрузки",

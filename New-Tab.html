@@ -980,7 +980,34 @@
                       <option value="hourly" data-i18n="bgRotationHourly">Every hour on the hour</option>
                       <option value="daily" data-i18n="bgRotationDaily">Daily</option>
                       <option value="newtab" data-i18n="bgRotationNewtab">Every new tab</option>
+                      <option value="tod" data-i18n="bgRotationTod">Time of day</option>
                     </select>
+                  </div>
+                </div>
+                <div id="bg-rotation-tod" hidden>
+                  <div class="setting-card">
+                    <div class="setting-content">
+                      <label for="bg-rotation-day-time" data-i18n="bgRotationDayTime">Day starts at</label>
+                      <input type="time" id="bg-rotation-day-time" value="07:00" />
+                    </div>
+                  </div>
+                  <div class="setting-card">
+                    <div class="setting-content">
+                      <label for="bg-rotation-night-time" data-i18n="bgRotationNightTime">Night starts at</label>
+                      <input type="time" id="bg-rotation-night-time" value="19:00" />
+                    </div>
+                  </div>
+                  <div class="setting-card">
+                    <div class="setting-content">
+                      <label data-i18n="bgRotationDayPicker">Day backgrounds</label>
+                      <div class="bg-rotation-picker" id="bg-rotation-day-picker"></div>
+                    </div>
+                  </div>
+                  <div class="setting-card">
+                    <div class="setting-content">
+                      <label data-i18n="bgRotationNightPicker">Night backgrounds</label>
+                      <div class="bg-rotation-picker" id="bg-rotation-night-picker"></div>
+                    </div>
                   </div>
                 </div>
                 <div class="setting-card" id="bg-rotation-picker-wrap" hidden>

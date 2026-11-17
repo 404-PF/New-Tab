@@ -6,6 +6,16 @@
   const ROTATION_ENABLED_KEY = 'bgRotationEnabled';
   const ROTATION_INTERVAL_KEY = 'bgRotationInterval';
   const ROTATION_SELECTION_KEY = 'bgRotationSelection';
+  // 'Time of day' cadence (issue #1234): sentinel interval value, not a
+  // millisecond cadence — the swap is driven by boundary crossings.
+  const TOD_INTERVAL_KEY = 'tod';
+  const TOD_DAY_TIME_KEY = 'bgRotationDayTime';
+  const TOD_NIGHT_TIME_KEY = 'bgRotationNightTime';
+  const TOD_DAY_SELECTION_KEY = 'bgRotationDaySelection';
+  const TOD_NIGHT_SELECTION_KEY = 'bgRotationNightSelection';
+  const TOD_CHECK_INTERVAL_MS = 30 * 1000;
+  const DEFAULT_DAY_TIME = '07:00';
+  const DEFAULT_NIGHT_TIME = '19:00';
 
   const INTERVAL_OPTIONS = {
     '5min': 5 * 60 * 1000,
@@ -20,10 +30,18 @@
     ROTATION_ENABLED_KEY,
     ROTATION_INTERVAL_KEY,
     ROTATION_SELECTION_KEY,
+    TOD_DAY_TIME_KEY,
+    TOD_NIGHT_TIME_KEY,
+    TOD_DAY_SELECTION_KEY,
+    TOD_NIGHT_SELECTION_KEY,
   ]);
   const ROTATION_SAVE_ERROR_FALLBACK = 'Failed to save background rotation settings. Your last action was not saved.';
 
   let rotationTimer = null;
+  // Last day/night side the 'tod' cadence applied, so a boundary check
+  // only swaps on an actual crossing (mirrors auto-theme's
+  // lastScheduledTheme).
+  let lastScheduledSide = null;
   // The 'newtab' cadence advances the pool once per fresh document load.
   // init() consumes this flag (except while the pool is still empty
   // awaiting the async upload cache, where the custombackgroundschanged
@@ -52,9 +70,9 @@
     }
   }
 
-  function loadSelection() {
+  function loadStoredSelection(key) {
     try {
-      const raw = localStorage.getItem(ROTATION_SELECTION_KEY);
+      const raw = localStorage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       // Keep an empty array distinct from "never configured" (null): an
@@ -66,6 +84,36 @@
     } catch (err) {
       console.warn('loadSelection parse error:', err);
       return null;
+    }
+  }
+
+  function loadSelection() {
+    return loadStoredSelection(ROTATION_SELECTION_KEY);
+  }
+
+  function loadDaySelection() {
+    return loadStoredSelection(TOD_DAY_SELECTION_KEY);
+  }
+
+  function loadNightSelection() {
+    return loadStoredSelection(TOD_NIGHT_SELECTION_KEY);
+  }
+
+  function loadDayTime() {
+    try {
+      return localStorage.getItem(TOD_DAY_TIME_KEY) || DEFAULT_DAY_TIME;
+    } catch (err) {
+      console.warn('loadDayTime localStorage error:', err);
+      return DEFAULT_DAY_TIME;
+    }
+  }
+
+  function loadNightTime() {
+    try {
+      return localStorage.getItem(TOD_NIGHT_TIME_KEY) || DEFAULT_NIGHT_TIME;
+    } catch (err) {
+      console.warn('loadNightTime localStorage error:', err);
+      return DEFAULT_NIGHT_TIME;
     }
   }
 
@@ -111,11 +159,41 @@
     }
   }
 
-  function saveSelection(ids) {
+  function saveStoredSelection(key, ids) {
     try {
-      return isWriteAccepted(localStorage.setItem(ROTATION_SELECTION_KEY, JSON.stringify(ids)));
+      return isWriteAccepted(localStorage.setItem(key, JSON.stringify(ids)));
     } catch (err) {
       console.warn('saveSelection localStorage error:', err);
+      return false;
+    }
+  }
+
+  function saveSelection(ids) {
+    return saveStoredSelection(ROTATION_SELECTION_KEY, ids);
+  }
+
+  function saveDaySelection(ids) {
+    return saveStoredSelection(TOD_DAY_SELECTION_KEY, ids);
+  }
+
+  function saveNightSelection(ids) {
+    return saveStoredSelection(TOD_NIGHT_SELECTION_KEY, ids);
+  }
+
+  function saveDayTime(value) {
+    try {
+      return isWriteAccepted(localStorage.setItem(TOD_DAY_TIME_KEY, value));
+    } catch (err) {
+      console.warn('saveDayTime localStorage error:', err);
+      return false;
+    }
+  }
+
+  function saveNightTime(value) {
+    try {
+      return isWriteAccepted(localStorage.setItem(TOD_NIGHT_TIME_KEY, value));
+    } catch (err) {
+      console.warn('saveNightTime localStorage error:', err);
       return false;
     }
   }
@@ -160,13 +238,58 @@
     return 'Your uploads';
   }
 
-  function getRotatableBackgrounds() {
-    const selection = loadSelection();
-    const all = getAllBackgrounds();
+  function filterBySelection(all, selection) {
     if (selection) {
       return all.filter(function (bg) { return selection.indexOf(bg.id) !== -1; });
     }
     return all;
+  }
+
+  function getRotatableBackgrounds() {
+    return filterBySelection(getAllBackgrounds(), loadSelection());
+  }
+
+  function getSideBackgrounds(side) {
+    const selection = side === 'day' ? loadDaySelection() : loadNightSelection();
+    return filterBySelection(getAllBackgrounds(), selection);
+  }
+
+  // Pool the next advance draws from: the day/night side pool under the
+  // 'tod' cadence, the regular rotation selection otherwise.
+  function getActivePool() {
+    if (loadInterval() === TOD_INTERVAL_KEY) {
+      return getSideBackgrounds(getScheduledSide());
+    }
+    return getRotatableBackgrounds();
+  }
+
+  // Parse "HH:MM" into minutes since midnight (mirrors auto-theme.js;
+  // kept local so the two modules stay independent).
+  function parseTimeMinutes(timeStr) {
+    const parts = String(timeStr).split(':');
+    if (parts.length !== 2) return 0;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return 0;
+    return h * 60 + m;
+  }
+
+  // Which pool is scheduled now: 'day' between day-time and night-time,
+  // 'night' otherwise — including inverted schedules (e.g. day 19:00,
+  // night 07:00), the same boundary model auto-theme uses.
+  function getScheduledSide() {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const dayMinutes = parseTimeMinutes(loadDayTime());
+    const nightMinutes = parseTimeMinutes(loadNightTime());
+
+    if (dayMinutes < nightMinutes) {
+      return (currentMinutes >= dayMinutes && currentMinutes < nightMinutes) ? 'day' : 'night';
+    }
+    if (dayMinutes > nightMinutes) {
+      return (currentMinutes >= nightMinutes && currentMinutes < dayMinutes) ? 'night' : 'day';
+    }
+    return 'night';
   }
 
   function shuffleArray(arr) {
@@ -198,7 +321,7 @@
   let pendingAdvance = null;
 
   function getNextBackground() {
-    const pool = getRotatableBackgrounds();
+    const pool = getActivePool();
     if (pool.length === 0) return null;
 
     if (shuffledPool.length === 0 || poolChanged(pool)) {
@@ -255,14 +378,75 @@
     applyBackgroundUI();
   }
 
+  // Apply the active side's background unless the displayed one already
+  // belongs to that side's pool. Runs whenever the 'tod' cadence (re)starts
+  // — fresh load, enable, settings change, import — so a background from
+  // the wrong side is corrected without waiting for the next boundary.
+  function applyActiveSideBackground() {
+    const pool = getActivePool();
+    if (pool.length === 0) return;
+    const current = readHomepageBg();
+    if (current && pool.some(function (bg) { return bg.id === current; })) return;
+    advanceBackground();
+  }
+
+  // Force the next advance past the background already on screen: the two
+  // pools may overlap across a boundary, so the (re)shuffled head can land
+  // on the displayed entry.
+  function advancePastShownBackground() {
+    const pool = getActivePool();
+    if (pool.length === 0) return;
+    if (shuffledPool.length === 0 || poolChanged(pool)) {
+      shuffledPool = shuffleArray(pool);
+      poolIndex = 0;
+    }
+    skipShownBackgroundOnNextAdvance();
+    advanceBackground();
+  }
+
+  // Boundary check for the 'tod' cadence: swap into the newly scheduled
+  // side's pool exactly once per crossing (the auto-theme model).
+  function checkTodSide() {
+    if (!loadEnabled() || loadInterval() !== TOD_INTERVAL_KEY) return;
+    const side = getScheduledSide();
+    if (side === lastScheduledSide) return;
+    lastScheduledSide = side;
+    advancePastShownBackground();
+  }
+
+  function startTodRotation() {
+    lastScheduledSide = getScheduledSide();
+    applyActiveSideBackground();
+    // Arm the boundary timer only when both pools together hold more than
+    // one distinct background — a lone entry can never produce a swap.
+    const ids = new Set();
+    getSideBackgrounds('day').forEach(function (bg) { ids.add(bg.id); });
+    getSideBackgrounds('night').forEach(function (bg) { ids.add(bg.id); });
+    if (ids.size <= 1) return;
+    if (window.VisibilityInterval) {
+      rotationTimer = new window.VisibilityInterval(function () {
+        checkTodSide();
+      }, TOD_CHECK_INTERVAL_MS);
+    } else {
+      rotationTimer = setInterval(function () {
+        checkTodSide();
+      }, TOD_CHECK_INTERVAL_MS);
+    }
+  }
+
   function startRotation() {
     stopRotation();
     if (!loadEnabled()) return;
 
+    const intervalKey = loadInterval();
+
+    if (intervalKey === TOD_INTERVAL_KEY) {
+      startTodRotation();
+      return;
+    }
+
     const pool = getRotatableBackgrounds();
     if (pool.length <= 1) return;
-
-    const intervalKey = loadInterval();
 
     if (intervalKey === 'newtab') {
       // Cadence with no timer: prime the pool for advanceBackground() and
@@ -318,6 +502,7 @@
     }
     shuffledPool = [];
     poolIndex = 0;
+    lastScheduledSide = null;
     // pendingAdvance deliberately survives: a homepageBg write issued before
     // this stop can still fail, and its rollback must repaint the background
     // even though the timer that started it is gone.
@@ -369,25 +554,65 @@
     advanceBackground();
   }
 
+  // Show/hide the cadence-specific controls from persisted state: the
+  // interval select and picker follow the toggle, while the time-of-day
+  // schedule card and the regular picker swap with the selected cadence.
+  function updateRotationVisibility() {
+    const enabled = loadEnabled();
+    const isTod = loadInterval() === TOD_INTERVAL_KEY;
+    const optionsEl = document.getElementById('bg-rotation-options');
+    const pickerWrap = document.getElementById('bg-rotation-picker-wrap');
+    const todEl = document.getElementById('bg-rotation-tod');
+    if (optionsEl) optionsEl.hidden = !enabled;
+    if (pickerWrap) pickerWrap.hidden = !enabled || isTod;
+    if (todEl) todEl.hidden = !enabled || !isTod;
+  }
+
   function syncRotationUI() {
     const toggle = document.getElementById('bg-rotation-toggle');
     const intervalSelect = document.getElementById('bg-rotation-interval');
-    const optionsEl = document.getElementById('bg-rotation-options');
-    const pickerWrap = document.getElementById('bg-rotation-picker-wrap');
+    const dayInput = document.getElementById('bg-rotation-day-time');
+    const nightInput = document.getElementById('bg-rotation-night-time');
 
     if (toggle) {
       toggle.checked = loadEnabled();
-      if (optionsEl) optionsEl.hidden = !toggle.checked;
-      if (pickerWrap) pickerWrap.hidden = !toggle.checked;
     }
     if (intervalSelect) {
       intervalSelect.value = loadInterval();
     }
+    if (dayInput) {
+      dayInput.value = loadDayTime();
+    }
+    if (nightInput) {
+      nightInput.value = loadNightTime();
+    }
+    updateRotationVisibility();
     renderBackgroundPicker();
   }
 
   function getEffectiveSelection(selection) {
     return selection || getAllBackgrounds().map(function (bg) { return bg.id; });
+  }
+
+  // True when a picker's checkboxes disagree with the selection it
+  // persists (null selection = every background checked).
+  function pickerDiffersFromStorage(containerId, selection) {
+    const picker = document.getElementById(containerId);
+    if (!picker) return false;
+    const shown = [];
+    const rendered = new Set();
+    picker.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      rendered.add(cb.value);
+      if (cb.checked) shown.push(cb.value);
+    });
+    const stored = getEffectiveSelection(selection).filter(function (id) {
+      return rendered.has(id);
+    });
+    if (shown.length !== stored.length) return true;
+    for (const id of shown) {
+      if (!stored.includes(id)) return true;
+    }
+    return false;
   }
 
   // True when a rotation control shows a value that differs from storage,
@@ -399,22 +624,15 @@
     const intervalSelect = document.getElementById('bg-rotation-interval');
     if (intervalSelect && intervalSelect.value !== loadInterval()) return true;
 
-    const picker = document.getElementById('bg-rotation-picker');
-    if (picker) {
-      const shown = [];
-      const rendered = new Set();
-      picker.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
-        rendered.add(cb.value);
-        if (cb.checked) shown.push(cb.value);
-      });
-      const stored = getEffectiveSelection(loadSelection()).filter(function (id) {
-        return rendered.has(id);
-      });
-      if (shown.length !== stored.length) return true;
-      for (const id of shown) {
-        if (!stored.includes(id)) return true;
-      }
-    }
+    const dayInput = document.getElementById('bg-rotation-day-time');
+    if (dayInput && dayInput.value !== loadDayTime()) return true;
+
+    const nightInput = document.getElementById('bg-rotation-night-time');
+    if (nightInput && nightInput.value !== loadNightTime()) return true;
+
+    if (pickerDiffersFromStorage('bg-rotation-picker', loadSelection())) return true;
+    if (pickerDiffersFromStorage('bg-rotation-day-picker', loadDaySelection())) return true;
+    if (pickerDiffersFromStorage('bg-rotation-night-picker', loadNightSelection())) return true;
     return false;
   }
 
@@ -490,13 +708,11 @@
     setTimeout(handleRotationSaveFailure, 0);
   });
 
-  function renderBackgroundPicker() {
-    const container = document.getElementById('bg-rotation-picker');
+  function renderPickerInto(container, selection) {
     if (!container) return;
 
     container.innerHTML = '';
     const all = getAllBackgrounds();
-    const selection = loadSelection();
     let uploadsDivider = null;
 
     all.forEach(function (bg) {
@@ -549,63 +765,85 @@
     });
   }
 
+  function renderBackgroundPicker() {
+    renderPickerInto(document.getElementById('bg-rotation-picker'), loadSelection());
+    renderPickerInto(document.getElementById('bg-rotation-day-picker'), loadDaySelection());
+    renderPickerInto(document.getElementById('bg-rotation-night-picker'), loadNightSelection());
+  }
+
+  // Persist one picker's checkbox state and restart the schedule so a
+  // changed pool is re-evaluated (the active side may now mismatch).
+  function bindPickerChange(containerId, saveFn) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.addEventListener('change', function (e) {
+      if (e.target.matches && e.target.matches('.bg-rotation-pick-item input[type="checkbox"]')) {
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        const selected = [];
+        checkboxes.forEach(function (cb) {
+          if (cb.checked) selected.push(cb.value);
+        });
+        if (!saveFn(selected)) {
+          handleRotationSaveFailure();
+          return;
+        }
+        if (loadEnabled()) startRotation();
+      }
+    });
+  }
+
+  function bindTimeChange(inputId, saveFn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('change', function () {
+      if (!saveFn(input.value)) {
+        handleRotationSaveFailure();
+        return;
+      }
+      // A boundary may have moved with the edited time; apply it now
+      // instead of waiting up to one check interval (auto-theme does the
+      // same immediate re-evaluation on a time change).
+      checkTodSide();
+    });
+  }
+
   function initRotationUI() {
     const toggle = document.getElementById('bg-rotation-toggle');
     const intervalSelect = document.getElementById('bg-rotation-interval');
-    const optionsEl = document.getElementById('bg-rotation-options');
-    const pickerWrap = document.getElementById('bg-rotation-picker-wrap');
     const nextBtn = document.getElementById('bg-rotation-next');
 
     if (toggle) {
-      toggle.checked = loadEnabled();
       toggle.addEventListener('change', function () {
         if (!saveEnabled(toggle.checked)) {
           handleRotationSaveFailure();
           return;
         }
-        if (optionsEl) optionsEl.hidden = !toggle.checked;
-        if (pickerWrap) pickerWrap.hidden = !toggle.checked;
+        updateRotationVisibility();
         applyRotation();
       });
-
-      if (optionsEl) optionsEl.hidden = !toggle.checked;
-      if (pickerWrap) pickerWrap.hidden = !toggle.checked;
     }
 
     if (intervalSelect) {
-      intervalSelect.value = loadInterval();
       intervalSelect.addEventListener('change', function () {
         if (!saveInterval(intervalSelect.value)) {
           handleRotationSaveFailure();
           return;
         }
+        updateRotationVisibility();
         if (loadEnabled()) startRotation();
       });
     }
 
-    if (pickerWrap) {
-      pickerWrap.hidden = !loadEnabled();
-    }
+    // Seeding (toggle, interval, time inputs, visibility, pickers) comes from
+    // the same storage read as a later sync, so a fresh load and a refresh
+    // can never show different persisted values.
+    syncRotationUI();
 
-    renderBackgroundPicker();
-
-    const pickerContainer = document.getElementById('bg-rotation-picker');
-    if (pickerContainer) {
-      pickerContainer.addEventListener('change', function (e) {
-        if (e.target.matches && e.target.matches('.bg-rotation-pick-item input[type="checkbox"]')) {
-          const checkboxes = pickerContainer.querySelectorAll('input[type="checkbox"]');
-          const selected = [];
-          checkboxes.forEach(function (cb) {
-            if (cb.checked) selected.push(cb.value);
-          });
-          if (!saveSelection(selected)) {
-            handleRotationSaveFailure();
-            return;
-          }
-          if (loadEnabled()) startRotation();
-        }
-      });
-    }
+    bindPickerChange('bg-rotation-picker', saveSelection);
+    bindPickerChange('bg-rotation-day-picker', saveDaySelection);
+    bindPickerChange('bg-rotation-night-picker', saveNightSelection);
+    bindTimeChange('bg-rotation-day-time', saveDayTime);
+    bindTimeChange('bg-rotation-night-time', saveNightTime);
 
     if (nextBtn) {
       nextBtn.addEventListener('click', function () {
@@ -663,6 +901,10 @@
     isEnabled: loadEnabled,
     getInterval: loadInterval,
     getSelection: loadSelection,
+    getDayTime: loadDayTime,
+    getNightTime: loadNightTime,
+    getDaySelection: loadDaySelection,
+    getNightSelection: loadNightSelection,
     start: startRotation,
     stop: stopRotation,
     renderPicker: renderBackgroundPicker,

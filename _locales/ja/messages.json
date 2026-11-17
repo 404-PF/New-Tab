@@ -212,13 +212,33 @@
     "message": "毎日",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "昼の背景",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "昼の開始時刻",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "新しいタブごと",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "夜の背景",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "夜の開始時刻",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "ローテーションする背景を選択",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "時間帯",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "アップロードした背景",
