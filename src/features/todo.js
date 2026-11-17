@@ -3366,16 +3366,7 @@ function showImportDialog(importedTodos) {
   };
 
   const handleReplace = () => {
-    const newTodos = importedTodos.map((item, index) => {
-      const todo = { ...item };
-      todo.completed = !!item.completed;
-      todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
-      todo.dueDate = item.dueDate || null;
-      todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
-      todo.createdAt = item.createdAt || new Date().toISOString();
-      todo.order = index;
-      return todo;
-    });
+    const newTodos = importedTodos.map((item, index) => createImportedTodo(item, index));
     
     closeAllInlineDatePickers();
     if (!saveTodos(newTodos)) {
