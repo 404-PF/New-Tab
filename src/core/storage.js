@@ -313,8 +313,9 @@
     const nativeSnapshot = readNativeSnapshot();
 
     hydrationGetPending = true;
+    let getPromise;
     try {
-      storageArea.get(null, (items) => {
+      getPromise = storageArea.get(null, (items) => {
         hydrationGetPending = false;
         if (hydrationFinished) {
           // Arrived after the safety timeout already resolved the bridge
@@ -370,23 +371,26 @@
         writeNativeSnapshot(snapshotToObject());
         hydrationFinished = true;
         resolveStorageReady();
-      })?.catch((error) => {
-        const wasGetPending = hydrationGetPending;
-        hydrationGetPending = false;
-        console.warn('Failed to read chrome.storage:', error);
-        if (hydrationFinished) {
-          lateHydrationPending = false;
-          hydrationMutations.clear();
-        } else if (wasGetPending) {
-          resolveStorageReady();
-        }
       });
     } catch (error) {
       hydrationGetPending = false;
       console.warn('Failed to initialize chrome.storage bridge:', error);
       hydrationFinished = true;
       resolveStorageReady();
+      return;
     }
+
+    getPromise?.catch((error) => {
+      const wasGetPending = hydrationGetPending;
+      hydrationGetPending = false;
+      console.warn('Failed to read chrome.storage:', error);
+      if (hydrationFinished) {
+        lateHydrationPending = false;
+        hydrationMutations.clear();
+      } else if (wasGetPending) {
+        resolveStorageReady();
+      }
+    });
   }
 
   function beginMutationGeneration(key) {

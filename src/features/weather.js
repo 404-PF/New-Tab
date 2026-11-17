@@ -361,8 +361,8 @@
     const daily = data.daily;
     const rawHigh = daily && daily.temperature_2m_max ? daily.temperature_2m_max[0] : undefined;
     const rawLow = daily && daily.temperature_2m_min ? daily.temperature_2m_min[0] : undefined;
-    const highVal = rawHigh === null || rawHigh === undefined ? NaN : Number(rawHigh);
-    const lowVal = rawLow === null || rawLow === undefined ? NaN : Number(rawLow);
+    const highVal = rawHigh === null || rawHigh === undefined ? Number.NaN : Number(rawHigh);
+    const lowVal = rawLow === null || rawLow === undefined ? Number.NaN : Number(rawLow);
     const highLowHtml = Number.isFinite(highVal) && Number.isFinite(lowVal)
       ? `<div class="weather-hl"><span class="weather-hl-high">${t('weatherHigh')}: ${getTemp(highVal, unit)}\u00B0</span><span class="weather-hl-low">${t('weatherLow')}: ${getTemp(lowVal, unit)}\u00B0</span></div>`
       : '';
