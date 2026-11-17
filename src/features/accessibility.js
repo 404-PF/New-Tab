@@ -120,7 +120,7 @@
       label.setAttribute('data-accessibility-modal-label', '');
       modal.prepend(label);
     }
-    const fallbackLabel = modal.title || modal.id.replace(/-/g, ' ');
+    const fallbackLabel = modal.title || modal.id.replaceAll('-', ' ');
     if (label.textContent !== fallbackLabel) label.textContent = fallbackLabel;
     if (!label.id) label.id = modal.id + '-accessibility-label';
     return label;
@@ -729,7 +729,7 @@
       }
       if (day.classList.contains('today')) label += ', ' + translate('today', 'today');
       if (isSelected) label += ', ' + translate('accessibilitySelected', 'selected');
-      const dueCount = parseInt(day.dataset.dueCount, 10);
+      const dueCount = Number.parseInt(day.dataset.dueCount, 10);
       if (dueCount > 0) {
         const dueCountKey = dueCount === 1 ? 'todoDueCount' : 'todoDueCountPlural';
         const dueCountFallback = dueCount === 1 ? '{count} task due' : '{count} tasks due';

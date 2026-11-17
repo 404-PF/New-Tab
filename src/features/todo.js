@@ -437,7 +437,7 @@
     // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
     const before = text.slice(0, matchStart);
     const after = text.slice(matchEnd);
-    const beforeText = before.replace(/\s+$/, '');
+    const beforeText = before.trimEnd();
     const afterText = after.replace(/^\s+/, '');
     const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
     const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
