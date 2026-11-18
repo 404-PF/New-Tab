@@ -542,7 +542,11 @@ async function markTodoDoneFromNotification(todoId) {
   const update = { todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil, warnedInvalidDueDates };
 
   let todosJson = (await getFromStorage(['todos'])).todos;
+  // Track "we already advanced" separately from the cached value: a recurring
+  // todo may legitimately have a null dueDate, which must not be mistaken for
+  // the uninitialized sentinel and skip its first advance.
   let advancedDueDate = null;
+  let hasAdvanced = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     const todos = parseTodosPayload(todosJson, null);
     let todosChanged = false;
@@ -550,8 +554,9 @@ async function markTodoDoneFromNotification(todoId) {
       const todo = todos.find((t) => t && t.id === todoId && !t.completed);
       if (todo) {
         if (RECURRENCE_VALUES.includes(todo.recurrence)) {
-          if (todo.dueDate !== advancedDueDate) {
+          if (!hasAdvanced || todo.dueDate !== advancedDueDate) {
             advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+            hasAdvanced = true;
             todo.dueDate = advancedDueDate;
           }
           todo.completed = false;

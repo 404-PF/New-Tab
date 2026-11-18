@@ -869,6 +869,37 @@ describe('todo reminder notification actions (issue #1233)', () => {
     }
   });
 
+  it('schedules a recurring todo whose due date a page save cleared before Mark done', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'weekly',
+        text: 'Weekly report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: 'weekly'
+      }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeTruthy();
+
+    // The page clears the due date after the banner was shown but before the
+    // button is clicked; the recurring todo must still be rescheduled.
+    const pageList = JSON.parse((await chrome.storage.local.get('todos')).todos);
+    pageList[0].dueDate = null;
+    await chrome.storage.local.set({ todos: JSON.stringify(pageList) });
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_weekly', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get('todos');
+    const weekly = JSON.parse(data.todos).find((t) => t.id === 'weekly');
+    expect(weekly.dueDate).toBe('2026-08-18');
+    expect(weekly.completed).toBe(false);
+    expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
+  });
+
   it('snoozes the reminder and re-fires it after the snooze expires past grace', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // 30 s before the end-of-day due instant: inside the reminder window, so
