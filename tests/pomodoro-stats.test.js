@@ -871,4 +871,23 @@ describe('Focus stats storage bridge write failures (issue #1239)', () => {
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(todayEl.textContent).toBe('2');
   });
+
+  it.each([
+    ['missing byDateTodos', JSON.stringify({ days: { [getToday()]: { sessions: 2, minutes: 50 } } })],
+    ['invalid days', JSON.stringify({ days: null })]
+  ])('repaint after a rejected write normalizes %s instead of crashing', async (_label, malformedRaw) => {
+    localStorage.setItem('pomodoroStats', malformedRaw);
+    const expected = loadPomodoroStats();
+    const expectedToday = String(expected.days[getToday()] ? expected.days[getToday()].sessions : 0);
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe(expectedToday);
+    failWritesFor('pomodoroStats', 'sync');
+
+    const result = await recordPomodoroSession({ minutes: 25 });
+
+    expect(result).toBe(false);
+    expect(loadPomodoroStats()).toEqual(expected);
+    expect(todayEl.textContent).toBe(expectedToday);
+  });
 });

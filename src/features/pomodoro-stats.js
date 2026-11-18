@@ -29,6 +29,16 @@
   let readCacheRaw;
   let readCache = null;
   function emptyStore() { return { days: {}, byDateTodos: {} }; }
+  // Single source of truth for the persisted schema: reject malformed `days`
+  // and default `byDateTodos`. Both read() and repaintFrom() must normalise
+  // before caching so an override cannot bypass validation and crash paint().
+  function normalizeStore(data) {
+    const validDays = data && typeof data.days === 'object' && data.days !== null && !Array.isArray(data.days);
+    if (!validDays) return emptyStore();
+    if (data.byDateTodos !== null && data.byDateTodos !== undefined && (typeof data.byDateTodos !== 'object' || Array.isArray(data.byDateTodos))) data.byDateTodos = {};
+    if (!data.byDateTodos) data.byDateTodos = {};
+    return data;
+  }
   function read() {
     let raw;
     try {
@@ -46,15 +56,7 @@
       return readCache;
     }
     try {
-      const data = JSON.parse(raw);
-      const validDays = data && typeof data.days === 'object' && data.days !== null && !Array.isArray(data.days);
-      if (!validDays) {
-        readCache = emptyStore();
-        return readCache;
-      }
-      if (data.byDateTodos !== null && data.byDateTodos !== undefined && (typeof data.byDateTodos !== 'object' || Array.isArray(data.byDateTodos))) data.byDateTodos = {};
-      if (!data.byDateTodos) data.byDateTodos = {};
-      readCache = data;
+      readCache = normalizeStore(JSON.parse(raw));
       return readCache;
     } catch (err) {
       console.warn('Failed to load pomodoro stats:', err);
@@ -309,7 +311,7 @@
     try { currentRaw = localStorage.getItem(KEY); }
     catch (err) { console.warn('Failed to load pomodoro stats:', err); return; }
     readCacheRaw = currentRaw;
-    try { readCache = raw ? JSON.parse(raw) : emptyStore(); }
+    try { readCache = normalizeStore(raw ? JSON.parse(raw) : emptyStore()); }
     catch (err) {
       console.warn('Failed to load pomodoro stats:', err);
       readCache = emptyStore();
