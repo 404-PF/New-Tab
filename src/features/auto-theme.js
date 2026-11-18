@@ -242,16 +242,24 @@
     // Apply the manually chosen theme and record it, but leave auto enabled.
     // The next scheduled check will overwrite it if the time has changed.
     const selectedTheme = e.target.value;
+    let committed;
     if (typeof window.commitTheme === 'function') {
-      window.commitTheme(selectedTheme);
+      committed = window.commitTheme(selectedTheme);
     } else {
       try {
-        localStorage.setItem('theme', selectedTheme);
+        committed = localStorage.setItem('theme', selectedTheme) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
       } catch {
         // localStorage unavailable
+        committed = false;
       }
       if (window.applyTheme) window.applyTheme();
       window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+    }
+    // A rejected scheduled write leaves its boundary pending so the next tick
+    // retries the switch. A successful manual choice settles that pending
+    // retry so it cannot overwrite the user's theme 30 seconds later (#1242).
+    if (committed && lastScheduledTheme === null) {
+      lastScheduledTheme = getScheduledTheme();
     }
     // Prevent the settings.js change handler from double-applying
     e.stopImmediatePropagation();
@@ -383,15 +391,27 @@
 
   // #1242: setItem accepts the theme write optimistically, so the rollback
   // event is the only signal that a scheduled switch never landed. Un-consume
-  // the boundary the failed write consumed — guarded to that exact value so a
-  // rejected manual override keeps its boundary — and, only when toast.js is
-  // absent, mirror its theme resync through controlDesynced/applyTheme.
+  // the boundary the failed write consumed — guarded to that exact value and
+  // to the still-optimistic stored value so a late failure cannot re-arm the
+  // scheduler after a newer manual override won the write — and, only when
+  // toast.js is absent, mirror its theme resync through controlDesynced.
   // Registered unconditionally: the boundary reset is scheduler bookkeeping,
   // not a resync, so it can never duplicate toast.js's centralized handler.
   window.addEventListener('storageBridgeWriteError', function (event) {
     const detail = event && event.detail ? event.detail : null;
     if (!detail || detail.key !== 'theme') return;
-    if (detail.value === lastScheduledTheme) {
+    let storedTheme = null;
+    try {
+      storedTheme = typeof window.loadTheme === 'function'
+        ? window.loadTheme()
+        : localStorage.getItem('theme');
+    } catch (e) {
+      console.warn('Failed to read theme from localStorage:', e);
+    }
+    // The bridge dispatches before rolling its cache back, so a still-matching
+    // value means the failed scheduled write still owns storage. A newer
+    // successful manual write has already replaced it and must be preserved.
+    if (detail.value === lastScheduledTheme && storedTheme === detail.value) {
       lastScheduledTheme = null;
     }
     if (typeof window.persistFeatureToggle === 'function') return;
@@ -400,6 +420,13 @@
     setTimeout(function () {
       if (!controlDesynced('theme')) return;
       if (window.applyTheme) window.applyTheme();
+      // Mirror toast.js's theme resync so listeners (e.g. AI chat) learn the
+      // restored effective theme instead of the rejected optimistic one.
+      if (typeof window.loadTheme === 'function' && typeof window.resolveTheme === 'function') {
+        window.dispatchEvent(new CustomEvent('themeChanged', {
+          detail: { theme: window.resolveTheme(window.loadTheme()) }
+        }));
+      }
       reportSaveError();
     });
   });

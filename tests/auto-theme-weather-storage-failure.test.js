@@ -153,6 +153,7 @@ afterEach(async () => {
   delete window.showToast;
   delete window.applyTheme;
   delete window.loadTheme;
+  delete window.commitTheme;
 });
 
 describe('auto-theme scheduler reports rejected writes (#1081)', () => {
@@ -494,6 +495,19 @@ describe('scheduled theme boundary survives rejected writes (#1242)', () => {
     lightInput.dispatchEvent(new Event('change'));
   }
 
+  // Stand in for settings.js's commitTheme, which is not injected in this
+  // file, so a radio change exercises auto-theme's manual-override handler.
+  function commitManualTheme(theme) {
+    window.commitTheme = vi.fn((selected) => {
+      localStorage.setItem('theme', selected);
+      window.applyTheme();
+      return true;
+    });
+    const radio = document.querySelector('input[name="theme"][value="' + theme + '"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   it('a sync-rejected scheduled theme write keeps the boundary pending and toasts once', () => {
     const { scheduled, other } = seedDisagreement();
     const restore = failWriteFor('theme');
@@ -537,5 +551,40 @@ describe('scheduled theme boundary survives rejected writes (#1242)', () => {
 
     expect(localStorage.getItem('theme')).toBe(scheduled);
     expect(window.showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a successful manual override when the stale scheduled write fails later (#1242)', async () => {
+    const { other } = seedDisagreement();
+    const restore = failWriteFor('theme', 'async');
+    crossBoundary();
+    // The scheduled write's failure is already queued; let the manual write
+    // land so the late failure arrives after a newer successful override.
+    restore();
+
+    commitManualTheme(other);
+    expect(localStorage.getItem('theme')).toBe(other);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    restore();
+    window.refreshAutoTheme();
+
+    // The late failure must not re-arm the boundary, so the next tick keeps
+    // the manual theme instead of reapplying the rejected scheduled theme.
+    expect(localStorage.getItem('theme')).toBe(other);
+  });
+
+  it('a manual theme after a rejected scheduled write cancels the pending retry (#1242)', () => {
+    const { other } = seedDisagreement();
+    const restore = failWriteFor('theme');
+    crossBoundary();
+    expect(localStorage.getItem('theme')).toBe(other);
+
+    restore();
+    commitManualTheme(other);
+    window.refreshAutoTheme();
+
+    expect(localStorage.getItem('theme')).toBe(other);
   });
 });

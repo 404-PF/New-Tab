@@ -11,6 +11,11 @@ const STORAGE_KEYS = ['autoTheme', 'autoThemeLightTime', 'autoThemeDarkTime', 't
 
 const restorers = [];
 let visibilityIntervals = [];
+let themeEvents = [];
+
+function collectThemeChanged(event) {
+  themeEvents.push(event.detail.theme);
+}
 
 function failWriteFor(key, mode) {
   const restore = failStorageWritesFor(key, mode);
@@ -51,8 +56,11 @@ beforeAll(() => {
 
 beforeEach(() => {
   visibilityIntervals = [];
+  themeEvents = [];
+  window.addEventListener('themeChanged', collectThemeChanged);
 
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  document.body.classList.remove('light-theme');
 
   const toggle = document.getElementById('auto-theme-toggle');
   toggle.checked = false;
@@ -62,7 +70,12 @@ beforeEach(() => {
   document.querySelectorAll('.theme-option').forEach((label) => label.classList.remove('auto-active'));
 
   window.loadTheme = () => localStorage.getItem('theme');
-  window.applyTheme = vi.fn();
+  window.resolveTheme = (theme) => theme;
+  // Mirror the real applyTheme's body-class toggle so the optimistic write and
+  // the rollback change the DOM the way production does (#1242).
+  window.applyTheme = vi.fn(() => {
+    document.body.classList.toggle('light-theme', localStorage.getItem('theme') === 'light');
+  });
 });
 
 afterEach(async () => {
@@ -74,8 +87,10 @@ afterEach(async () => {
     const restore = restorers.pop();
     restore();
   }
+  window.removeEventListener('themeChanged', collectThemeChanged);
   delete window.applyTheme;
   delete window.loadTheme;
+  delete window.resolveTheme;
 });
 
 describe('auto-theme fallback async rollback without toast.js (#1081)', () => {
@@ -172,6 +187,10 @@ describe('auto-theme fallback async rollback without toast.js (#1081)', () => {
     // match storage instead of keeping the optimistic theme.
     expect(localStorage.getItem('theme')).toBe(other);
     expect(window.applyTheme).toHaveBeenCalledTimes(1);
+    expect(document.body.classList.contains('light-theme')).toBe(other === 'light');
+    // The restored effective theme must reach event listeners (e.g. AI chat)
+    // so they do not keep the rejected optimistic theme.
+    expect(themeEvents[themeEvents.length - 1]).toBe(other);
 
     // The boundary was re-armed, so the next tick persists the switch.
     restore();
