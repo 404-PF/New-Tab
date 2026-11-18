@@ -95,7 +95,11 @@ describe('PR #1187 Nov 16 follow-ups', () => {
     };
     window.setNotesSearchQuery('hello');
     window.renderNotes();
-    await new Promise(function (resolve) { setTimeout(resolve, 250); });
+    // Poll past the 200ms rerank debounce: a fixed 250ms sleep flakes
+    // under CI scheduling delay (cubic P3 on PR #1187).
+    for (let i = 0; i < 100 && typeof resolveEmbed !== 'function'; i += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, 20); });
+    }
     expect(typeof resolveEmbed).toBe('function');
     const previewBtn = document.querySelector('.note-item .note-preview-btn');
     expect(previewBtn).toBeTruthy();

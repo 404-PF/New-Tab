@@ -40,7 +40,14 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  // storage bridge clear() can no-op when the native mirror write fails
+  // (it restores the snapshot on failure) while removeItem stays reliable:
+  // drop the keys this suite asserts on explicitly so a previous test's
+  // ready/marker cannot leak into the next test (PR #1187 follow-up).
+  try { localStorage.removeItem('notesSemanticEnabled'); } catch { /* ignore */ }
+  try { localStorage.removeItem('notesSemanticDownload'); } catch { /* ignore */ }
   try { delete window.EmbeddingService; } catch { /* ignore */ }
+  try { delete window.EmbeddingScripts; } catch { /* ignore */ }
   window.initNotesSemanticSetting();
   window.applyNotesSemanticEnabled();
 });
