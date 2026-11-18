@@ -825,6 +825,28 @@ describe('Focus stats storage bridge write failures (issue #1239)', () => {
     expect(todayEl.textContent).toBe('2');
   });
 
+  it('does not repaint an abandoned session when two records are rejected concurrently', async () => {
+    await savePomodoroStats({
+      days: { [getToday()]: { sessions: 2, minutes: 50 } },
+      byDateTodos: {}
+    });
+    renderPomodoroStats();
+    const todayEl = document.getElementById('pomodoro-stats-today');
+    expect(todayEl.textContent).toBe('2');
+    failWritesFor('pomodoroStats', 'async');
+
+    // Both writes are rejected through the bridge. The older failure's rollback
+    // is skipped while the newer write is pending, so the newer rollback would
+    // otherwise restore the older, never-persisted count (#1239 review).
+    const first = recordPomodoroSession({ minutes: 25 });
+    const second = recordPomodoroSession({ minutes: 25 });
+    expect(await first).toBe(false);
+    expect(await second).toBe(false);
+
+    expect(loadPomodoroStats().days[getToday()]).toEqual({ sessions: 2, minutes: 50 });
+    expect(todayEl.textContent).toBe('2');
+  });
+
   it('clearPomodoroStats reports a rejected clear instead of silently keeping the old stats', async () => {
     await savePomodoroStats({
       days: { [getToday()]: { sessions: 2, minutes: 50 } },

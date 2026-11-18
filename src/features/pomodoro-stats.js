@@ -80,33 +80,73 @@
     out.byDateTodos = byDateTodos;
     return out;
   }
+  // Pending writes in start order. When an older write fails while a newer one
+  // is still in flight, the bridge skips the older rollback and the newer
+  // rollback would restore that abandoned optimistic value. Propagate the
+  // older write's rollback target to the newer ones instead (#1239 review).
+  const inFlightWrites = [];
+  let lastWriteEntry;
   function write(data) {
     // Invalidate first so a failed write cannot serve a mutated cache.
     readCacheRaw = undefined;
     readCache = null;
+    let previousRaw;
+    try { previousRaw = localStorage.getItem(KEY); }
+    catch (err) { console.warn('Failed to load pomodoro stats:', err); previousRaw = null; }
+    const entry = { rollbackRaw: previousRaw };
+    inFlightWrites.push(entry);
+    lastWriteEntry = entry;
 
     let serialized;
     try {
       serialized = JSON.stringify(data);
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
+      inFlightWrites.splice(inFlightWrites.indexOf(entry), 1);
       return false;
     }
+
+    const settle = (success) => {
+      if (entry.settled) return;
+      entry.settled = true;
+      const index = inFlightWrites.indexOf(entry);
+      if (!success) {
+        for (let i = index + 1; i < inFlightWrites.length; i++) {
+          inFlightWrites[i].rollbackRaw = entry.rollbackRaw;
+        }
+      } else {
+        // A confirmed write becomes the fallback for older writes that settle
+        // later; their original baseline predates this now-persisted value.
+        for (let i = 0; i < index; i++) {
+          inFlightWrites[i].rollbackRaw = serialized;
+        }
+        readCacheRaw = undefined;
+        readCache = null;
+      }
+      if (index !== -1) inFlightWrites.splice(index, 1);
+    };
 
     try {
       const storage = globalThis.localStorage;
       if (storage && typeof storage.setItemAsync === 'function') {
         return Promise.resolve(storage.setItemAsync(KEY, serialized))
-          .then(persisted => persisted !== false)
+          .then(persisted => {
+            settle(persisted !== false);
+            return persisted !== false;
+          })
           .catch((err) => {
             console.warn('Failed to save pomodoro stats:', err);
+            settle(false);
             return false;
           });
       }
 
-      return storage.setItem(KEY, serialized) !== false;
+      const persisted = storage.setItem(KEY, serialized) !== false;
+      settle(persisted);
+      return persisted;
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
+      settle(false);
       return false;
     }
   }
@@ -157,11 +197,12 @@
     }
     pruneOldEntries(store);
     const persisted = write(store);
+    const entry = lastWriteEntry;
     const finishRecord = (success) => {
       if (!success) {
-        // Repaint from the rolled-back store and surface the failure so a
+        // Repaint from the last persisted store and surface the failure so a
         // rejected write cannot leave stale focus stats on screen (#1239).
-        paint();
+        repaintFrom(entry.rollbackRaw);
         showStatsSaveError();
         return false;
       }
@@ -260,6 +301,21 @@
     paintHeatmap(store);
     paintSummary();
   }
+  // Repaint from the value that was persisted before the rejected write, so a
+  // rollback that inherits an abandoned optimistic value cannot paint a session
+  // that never landed. The override stays until the next successful write.
+  function repaintFrom(raw) {
+    let currentRaw;
+    try { currentRaw = localStorage.getItem(KEY); }
+    catch (err) { console.warn('Failed to load pomodoro stats:', err); return; }
+    readCacheRaw = currentRaw;
+    try { readCache = raw ? JSON.parse(raw) : emptyStore(); }
+    catch (err) {
+      console.warn('Failed to load pomodoro stats:', err);
+      readCache = emptyStore();
+    }
+    paint();
+  }
   // Compact day-over-day trend for the summary card: arrow plus signed
   // session delta (e.g. "↑ +2"), language-neutral so no translation is needed.
   function formatTrend(trend) {
@@ -320,11 +376,12 @@
   }
   function wipe() {
     const persisted = write({ days: {}, byDateTodos: {} });
+    const entry = lastWriteEntry;
     const finishWipe = (success) => {
       if (!success) {
         // Mirror record: repaint the surviving stats and report the failed
         // clear instead of silently keeping the old numbers (#1239).
-        paint();
+        repaintFrom(entry.rollbackRaw);
         showStatsSaveError();
         return false;
       }
