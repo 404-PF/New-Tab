@@ -524,50 +524,61 @@ function advanceDueDate(dueDate, recurrence) {
 // page); recurring todos advance dueDate instead so they recur rather than
 // stay completed. Notified/snooze/warned state for the todo is cleared so the
 // reminder cannot re-fire from stale marks. Runs inside runExclusive, so the
-// read-modify-write cannot interleave with a concurrent reminder check; the
-// todos list is read immediately before saving (not with the state maps) and
-// only this todo's change is applied to that fresh copy, because the page's
-// saveTodos writes the full list outside this queue.
+// read-modify-write cannot interleave with a concurrent reminder check. The
+// page's saveTodos writes the full list outside this queue, so the list is
+// read immediately before the write and re-checked afterwards: a page save
+// that overwrites the write is merged into its fresher snapshot instead of
+// being lost (#1249 review).
 async function markTodoDoneFromNotification(todoId) {
   const data = await getFromStorage(['todoReminderNotified', 'todoReminderSnoozedUntil', 'warnedInvalidDueDates']);
   const notified = data.todoReminderNotified || {};
   const snoozedUntil = data.todoReminderSnoozedUntil || {};
   const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
-  let changed = false;
-  if (clearEntriesForTodo(notified, todoId)) changed = true;
+  const stateChanged = clearEntriesForTodo(notified, todoId) ||
+    Object.prototype.hasOwnProperty.call(snoozedUntil, todoId);
   if (Object.prototype.hasOwnProperty.call(snoozedUntil, todoId)) {
     delete snoozedUntil[todoId];
-    changed = true;
   }
   const update = { todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil, warnedInvalidDueDates };
-  // Read the list right before writing so a page save that lands during this
-  // handler is merged instead of clobbered by an older snapshot (#1233).
-  const todos = parseTodosPayload((await getFromStorage(['todos'])).todos, null);
-  if (Array.isArray(todos)) {
-    const todo = todos.find((t) => t && t.id === todoId && !t.completed);
-    if (todo) {
-      if (RECURRENCE_VALUES.includes(todo.recurrence)) {
-        todo.dueDate = advanceDueDate(todo.dueDate, todo.recurrence);
-        todo.completed = false;
-        todo.completedAt = null;
-        if (Array.isArray(todo.subtasks)) {
-          todo.subtasks = todo.subtasks.map((sub) => ({ ...sub, checked: false }));
+
+  let todosJson = (await getFromStorage(['todos'])).todos;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const todos = parseTodosPayload(todosJson, null);
+    let todosChanged = false;
+    if (Array.isArray(todos)) {
+      const todo = todos.find((t) => t && t.id === todoId && !t.completed);
+      if (todo) {
+        if (RECURRENCE_VALUES.includes(todo.recurrence)) {
+          todo.dueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+          todo.completed = false;
+          todo.completedAt = null;
+          if (Array.isArray(todo.subtasks)) {
+            todo.subtasks = todo.subtasks.map((sub) => ({ ...sub, checked: false }));
+          }
+        } else {
+          todo.completed = true;
+          todo.completedAt = new Date().toISOString();
         }
-      } else {
-        todo.completed = true;
-        todo.completedAt = new Date().toISOString();
+        todosChanged = true;
       }
-      changed = true;
+      // Mirror of runReminderCheck: prune only against a successfully parsed
+      // list so a corrupt payload is never overwritten with [].
+      if (pruneStaleWarned(warnedInvalidDueDates, todos)) todosChanged = true;
+      update.todos = JSON.stringify(todos);
+    } else {
+      delete update.todos;
     }
-    // Mirror of runReminderCheck: prune only against a successfully parsed list
-    // so a corrupt payload is never overwritten with [].
-    if (pruneStaleWarned(warnedInvalidDueDates, todos)) changed = true;
-    update.todos = JSON.stringify(todos);
-  }
-  if (changed) {
+    if (!stateChanged && !todosChanged) break;
+    const writtenTodos = update.todos;
     // Persist before clearing the banner: if this write fails, the untouched
     // notification stays so the user can retry the action (#1233).
     await setToStorage(update);
+    if (writtenTodos === undefined) break;
+    // A different stored value means a page save landed after our write and
+    // clobbered it; re-apply the mutation on top of that fresher list.
+    const after = (await getFromStorage(['todos'])).todos;
+    if (after === writtenTodos || after === todosJson) break;
+    todosJson = after;
   }
   chrome.notifications.clear('todo_reminder_' + todoId);
 }

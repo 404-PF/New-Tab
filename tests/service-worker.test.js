@@ -765,6 +765,41 @@ describe('todo reminder notification actions (issue #1233)', () => {
     expect(chrome.notifications._notifications['todo_reminder_plain']).toBeUndefined();
   });
 
+  it('re-merges Mark done when a concurrent page save overwrites the todos write', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'plain', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await checkReminders();
+
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let clobbered = false;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      if (items.todos && !clobbered) {
+        clobbered = true;
+        // Stand in for a page saveTodos() that lands after the worker's write.
+        const pageList = JSON.parse(items.todos);
+        pageList.push({ id: 'page-added', text: 'Added in page', completed: false });
+        return originalSet({ todos: JSON.stringify(pageList) }, callback);
+      }
+      return originalSet(items, callback);
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 0);
+      await flushAction();
+
+      const data = await chrome.storage.local.get('todos');
+      const todos = JSON.parse(data.todos);
+      expect(todos.find((t) => t.id === 'plain').completed).toBe(true);
+      expect(todos.find((t) => t.id === 'page-added')).toBeTruthy();
+      expect(chrome.notifications._notifications['todo_reminder_plain']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
   it('advances a recurring todo instead of completing it on Mark done', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
