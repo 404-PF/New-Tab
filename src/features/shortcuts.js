@@ -420,9 +420,10 @@
     }
   }
 
-  // Guard the shared helper: toast.js may fail to load, and an unguarded
-  // call would throw before the write (#969 review thread).
   function persistToggleOrFallback(key, value) {
+    if (typeof window.persistSetting === 'function') {
+      return window.persistSetting(key, value);
+    }
     try {
       return typeof window.persistFeatureToggle === 'function'
         ? window.persistFeatureToggle(key, value)

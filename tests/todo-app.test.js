@@ -39,6 +39,7 @@ beforeAll(() => {
   pageParent.appendChild(section);
   document.body.appendChild(pageParent);
 
+  injectScript('src/core/utils.js');
   injectScript('src/features/todo-app.js');
 });
 

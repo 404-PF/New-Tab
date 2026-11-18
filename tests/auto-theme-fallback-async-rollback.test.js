@@ -24,6 +24,8 @@ function failWriteFor(key, mode) {
 }
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
+
   // DOM stubs the module binds its change handlers to; they must exist
   // before the script is injected because init() runs immediately.
   if (!document.getElementById('auto-theme-toggle')) {

@@ -402,22 +402,6 @@ window.addEventListener('languageChanged', renderAllApps);
 // to that stale value (#1142 review).
 const appGridWriteTails = new Map();
 
-// Shared write for the Settings > Apps controls (#969, #1142): the storage
-// bridge's setItem returns false instead of throwing on a rejected write, so
-// the result must be inspected rather than relying on catch alone.
-function writeAppGridSetting(key, value) {
-  let persisted;
-  try {
-    persisted = typeof window.persistFeatureToggle === 'function'
-      ? window.persistFeatureToggle(key, value)
-      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-  } catch (error) {
-    console.warn('Failed to save ' + key + ':', error);
-    persisted = false;
-  }
-  return persisted;
-}
-
 // Resolves once the bridge reports no pending write for key. Native
 // localStorage settles synchronously, so without the bridge's settlement
 // signal there is nothing left to wait for.
@@ -445,13 +429,13 @@ function armAppGridWriteTail(key, tail) {
 function persistAppGridSetting(key, value, done) {
   const previous = appGridWriteTails.get(key);
   if (!previous) {
-    const persisted = writeAppGridSetting(key, value);
+    const persisted = window.persistSetting(key, value);
     armAppGridWriteTail(key, settleAppGridWrite(key));
     done(persisted);
     return;
   }
   const next = previous.then(function () {
-    const persisted = writeAppGridSetting(key, value);
+    const persisted = window.persistSetting(key, value);
     return settleAppGridWrite(key).then(function () {
       done(persisted);
     });

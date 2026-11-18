@@ -8,6 +8,7 @@ import { injectScript } from './helpers/inject-script.js';
 const HTML = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
   injectScript('src/ui/settings.js');
   injectScript('src/features/data-manager.js');

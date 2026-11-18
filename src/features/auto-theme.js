@@ -24,22 +24,6 @@
     }
   }
 
-  // Guard the shared helper: toast.js may fail to load, and persistFeatureToggle
-  // checks the bridge's result: setItem returns false for a rejected write
-  // instead of throwing (#969, #1081).
-  function persistSetting(key, value) {
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle(key, value)
-        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (error) {
-      console.warn('Failed to save ' + key + ':', error);
-      persisted = false;
-    }
-    return persisted;
-  }
-
   function reportSaveError() {
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
@@ -64,8 +48,24 @@
     }
   }
 
+  function persistSettingLocal(key, value) {
+    if (typeof window.persistSetting === 'function') {
+      return window.persistSetting(key, value);
+    }
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle(key, value)
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      console.warn('Failed to save ' + key + ':', error);
+      persisted = false;
+    }
+    return persisted;
+  }
+
   function saveEnabled(enabled) {
-    return persistSetting(STORAGE_KEY_ENABLED, String(enabled));
+    return persistSettingLocal(STORAGE_KEY_ENABLED, String(enabled));
   }
 
   function loadLightTime() {
@@ -78,7 +78,7 @@
   }
 
   function saveLightTime(time) {
-    return persistSetting(STORAGE_KEY_LIGHT_TIME, time);
+    return persistSettingLocal(STORAGE_KEY_LIGHT_TIME, time);
   }
 
   function loadDarkTime() {
@@ -91,7 +91,7 @@
   }
 
   function saveDarkTime(time) {
-    return persistSetting(STORAGE_KEY_DARK_TIME, time);
+    return persistSettingLocal(STORAGE_KEY_DARK_TIME, time);
   }
 
   // Parse "HH:MM" string into minutes since midnight
