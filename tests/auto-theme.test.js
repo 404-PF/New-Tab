@@ -1,5 +1,9 @@
 import { injectScript } from './helpers/inject-script.js';
 
+beforeAll(() => {
+  injectScript('src/core/utils.js');
+});
+
 describe('automatic theme switching', () => {
   it('applies the scheduled theme and handles enable/disable changes', () => {
     vi.useFakeTimers();

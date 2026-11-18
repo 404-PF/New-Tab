@@ -45,21 +45,6 @@ const VIDEO_AUTOPLAY_KEY = 'videoAutoplay';
 const VIDEO_MUTED_KEY = 'videoMuted';
 const VIDEO_PAUSE_HIDDEN_KEY = 'videoPauseHidden';
 
-// Shared checked write for Settings-modal controls (#1149): the storage
-// bridge returns false instead of throwing on a rejected write, so check
-// the result via persistFeatureToggle when available, falling back to a
-// direct setItem. Returns whether the write was accepted.
-function persistSetting(key, value) {
-  try {
-    return typeof window.persistFeatureToggle === 'function'
-      ? window.persistFeatureToggle(key, value)
-      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-  } catch (e) {
-    console.warn('Failed to save ' + key + ':', e);
-    return false;
-  }
-}
-
 function loadVideoAutoplay() {
   return localStorage.getItem(VIDEO_AUTOPLAY_KEY) !== 'false';
 }
@@ -178,7 +163,7 @@ function bindBgOverlayInput(input, key) {
   input.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149), so check the result and re-apply the rolled-back value.
-    const persisted = persistSetting(key, input.value);
+    const persisted = window.persistSetting(key, input.value);
     applyBgOverlaySettings();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -935,7 +920,7 @@ document.addEventListener('click', function (e) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): applyBg() re-reads storage so a rejection restores the
     // previous background, then report the failure.
-    const persisted = persistSetting('homepageBg', bgId);
+    const persisted = window.persistSetting('homepageBg', bgId);
     applyBg();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1032,7 +1017,7 @@ if (clockColorPicker) {
   clockColorPicker.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply the rolled-back style and report the failure.
-    const persisted = persistSetting('clockColor', this.value);
+    const persisted = window.persistSetting('clockColor', this.value);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1041,7 +1026,7 @@ if (clockColorPicker) {
 }
 if (clockFontPicker) {
   clockFontPicker.addEventListener('change', function () {
-    const persisted = persistSetting('clockFont', this.value);
+    const persisted = window.persistSetting('clockFont', this.value);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1055,7 +1040,7 @@ if (clockSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    const persisted = persistSetting('clockSize', size);
+    const persisted = window.persistSetting('clockSize', size);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1084,7 +1069,7 @@ if (clockStyleReset) {
 const clockFormatPicker = document.getElementById('clock-format-picker');
 if (clockFormatPicker) {
   clockFormatPicker.addEventListener('change', function () {
-    const persisted = persistSetting('clockFormat', this.value);
+    const persisted = window.persistSetting('clockFormat', this.value);
     // Re-apply either way: after a rejected write the getters re-read the
     // rolled-back value instead of leaving the picker desynced (#1149).
     applyClockFormatSetting();
@@ -1178,7 +1163,7 @@ if (dateColorPicker) {
   dateColorPicker.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply the rolled-back style and report the failure.
-    const persisted = persistSetting('dateColor', this.value);
+    const persisted = window.persistSetting('dateColor', this.value);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1187,7 +1172,7 @@ if (dateColorPicker) {
 }
 if (dateFontPicker) {
   dateFontPicker.addEventListener('change', function () {
-    const persisted = persistSetting('dateFont', this.value);
+    const persisted = window.persistSetting('dateFont', this.value);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1201,7 +1186,7 @@ if (dateSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    const persisted = persistSetting('dateSize', size);
+    const persisted = window.persistSetting('dateSize', size);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1230,7 +1215,7 @@ if (dateStyleReset) {
 const dateFormatPicker = document.getElementById('date-format-picker');
 if (dateFormatPicker) {
   dateFormatPicker.addEventListener('change', function () {
-    const persisted = persistSetting('dateFormat', this.value);
+    const persisted = window.persistSetting('dateFormat', this.value);
     // Re-apply either way: after a rejected write the getters re-read the
     // rolled-back value instead of leaving the picker desynced (#1149).
     applyDateFormatSetting();
@@ -1593,7 +1578,7 @@ function applyLanguageSetting() {
 // the previously stored theme (radio, body class) and the
 // listeners are told the restored effective theme, not the rejected one.
 function commitTheme(selectedTheme) {
-  const persisted = persistSetting('theme', selectedTheme);
+  const persisted = window.persistSetting('theme', selectedTheme);
   applyTheme();
   // Dispatch custom event for AI chat and other components to respond.
   // 'system' is resolved so listeners always receive a concrete theme.
@@ -1607,7 +1592,7 @@ function commitTheme(selectedTheme) {
 const liquidGlassSetting = document.getElementById('liquid-glass-setting');
 if (liquidGlassSetting) {
   liquidGlassSetting.addEventListener('change', function () {
-    const persisted = persistSetting('liquidGlassEnabled', this.checked);
+    const persisted = window.persistSetting('liquidGlassEnabled', this.checked);
     applyLiquidGlassEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1644,7 +1629,7 @@ document.addEventListener('change', function (e) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): resync the checkboxes from the rolled-back value and skip
     // the media side-effects so the video does not flash the new state.
-    const persisted = persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
+    const persisted = window.persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1693,7 +1678,7 @@ document.addEventListener('change', function (e) {
       }
     }
   } else if (e.target === videoMutedSetting) {
-    const persisted = persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
+    const persisted = window.persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1705,7 +1690,7 @@ document.addEventListener('change', function (e) {
       videoEl.muted = videoMutedSetting.checked;
     }
   } else if (e.target === videoPauseHiddenSetting) {
-    const persisted = persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
+    const persisted = window.persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1732,7 +1717,7 @@ if (pomodoroStatsEnabledSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the checkbox and stats
     // panel snap back to the rolled-back value.
-    const persisted = persistSetting('pomodoroStatsEnabled', this.checked);
+    const persisted = window.persistSetting('pomodoroStatsEnabled', this.checked);
     applyPomodoroStatsEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1798,7 +1783,7 @@ function saveEyeCareReminderState(updates) {
     ...current,
     ...updates
   };
-  const persisted = persistSetting('eyeCareReminder', JSON.stringify(next));
+  const persisted = window.persistSetting('eyeCareReminder', JSON.stringify(next));
   if (!persisted) {
     return false;
   }
@@ -1906,9 +1891,7 @@ function applyNotesEnabled() {
 const notesEnabledSetting = document.getElementById('notes-enabled-setting');
 if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
-    // Guard the shared helper: toast.js may fail to load, and an unguarded
-    // call would throw before the write (#969 review thread).
-    const persisted = persistSetting('notesEnabled', this.checked);
+    const persisted = window.persistSetting('notesEnabled', this.checked);
     applyNotesEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1938,7 +1921,7 @@ function applyMottoEnabled() {
 const mottoEnabledSetting = document.getElementById('motto-enabled-setting');
 if (mottoEnabledSetting) {
   mottoEnabledSetting.addEventListener('change', function () {
-    const persisted = persistSetting('mottoEnabled', this.checked);
+    const persisted = window.persistSetting('mottoEnabled', this.checked);
     applyMottoEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2352,7 +2335,7 @@ if (gamesEnabledSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the tile and checkbox snap
     // back to the rolled-back value, and only preload on success.
-    const persisted = persistSetting('games_enabled', enabled);
+    const persisted = window.persistSetting('games_enabled', enabled);
     if (!persisted) {
       applyGamesEnabled();
       reportFeatureToggleSaveError();
@@ -2433,7 +2416,7 @@ if (gamesKeymapSetting) {
         persisted = false;
       }
     } else {
-      persisted = persistSetting('games_keymap', keymap);
+      persisted = window.persistSetting('games_keymap', keymap);
       // Normalize like the helpers path: an unknown id reads back as the
       // default, so the select must show the resolved value, not the raw
       // input (#1149 review).
@@ -2476,7 +2459,7 @@ if (gamesFpsSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the checkbox snaps back
     // to the rolled-back value.
-    const persisted = persistSetting('games_fps_enabled', this.checked);
+    const persisted = window.persistSetting('games_fps_enabled', this.checked);
     applyGamesFps();
     if (!persisted) {
       reportFeatureToggleSaveError();

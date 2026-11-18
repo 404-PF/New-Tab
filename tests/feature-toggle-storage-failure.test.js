@@ -80,6 +80,7 @@ const FONT_DEFAULT = '\'Times New Roman\', Times, serif';
 });
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');

@@ -420,19 +420,6 @@
     }
   }
 
-  // Guard the shared helper: toast.js may fail to load, and an unguarded
-  // call would throw before the write (#969 review thread).
-  function persistToggleOrFallback(key, value) {
-    try {
-      return typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle(key, value)
-        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save ' + key + ':', e);
-      return false;
-    }
-  }
-
   function reportToggleSaveError() {
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
@@ -445,7 +432,7 @@
     const checkbox = document.getElementById('simple-mode-checkbox');
     if (checkbox) {
       checkbox.checked = !checkbox.checked;
-      const persisted = persistToggleOrFallback('simpleMode', checkbox.checked);
+      const persisted = window.persistSetting('simpleMode', checkbox.checked);
       if (typeof window.applySimpleMode === 'function') {
         window.applySimpleMode();
       }
@@ -467,7 +454,7 @@
     } catch (e) {
       console.warn('Failed to read focusMode:', e);
     }
-    const persisted = persistToggleOrFallback('focusMode', current ? 'false' : 'true');
+    const persisted = window.persistSetting('focusMode', current ? 'false' : 'true');
 
     if (typeof window.applyFocusMode === 'function') {
       window.applyFocusMode();
@@ -484,7 +471,7 @@
     } catch (e) {
       console.warn('Failed to read todoEnabled:', e);
     }
-    const persisted = persistToggleOrFallback('todoEnabled', current ? 'false' : 'true');
+    const persisted = window.persistSetting('todoEnabled', current ? 'false' : 'true');
     if (typeof window.applyTodoEnabled === 'function') {
       window.applyTodoEnabled();
     }
@@ -500,7 +487,7 @@
     } catch (e) {
       console.warn('Failed to read notesEnabled:', e);
     }
-    const persisted = persistToggleOrFallback('notesEnabled', current ? 'false' : 'true');
+    const persisted = window.persistSetting('notesEnabled', current ? 'false' : 'true');
     if (typeof window.applyNotesEnabled === 'function') {
       window.applyNotesEnabled();
     }

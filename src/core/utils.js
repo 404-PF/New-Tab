@@ -724,6 +724,21 @@
     return normalizeCustomAppUrl(url) || '#';
   }
 
+  // Shared guarded write for feature toggles (#969, #1081, #1142): toast.js
+  // may fail to load, so resolve persistFeatureToggle at call time. The storage
+  // bridge returns false instead of throwing on a rejected write, so the result
+  // must be inspected. Returns whether the write was accepted.
+  function persistSetting(key, value) {
+    try {
+      return typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle(key, value)
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save ' + key + ':', e);
+      return false;
+    }
+  }
+
   // Make utilities available globally
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
@@ -741,5 +756,6 @@
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;
   window.translateValidationMessage = translateValidationMessage;
+  window.persistSetting = persistSetting;
 
 })();
