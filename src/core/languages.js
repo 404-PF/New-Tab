@@ -801,6 +801,7 @@ const translations = {
     pomodoroStatsByTodo: 'Minutes by Task This Week',
     pomodoroStatsExport: 'Export CSV',
     pomodoroStatsExportSuccess: 'Focus stats exported.',
+    pomodoroStatsSaveError: 'Failed to save focus stats. Your last action was not saved.',
 
 
     // Web grounding

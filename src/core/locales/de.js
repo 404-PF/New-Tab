@@ -657,6 +657,7 @@ window.i18n.__registerLocale('de', {
   pomodoroHeatmapCellTitle: '$1$: $2$ Sitzungen',
   pomodoroStatsToggle: 'Fokus-Statistiken',
   pomodoroStatsToggleAriaLabel: 'Fokus-Statistik-Panel umschalten',
+  pomodoroStatsSaveError: 'Fokus-Statistiken konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
 
 
   // Web grounding

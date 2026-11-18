@@ -657,6 +657,7 @@ window.i18n.__registerLocale('fr', {
   pomodoroHeatmapCellTitle: '$1$ : $2$ sessions',
   pomodoroStatsToggle: 'Statistiques de concentration',
   pomodoroStatsToggleAriaLabel: 'Basculer le panneau de statistiques de concentration',
+  pomodoroStatsSaveError: 'Impossible d’enregistrer les statistiques de concentration. Votre dernière action n’a pas été enregistrée.',
 
 
   // Web grounding

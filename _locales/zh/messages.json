@@ -912,6 +912,10 @@
     "message": "專注統計已開始下載。",
     "description": "Toast shown after focus stats CSV download is started"
   },
+  "pomodoroStatsSaveError": {
+    "message": "无法保存专注统计。您上次的操作未被保存。",
+    "description": "Error shown when a focus stats write cannot be persisted"
+  },
   "gamesLoading": {
     "message": "正在載入遊戲…",
     "description": "Loading state shown while game scripts are being fetched"

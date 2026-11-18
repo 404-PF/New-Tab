@@ -912,6 +912,10 @@
     "message": "Загрузка статистики фокуса начата.",
     "description": "Toast shown after focus stats CSV download is started"
   },
+  "pomodoroStatsSaveError": {
+    "message": "Не удалось сохранить статистику фокуса. Последнее действие не было сохранено.",
+    "description": "Error shown when a focus stats write cannot be persisted"
+  },
   "gamesLoading": {
     "message": "Загрузка игр…",
     "description": "Loading state shown while game scripts are being fetched"

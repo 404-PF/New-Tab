@@ -657,6 +657,7 @@ window.i18n.__registerLocale('ko', {
   pomodoroHeatmapCellTitle: '$1$: $2$ 세션',
   pomodoroStatsToggle: '집중 통계',
   pomodoroStatsToggleAriaLabel: '집중 통계 패널 전환',
+  pomodoroStatsSaveError: '집중 통계를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.',
 
 
   // Web grounding

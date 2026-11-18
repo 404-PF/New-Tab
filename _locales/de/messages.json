@@ -912,6 +912,10 @@
     "message": "Download der Fokus-Statistiken gestartet.",
     "description": "Toast shown after focus stats CSV download is started"
   },
+  "pomodoroStatsSaveError": {
+    "message": "Fokus-Statistiken konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
+    "description": "Error shown when a focus stats write cannot be persisted"
+  },
   "gamesLoading": {
     "message": "Spiele werden geladen…",
     "description": "Loading state shown while game scripts are being fetched"

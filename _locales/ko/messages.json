@@ -912,6 +912,10 @@
     "message": "집중 통계 다운로드를 시작했습니다.",
     "description": "Toast shown after focus stats CSV download is started"
   },
+  "pomodoroStatsSaveError": {
+    "message": "집중 통계를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when a focus stats write cannot be persisted"
+  },
   "gamesLoading": {
     "message": "게임을 불러오는 중…",
     "description": "Loading state shown while game scripts are being fetched"

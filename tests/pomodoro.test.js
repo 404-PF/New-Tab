@@ -554,3 +554,90 @@ describe('Pomodoro coordination poll (issue #929)', () => {
     }
   });
 });
+
+// A completed focus session whose focus-stats write the recorder rejects must
+// still leave a warning in the timer log (#1239); the toast lives in
+// pomodoro-stats.js, this covers the observer side in tryRecordWorkSession.
+describe('Focus session record failures (issue #1239)', () => {
+  const SAVE_FAILURE_MESSAGE = 'Focus session was not saved to focus stats.';
+  let warnSpy = null;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    if (warnSpy) {
+      warnSpy.mockRestore();
+      warnSpy = null;
+    }
+    delete window.recordPomodoroSession;
+  });
+
+  // Runs one 0.5-minute work phase to completion under fake timers so
+  // onPhaseComplete calls tryRecordWorkSession exactly once.
+  async function completeWorkPhase() {
+    window.savePomodoroDurations({
+      enabled: true,
+      workDuration: 0.5,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      sessionsBeforeLongBreak: 4
+    });
+    window.startPomodoro('todo-1');
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(31000);
+  }
+
+  async function withFakeTimerWorkPhase(run) {
+    vi.useFakeTimers();
+    const prevVI = window.VisibilityInterval;
+    window.VisibilityInterval = null;
+    try {
+      await completeWorkPhase();
+      await run();
+    } finally {
+      window.VisibilityInterval = prevVI;
+      vi.useRealTimers();
+    }
+  }
+
+  it('warns when the recorder reports a synchronous failure', async () => {
+    window.recordPomodoroSession = vi.fn(() => false);
+    await withFakeTimerWorkPhase(() => {
+      expect(window.recordPomodoroSession).toHaveBeenCalledTimes(1);
+      expect(window.recordPomodoroSession).toHaveBeenCalledWith(
+        expect.objectContaining({ todoId: 'todo-1' })
+      );
+      expect(warnSpy).toHaveBeenCalledWith(SAVE_FAILURE_MESSAGE);
+    });
+  });
+
+  it('warns when the recorder promise resolves false', async () => {
+    window.recordPomodoroSession = vi.fn(() => Promise.resolve(false));
+    await withFakeTimerWorkPhase(async () => {
+      expect(window.recordPomodoroSession).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      expect(warnSpy).toHaveBeenCalledWith(SAVE_FAILURE_MESSAGE);
+    });
+  });
+
+  it('warns when the recorder promise rejects', async () => {
+    const error = new Error('quota exceeded');
+    window.recordPomodoroSession = vi.fn(() => Promise.reject(error));
+    await withFakeTimerWorkPhase(async () => {
+      expect(window.recordPomodoroSession).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      expect(warnSpy).toHaveBeenCalledWith('Focus session was not saved to focus stats:', error);
+    });
+  });
+
+  it('does not warn when the session saves', async () => {
+    window.recordPomodoroSession = vi.fn(() => Promise.resolve(true));
+    await withFakeTimerWorkPhase(async () => {
+      expect(window.recordPomodoroSession).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      expect(warnSpy).not.toHaveBeenCalledWith(SAVE_FAILURE_MESSAGE);
+    });
+  });
+});

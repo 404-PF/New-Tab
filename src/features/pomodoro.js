@@ -492,7 +492,18 @@
       const minutes = Math.round(getPhaseDuration(PHASES.WORK) / 60);
       const detail = { minutes: minutes, todoId: todoId };
       if (typeof window.recordPomodoroSession === 'function') {
-        window.recordPomodoroSession(detail);
+        // Focus stats toast their own save failures; warn here so the timer
+        // log still carries the dropped session (#1239).
+        const recorded = window.recordPomodoroSession(detail);
+        if (recorded && typeof recorded.then === 'function') {
+          recorded.then((saved) => {
+            if (saved === false) console.warn('Focus session was not saved to focus stats.');
+          }).catch((err) => {
+            console.warn('Focus session was not saved to focus stats:', err);
+          });
+        } else if (recorded === false) {
+          console.warn('Focus session was not saved to focus stats.');
+        }
       } else {
         try {
           window.dispatchEvent(new CustomEvent('pomodoroSessionCompleted', { detail: detail }));

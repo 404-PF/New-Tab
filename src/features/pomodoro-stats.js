@@ -29,6 +29,16 @@
   let readCacheRaw;
   let readCache = null;
   function emptyStore() { return { days: {}, byDateTodos: {} }; }
+  // Single source of truth for the persisted schema: reject malformed `days`
+  // and default `byDateTodos`. Both read() and repaintFrom() must normalise
+  // before caching so an override cannot bypass validation and crash paint().
+  function normalizeStore(data) {
+    const validDays = data && typeof data.days === 'object' && data.days !== null && !Array.isArray(data.days);
+    if (!validDays) return emptyStore();
+    if (data.byDateTodos !== null && data.byDateTodos !== undefined && (typeof data.byDateTodos !== 'object' || Array.isArray(data.byDateTodos))) data.byDateTodos = {};
+    if (!data.byDateTodos) data.byDateTodos = {};
+    return data;
+  }
   function read() {
     let raw;
     try {
@@ -46,15 +56,7 @@
       return readCache;
     }
     try {
-      const data = JSON.parse(raw);
-      const validDays = data && typeof data.days === 'object' && data.days !== null && !Array.isArray(data.days);
-      if (!validDays) {
-        readCache = emptyStore();
-        return readCache;
-      }
-      if (data.byDateTodos !== null && data.byDateTodos !== undefined && (typeof data.byDateTodos !== 'object' || Array.isArray(data.byDateTodos))) data.byDateTodos = {};
-      if (!data.byDateTodos) data.byDateTodos = {};
-      readCache = data;
+      readCache = normalizeStore(JSON.parse(raw));
       return readCache;
     } catch (err) {
       console.warn('Failed to load pomodoro stats:', err);
@@ -80,39 +82,89 @@
     out.byDateTodos = byDateTodos;
     return out;
   }
+  // Pending writes in start order. When an older write fails while a newer one
+  // is still in flight, the bridge skips the older rollback and the newer
+  // rollback would restore that abandoned optimistic value. Propagate the
+  // older write's rollback target to the newer ones instead (#1239 review).
+  const inFlightWrites = [];
+  let lastWriteEntry;
   function write(data) {
     // Invalidate first so a failed write cannot serve a mutated cache.
     readCacheRaw = undefined;
     readCache = null;
+    let previousRaw;
+    try { previousRaw = localStorage.getItem(KEY); }
+    catch (err) { console.warn('Failed to load pomodoro stats:', err); previousRaw = null; }
+    const entry = { rollbackRaw: previousRaw };
+    inFlightWrites.push(entry);
+    lastWriteEntry = entry;
 
     let serialized;
     try {
       serialized = JSON.stringify(data);
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
+      inFlightWrites.splice(inFlightWrites.indexOf(entry), 1);
       return false;
     }
+
+    const settle = (success) => {
+      if (entry.settled) return;
+      entry.settled = true;
+      const index = inFlightWrites.indexOf(entry);
+      if (!success) {
+        for (let i = index + 1; i < inFlightWrites.length; i++) {
+          inFlightWrites[i].rollbackRaw = entry.rollbackRaw;
+        }
+      } else {
+        // A confirmed write becomes the fallback for older writes that settle
+        // later; their original baseline predates this now-persisted value.
+        for (let i = 0; i < index; i++) {
+          inFlightWrites[i].rollbackRaw = serialized;
+        }
+        readCacheRaw = undefined;
+        readCache = null;
+      }
+      if (index !== -1) inFlightWrites.splice(index, 1);
+    };
 
     try {
       const storage = globalThis.localStorage;
       if (storage && typeof storage.setItemAsync === 'function') {
         return Promise.resolve(storage.setItemAsync(KEY, serialized))
-          .then(persisted => persisted !== false)
+          .then(persisted => {
+            settle(persisted !== false);
+            return persisted !== false;
+          })
           .catch((err) => {
             console.warn('Failed to save pomodoro stats:', err);
+            settle(false);
             return false;
           });
       }
 
-      return storage.setItem(KEY, serialized) !== false;
+      const persisted = storage.setItem(KEY, serialized) !== false;
+      settle(persisted);
+      return persisted;
     } catch (err) {
       console.warn('Failed to save pomodoro stats:', err);
+      settle(false);
       return false;
     }
   }
   function enabled() {
     try { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; }
     catch (err) { console.warn('Failed to read pomodoro stats enabled:', err); return false; }
+  }
+  function showStatsSaveError() {
+    if (typeof window.showToast === 'function') {
+      const raw = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('pomodoroStatsSaveError')
+        : null;
+      window.showToast(raw && raw !== 'pomodoroStatsSaveError' ? raw : 'Failed to save focus stats. Your last action was not saved.', 'error');
+    } else {
+      console.warn('showToast unavailable: failed to save focus stats');
+    }
   }
   function todayISO() { return toISO(new Date()); }
   // Drop days (and per-todo attribution) outside the retention window so the key
@@ -147,8 +199,15 @@
     }
     pruneOldEntries(store);
     const persisted = write(store);
+    const entry = lastWriteEntry;
     const finishRecord = (success) => {
-      if (!success) return false;
+      if (!success) {
+        // Repaint from the last persisted store and surface the failure so a
+        // rejected write cannot leave stale focus stats on screen (#1239).
+        repaintFrom(entry.rollbackRaw);
+        showStatsSaveError();
+        return false;
+      }
       paint();
       try { window.dispatchEvent(new CustomEvent('pomodoroStatsUpdated', { detail: { date: iso, sessions: cur.sessions, minutes: cur.minutes, todoId: tid } })); }
       catch { /* ignore environments without CustomEvent */ }
@@ -244,6 +303,21 @@
     paintHeatmap(store);
     paintSummary();
   }
+  // Repaint from the value that was persisted before the rejected write, so a
+  // rollback that inherits an abandoned optimistic value cannot paint a session
+  // that never landed. The override stays until the next successful write.
+  function repaintFrom(raw) {
+    let currentRaw;
+    try { currentRaw = localStorage.getItem(KEY); }
+    catch (err) { console.warn('Failed to load pomodoro stats:', err); return; }
+    readCacheRaw = currentRaw;
+    try { readCache = normalizeStore(raw ? JSON.parse(raw) : emptyStore()); }
+    catch (err) {
+      console.warn('Failed to load pomodoro stats:', err);
+      readCache = emptyStore();
+    }
+    paint();
+  }
   // Compact day-over-day trend for the summary card: arrow plus signed
   // session delta (e.g. "↑ +2"), language-neutral so no translation is needed.
   function formatTrend(trend) {
@@ -274,6 +348,12 @@
     if (parts.length === 0) return '—';
     return parts.join(' · ');
   }
+  // Compact "YYYY-MM-DD (n)" label for the best day card, shared by the
+  // summary paint and the post-failure desync check.
+  function formatBestDay() {
+    const bestDay = window.getPomodoroBestDay();
+    return bestDay && bestDay.sessions > 0 ? bestDay.date + ' (' + bestDay.sessions + ')' : '—';
+  }
   // Summary row below the heatmap: 30-day total, day-over-day trend, best
   // day, 7-day rolling average and per-todo focus minutes (issue #1171).
   function paintSummary() {
@@ -284,8 +364,7 @@
     const byTodo = document.getElementById('pomodoro-stats-by-todo');
     if (total) total.textContent = window.getPomodoroTotalFormatted().formatted;
     if (trend) trend.textContent = formatTrend(window.getPomodoroTrend());
-    const bestDay = window.getPomodoroBestDay();
-    if (best) best.textContent = bestDay && bestDay.sessions > 0 ? bestDay.date + ' (' + bestDay.sessions + ')' : '—';
+    if (best) best.textContent = formatBestDay();
     if (avg) avg.textContent = String(window.getPomodoroRollingAverage(7));
     if (byTodo) byTodo.textContent = formatMinutesByTodo();
   }
@@ -299,8 +378,15 @@
   }
   function wipe() {
     const persisted = write({ days: {}, byDateTodos: {} });
+    const entry = lastWriteEntry;
     const finishWipe = (success) => {
-      if (!success) return false;
+      if (!success) {
+        // Mirror record: repaint the surviving stats and report the failed
+        // clear instead of silently keeping the old numbers (#1239).
+        repaintFrom(entry.rollbackRaw);
+        showStatsSaveError();
+        return false;
+      }
       paint();
       return true;
     };
@@ -327,6 +413,39 @@
       window.showToast(raw && raw !== 'pomodoroStatsExportSuccess' ? raw : 'Focus stats download started.', 'success');
     }
   }
+  // A synchronous bridge failure both dispatches storageBridgeWriteError and
+  // settles the write as false, so record/wipe has already repainted from the
+  // rolled-back store and toasted. Only an async rejection leaves the panel
+  // showing the optimistic value, so compare before repainting and notify
+  // just for that — same pattern as todo-stats.js statsPanelDesynced (#1239).
+  function pomodoroStatsPanelDesynced() {
+    if (!enabled()) return false;
+    const store = read();
+    const expected = [
+      ['pomodoro-stats-today', sessionsToday(store)],
+      ['pomodoro-stats-week', sessionsWeek(store)],
+      ['pomodoro-stats-today-minutes', minutesToday(store)],
+      ['pomodoro-stats-week-minutes', minutesWeek(store)],
+      ['pomodoro-stats-total', window.getPomodoroTotalFormatted().formatted],
+      ['pomodoro-stats-trend', formatTrend(window.getPomodoroTrend())],
+      ['pomodoro-stats-best-day', formatBestDay()],
+      ['pomodoro-stats-rolling-avg', String(window.getPomodoroRollingAverage(7))],
+      ['pomodoro-stats-by-todo', formatMinutesByTodo()]
+    ];
+    return expected.some(function (entry) {
+      const el = document.getElementById(entry[0]);
+      return Boolean(el) && el.textContent !== String(entry[1]);
+    });
+  }
+  window.addEventListener('storageBridgeWriteError', (event) => {
+    if (event?.detail?.key !== KEY) return;
+    setTimeout(() => {
+      if (!enabled()) return;
+      const desynced = pomodoroStatsPanelDesynced();
+      paint();
+      if (desynced) showStatsSaveError();
+    }, 0);
+  });
   function boot() {
     syncVisibility();
     const btn = document.getElementById('pomodoro-stats-toggle');

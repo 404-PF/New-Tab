@@ -478,6 +478,7 @@ globalThis.window.i18n = {
       pomodoroStatsExport: 'Export CSV',
       pomodoroStatsSessionsUnit: 'sessions',
       pomodoroStatsExportSuccess: 'Focus stats download started.',
+      pomodoroStatsSaveError: 'Failed to save focus stats. Your last action was not saved.',
       pomodoroStartFocus: 'Start Focus',
       pomodoroStopFocus: 'Stop Focus',
       pomodoroWorkComplete: 'Focus session complete!',

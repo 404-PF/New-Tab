@@ -657,6 +657,7 @@ window.i18n.__registerLocale('es', {
   pomodoroHeatmapCellTitle: '$1$: $2$ sesiones',
   pomodoroStatsToggle: 'Estadísticas de enfoque',
   pomodoroStatsToggleAriaLabel: 'Alternar panel de estadísticas de enfoque',
+  pomodoroStatsSaveError: 'No se pudieron guardar las estadísticas de enfoque. La última acción no se guardó.',
 
 
   // Web grounding

@@ -912,6 +912,10 @@
     "message": "Descarga de estadísticas de enfoque iniciada.",
     "description": "Toast shown after focus stats CSV download is started"
   },
+  "pomodoroStatsSaveError": {
+    "message": "No se pudieron guardar las estadísticas de enfoque. La última acción no se guardó.",
+    "description": "Error shown when a focus stats write cannot be persisted"
+  },
   "gamesLoading": {
     "message": "Cargando juegos…",
     "description": "Loading state shown while game scripts are being fetched"
