@@ -237,7 +237,7 @@
     "description": "Label for the background picker in rotation settings"
   },
   "bgRotationTod": {
-    "message": "Por hora del día",
+    "message": "Según la hora del día",
     "description": "Rotation interval option"
   },
   "bgRotationUploads": {

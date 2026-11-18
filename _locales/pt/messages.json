@@ -213,7 +213,7 @@
     "description": "Rotation interval option"
   },
   "bgRotationDayPicker": {
-    "message": "Fundos de dia",
+    "message": "Fundos diurnos",
     "description": "Label for the day background picker in time-of-day rotation"
   },
   "bgRotationDayTime": {
@@ -225,7 +225,7 @@
     "description": "Rotation interval option"
   },
   "bgRotationNightPicker": {
-    "message": "Fundos de noite",
+    "message": "Fundos noturnos",
     "description": "Label for the night background picker in time-of-day rotation"
   },
   "bgRotationNightTime": {
@@ -237,7 +237,7 @@
     "description": "Label for the background picker in rotation settings"
   },
   "bgRotationTod": {
-    "message": "Por horário",
+    "message": "Horário do dia",
     "description": "Rotation interval option"
   },
   "bgRotationUploads": {

@@ -362,11 +362,15 @@
     }
   }
 
-  function advanceBackground() {
+  // The optional side tags a time-of-day boundary advance so a failed write
+  // can un-consume the boundary it was applying. Returns whether the write was
+  // accepted (an async failure is handled by handleHomepageBgSaveFailure).
+  function advanceBackground(side) {
     const bg = getNextBackground();
-    if (!bg) return;
-    pendingAdvance = { bg: bg, previous: readHomepageBg() };
-    if (!saveHomepageBg(bg.id)) {
+    if (!bg) return false;
+    pendingAdvance = { bg: bg, previous: readHomepageBg(), side: side || null };
+    const accepted = saveHomepageBg(bg.id);
+    if (!accepted) {
       // Synchronous rejection: roll back now. The bridge also dispatches
       // storageBridgeWriteError for this write, but its deferred handler
       // finds pendingAdvance cleared and stays silent, so the toast fires
@@ -376,6 +380,7 @@
       showRotationSaveError();
     }
     applyBackgroundUI();
+    return accepted;
   }
 
   // Apply the active side's background unless the displayed one already
@@ -393,15 +398,15 @@
   // Force the next advance past the background already on screen: the two
   // pools may overlap across a boundary, so the (re)shuffled head can land
   // on the displayed entry.
-  function advancePastShownBackground() {
+  function advancePastShownBackground(side) {
     const pool = getActivePool();
-    if (pool.length === 0) return;
+    if (pool.length === 0) return false;
     if (shuffledPool.length === 0 || poolChanged(pool)) {
       shuffledPool = shuffleArray(pool);
       poolIndex = 0;
     }
     skipShownBackgroundOnNextAdvance();
-    advanceBackground();
+    return advanceBackground(side);
   }
 
   // Boundary check for the 'tod' cadence: swap into the newly scheduled
@@ -410,19 +415,24 @@
     if (!loadEnabled() || loadInterval() !== TOD_INTERVAL_KEY) return;
     const side = getScheduledSide();
     if (side === lastScheduledSide) return;
+    // Commit the boundary only once the swap write is accepted; a rejected
+    // write must leave the boundary available for a later check to retry.
+    if (!advancePastShownBackground(side)) return;
     lastScheduledSide = side;
-    advancePastShownBackground();
   }
 
   function startTodRotation() {
     lastScheduledSide = getScheduledSide();
     applyActiveSideBackground();
-    // Arm the boundary timer only when both pools together hold more than
-    // one distinct background — a lone entry can never produce a swap.
+    // A lone background shared by both sides can never produce a swap, but
+    // an explicit empty side still needs the timer to put the other side's
+    // single background on screen when the boundary is crossed.
+    const dayPool = getSideBackgrounds('day');
+    const nightPool = getSideBackgrounds('night');
     const ids = new Set();
-    getSideBackgrounds('day').forEach(function (bg) { ids.add(bg.id); });
-    getSideBackgrounds('night').forEach(function (bg) { ids.add(bg.id); });
-    if (ids.size <= 1) return;
+    dayPool.forEach(function (bg) { ids.add(bg.id); });
+    nightPool.forEach(function (bg) { ids.add(bg.id); });
+    if (ids.size === 0 || (ids.size === 1 && dayPool.length > 0 && nightPool.length > 0)) return;
     if (window.VisibilityInterval) {
       rotationTimer = new window.VisibilityInterval(function () {
         checkTodSide();
@@ -685,6 +695,11 @@
       return;
     }
     pendingAdvance = null;
+    // A boundary advance whose write failed never reached the new side;
+    // un-consume it so a later check can retry the swap.
+    if (pending.side && lastScheduledSide === pending.side) {
+      lastScheduledSide = null;
+    }
     if (readHomepageBg() !== pending.previous) {
       return;
     }
@@ -792,10 +807,13 @@
     });
   }
 
-  function bindTimeChange(inputId, saveFn) {
+  function bindTimeChange(inputId, saveFn, defaultValue) {
     const input = document.getElementById(inputId);
     if (!input) return;
     input.addEventListener('change', function () {
+      // A cleared time input reports '' while load*Time() falls back to
+      // the default, so normalize first to keep the UI and storage in sync.
+      if (!input.value) input.value = defaultValue;
       if (!saveFn(input.value)) {
         handleRotationSaveFailure();
         return;
@@ -842,8 +860,8 @@
     bindPickerChange('bg-rotation-picker', saveSelection);
     bindPickerChange('bg-rotation-day-picker', saveDaySelection);
     bindPickerChange('bg-rotation-night-picker', saveNightSelection);
-    bindTimeChange('bg-rotation-day-time', saveDayTime);
-    bindTimeChange('bg-rotation-night-time', saveNightTime);
+    bindTimeChange('bg-rotation-day-time', saveDayTime, DEFAULT_DAY_TIME);
+    bindTimeChange('bg-rotation-night-time', saveNightTime, DEFAULT_NIGHT_TIME);
 
     if (nextBtn) {
       nextBtn.addEventListener('click', function () {

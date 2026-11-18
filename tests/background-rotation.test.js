@@ -1243,12 +1243,16 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
     expect(html).toMatch(/<div id="bg-rotation-tod" hidden>/);
     expect(html).toMatch(/<input type="time" id="bg-rotation-day-time" value="07:00" \/>/);
     expect(html).toMatch(/<input type="time" id="bg-rotation-night-time" value="19:00" \/>/);
-    expect(html).toMatch(/<div class="bg-rotation-picker" id="bg-rotation-day-picker"><\/div>/);
-    expect(html).toMatch(/<div class="bg-rotation-picker" id="bg-rotation-night-picker"><\/div>/);
+    expect(html).toMatch(
+      /<div class="bg-rotation-picker" id="bg-rotation-day-picker" role="group" aria-labelledby="bg-rotation-day-picker-label"><\/div>/
+    );
+    expect(html).toMatch(
+      /<div class="bg-rotation-picker" id="bg-rotation-night-picker" role="group" aria-labelledby="bg-rotation-night-picker-label"><\/div>/
+    );
   });
 
   it('applies the active side pool on start and repaints a wrong-side background', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0); // noon: inside the 07:00-19:00 day window
+    fakeTime(2026, 0, 5, 12, 0); // noon: inside the 07:00-19:00 day window
     localStorage.setItem('homepageBg', 'Night BG 1');
 
     BackgroundRotation.start();
@@ -1259,7 +1263,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
   });
 
   it('leaves the background untouched when it already belongs to the active side pool', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Day BG 1');
 
     BackgroundRotation.start();
@@ -1269,7 +1273,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
   });
 
   it('swaps into the night pool exactly once when the schedule crosses night time', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Day BG 1');
     BackgroundRotation.start();
     const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
@@ -1290,7 +1294,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
   });
 
   it('does not swap while the scheduled side is unchanged', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Day BG 1');
     BackgroundRotation.start();
     const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
@@ -1306,7 +1310,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
     // Both sides rotate the same pool, so a naive boundary advance could
     // redraw the background already on screen.
     localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Day BG 1', 'Day BG 2']));
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Day BG 1');
     BackgroundRotation.start();
     const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
@@ -1324,6 +1328,42 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
 
     BackgroundRotation.start();
 
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
+  });
+
+  it('arms the boundary timer when an empty side leaves one background on the other', () => {
+    localStorage.setItem('bgRotationDaySelection', '[]');
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Night BG 1']));
+    localStorage.setItem('homepageBg', 'Some Other BG');
+
+    fakeTime(2026, 0, 5, 12, 0);
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+    expect(localStorage.getItem('homepageBg')).toBe('Some Other BG');
+
+    vi.setSystemTime(new Date(2026, 0, 5, 19, 0, 0, 0));
+    checkTodSide();
+
+    expect(localStorage.getItem('homepageBg')).toBe('Night BG 1');
+  });
+
+  it('retries a boundary whose write was rejected instead of consuming it', async () => {
+    fakeTime(2026, 0, 5, 12, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+
+    const restoreWrites = failStorageWritesFor('homepageBg');
+    try {
+      vi.setSystemTime(new Date(2026, 0, 5, 19, 0, 0, 0));
+      checkTodSide();
+      expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+    } finally {
+      restoreWrites();
+    }
+    await flushDeferredFailureSync();
+
+    checkTodSide();
     expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
   });
 
@@ -1351,7 +1391,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
   });
 
   it('corrects a wrong-side background once on a fresh load', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Night BG 1');
     const previous = window.BackgroundRotation;
 
@@ -1367,7 +1407,7 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
   });
 
   it('does not churn homepageBg on a fresh load when the displayed background already matches the side', () => {
-    fakeTime(2026, 0, 5, 12, 0, 0);
+    fakeTime(2026, 0, 5, 12, 0);
     localStorage.setItem('homepageBg', 'Day BG 1');
     const previous = window.BackgroundRotation;
 
@@ -1546,6 +1586,19 @@ describe('Background rotation time-of-day controls (issue #1234)', () => {
     expect(localStorage.getItem('bgRotationDayTime')).toBe('13:00');
     expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
     expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a cleared boundary input back to its default before saving', () => {
+    localStorage.setItem('bgRotationDayTime', '13:00');
+    BackgroundRotation.syncUI();
+    expect(dayInput.value).toBe('13:00');
+
+    dayInput.value = '';
+    dayInput.dispatchEvent(new Event('change'));
+
+    expect(dayInput.value).toBe('07:00');
+    expect(BackgroundRotation.getDayTime()).toBe('07:00');
+    expect(localStorage.getItem('bgRotationDayTime')).toBe('07:00');
   });
 
   it('rolls the day boundary input back and toasts when the write fails', async () => {

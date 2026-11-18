@@ -197,7 +197,7 @@ window.i18n.__registerLocale('es', {
   bgRotationHourly: 'Cada hora en punto',
   bgRotationDaily: 'Diario',
   bgRotationNewtab: 'Con cada pestaña nueva',
-  bgRotationTod: 'Por hora del día',
+  bgRotationTod: 'Según la hora del día',
   bgRotationDayTime: 'El día comienza a las',
   bgRotationNightTime: 'La noche comienza a las',
   bgRotationDayPicker: 'Fondos de día',
