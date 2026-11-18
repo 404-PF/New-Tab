@@ -338,6 +338,7 @@ const OfflineMode = (function() {
       '厘米': 'cm',
       '毫米': 'mm',
       '英里': 'mi',
+      'mile': 'mi', 'miles': 'mi',
       '英尺': 'ft', '尺': 'ft',
       '英寸': 'in',
       '码': 'yd',

@@ -13,6 +13,17 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse('help').content.toLowerCase()).toContain('offline');
   });
 
+  it.each([
+    '5 km to miles',
+    '10 km to miles',
+    '100 F to C',
+    '5 公里 to 英里',
+    '10 公里 to 英里',
+    '100 华氏度 to 摄氏度'
+  ])('converts the help-text example %s successfully', query => {
+    expect(OfflineMode.getResponse(query)).toMatchObject({ success: true, mode: 'offline' });
+  });
+
   it('uses the active language for offline acknowledgements', () => {
     const originalI18n = window.i18n;
     window.i18n = { ...(originalI18n || {}), currentLanguage: () => 'zh' };
