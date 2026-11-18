@@ -1367,6 +1367,81 @@ describe('Background rotation "Time of day" cadence (issue #1234)', () => {
     expect(localStorage.getItem('homepageBg')).toMatch(/^Night BG/);
   });
 
+  it('records a crossing into an empty side so the next crossing still advances', () => {
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1', 'Day BG 2']));
+    localStorage.setItem('bgRotationNightSelection', '[]');
+    fakeTime(2026, 0, 5, 12, 0);
+    localStorage.setItem('homepageBg', 'Day BG 1');
+    BackgroundRotation.start();
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+
+    // Nothing to write on the empty night side, but the crossing must be
+    // observed or the following day crossing is skipped.
+    vi.setSystemTime(new Date(2026, 0, 5, 19, 0, 0));
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+
+    vi.setSystemTime(new Date(2026, 0, 6, 7, 0, 0));
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 2');
+  });
+
+  it('retries a rejected startup background write instead of consuming the side', async () => {
+    fakeTime(2026, 0, 5, 12, 0);
+    localStorage.setItem('homepageBg', 'Night BG 1');
+
+    const restoreWrites = failStorageWritesFor('homepageBg');
+    try {
+      BackgroundRotation.start();
+      expect(localStorage.getItem('homepageBg')).toBe('Night BG 1');
+    } finally {
+      restoreWrites();
+    }
+    await flushDeferredFailureSync();
+
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Day BG/);
+  });
+
+  it('retries a startup write whose asynchronous failure rolled it back', async () => {
+    fakeTime(2026, 0, 5, 12, 0);
+    localStorage.setItem('homepageBg', 'Night BG 1');
+
+    const restoreWrites = failStorageWritesFor('homepageBg', 'async');
+    try {
+      BackgroundRotation.start();
+    } finally {
+      restoreWrites();
+    }
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+    expect(localStorage.getItem('homepageBg')).toBe('Night BG 1');
+
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toMatch(/^Day BG/);
+  });
+
+  it('keeps a retry path when a shared-singleton startup write is rejected', () => {
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Day BG 1']));
+    fakeTime(2026, 0, 5, 12, 0);
+    localStorage.setItem('homepageBg', 'Some Other BG');
+
+    const restoreWrites = failStorageWritesFor('homepageBg');
+    try {
+      BackgroundRotation.start();
+      expect(localStorage.getItem('homepageBg')).toBe('Some Other BG');
+    } finally {
+      restoreWrites();
+    }
+
+    const checkTodSide = VisibilityIntervalMock.mock.calls[0][0];
+    checkTodSide();
+    expect(localStorage.getItem('homepageBg')).toBe('Day BG 1');
+  });
+
   it('arms no boundary timer when the combined pools hold a single background', () => {
     localStorage.setItem('bgRotationDaySelection', JSON.stringify(['Day BG 1']));
     localStorage.setItem('bgRotationNightSelection', JSON.stringify(['Day BG 1']));

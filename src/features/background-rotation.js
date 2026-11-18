@@ -387,20 +387,26 @@
   // belongs to that side's pool. Runs whenever the 'tod' cadence (re)starts
   // — fresh load, enable, settings change, import — so a background from
   // the wrong side is corrected without waiting for the next boundary.
-  function applyActiveSideBackground() {
+  // Returns 'skipped' when no write was needed, 'accepted' for a successful
+  // write, or 'rejected' for a write the storage bridge refused. The side is
+  // tagged on the write so an async failure can un-consume the boundary.
+  function applyActiveSideBackground(side) {
     const pool = getActivePool();
-    if (pool.length === 0) return;
+    if (pool.length === 0) return 'skipped';
     const current = readHomepageBg();
-    if (current && pool.some(function (bg) { return bg.id === current; })) return;
-    advanceBackground();
+    if (current && pool.some(function (bg) { return bg.id === current; })) return 'skipped';
+    return advanceBackground(side) ? 'accepted' : 'rejected';
   }
 
   // Force the next advance past the background already on screen: the two
   // pools may overlap across a boundary, so the (re)shuffled head can land
-  // on the displayed entry.
+  // on the displayed entry. Returns true when the caller can commit the
+  // boundary — either a write was accepted, or the side has an empty pool
+  // and there is nothing to write. A rejected write returns false so the
+  // boundary stays available for a later retry.
   function advancePastShownBackground(side) {
     const pool = getActivePool();
-    if (pool.length === 0) return false;
+    if (pool.length === 0) return true;
     if (shuffledPool.length === 0 || poolChanged(pool)) {
       shuffledPool = shuffleArray(pool);
       poolIndex = 0;
@@ -415,24 +421,33 @@
     if (!loadEnabled() || loadInterval() !== TOD_INTERVAL_KEY) return;
     const side = getScheduledSide();
     if (side === lastScheduledSide) return;
-    // Commit the boundary only once the swap write is accepted; a rejected
-    // write must leave the boundary available for a later check to retry.
+    // Commit the boundary when the crossing is observed: an empty side has
+    // nothing to write, while a rejected write stays retryable.
     if (!advancePastShownBackground(side)) return;
     lastScheduledSide = side;
   }
 
   function startTodRotation() {
-    lastScheduledSide = getScheduledSide();
-    applyActiveSideBackground();
+    const side = getScheduledSide();
+    // Record the side only after the startup write is accepted, or when no
+    // write was needed. A rejected write leaves the boundary open so a later
+    // check can retry; an async failure clears it in handleHomepageBgSaveFailure.
+    const startupResult = applyActiveSideBackground(side);
+    if (startupResult !== 'rejected') {
+      lastScheduledSide = side;
+    }
     // A lone background shared by both sides can never produce a swap, but
     // an explicit empty side still needs the timer to put the other side's
-    // single background on screen when the boundary is crossed.
+    // single background on screen when the boundary is crossed. When a
+    // startup write was attempted, keep the timer as the retry path even in
+    // the shared-singleton case, so a failed write can still be corrected.
     const dayPool = getSideBackgrounds('day');
     const nightPool = getSideBackgrounds('night');
     const ids = new Set();
     dayPool.forEach(function (bg) { ids.add(bg.id); });
     nightPool.forEach(function (bg) { ids.add(bg.id); });
-    if (ids.size === 0 || (ids.size === 1 && dayPool.length > 0 && nightPool.length > 0)) return;
+    const noSwapPossible = ids.size === 0 || (ids.size === 1 && dayPool.length > 0 && nightPool.length > 0);
+    if (startupResult === 'skipped' && noSwapPossible) return;
     if (window.VisibilityInterval) {
       rotationTimer = new window.VisibilityInterval(function () {
         checkTodSide();
