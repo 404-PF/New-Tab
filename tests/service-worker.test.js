@@ -968,4 +968,38 @@ describe('todo reminder notification actions (issue #1233)', () => {
       setSpy.mockRestore();
     }
   });
+
+  it('keeps the reminder notification available when the Snooze write fails', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'plain', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+    const before = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      try {
+        if (callback) callback();
+      } finally {
+        chrome.runtime.lastError = null;
+      }
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 1);
+      await flushAction();
+
+      // The failed snooze persist must leave the banner in place so the action
+      // can be retried, and must not leave partial state or an alarm behind.
+      expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+      const after = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+      expect(after).toEqual(before);
+      expect(chrome.alarms._alarms['todoSnooze_plain']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
 });
