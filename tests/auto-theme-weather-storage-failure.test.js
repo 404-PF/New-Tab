@@ -85,6 +85,7 @@ beforeEach(() => {
 
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
   visibilityIntervals.length = 0;
+  document.body.classList.remove('light-theme');
 
   const toggle = document.getElementById('auto-theme-toggle');
   toggle.checked = false;
@@ -123,7 +124,12 @@ beforeEach(() => {
   global.fetch = vi.fn(() => Promise.reject(new Error('network disabled in tests')));
 
   window.loadTheme = () => localStorage.getItem('theme');
-  window.applyTheme = vi.fn();
+  // Mirror the real applyTheme's body-class toggle so toast.js's
+  // featureToggleControlDesynced theme gate behaves like it does in
+  // production when a theme write is rejected (#1242).
+  window.applyTheme = vi.fn(() => {
+    document.body.classList.toggle('light-theme', localStorage.getItem('theme') === 'light');
+  });
   window.showToast = vi.fn();
 });
 
@@ -147,6 +153,7 @@ afterEach(async () => {
   delete window.showToast;
   delete window.applyTheme;
   delete window.loadTheme;
+  delete window.commitTheme;
 });
 
 describe('auto-theme scheduler reports rejected writes (#1081)', () => {
@@ -458,5 +465,126 @@ describe('weather settings report rejected writes (#1081)', () => {
     expect(input.value).toBe('Paris');
     expect(window.showToast).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+  });
+});
+
+describe('scheduled theme boundary survives rejected writes (#1242)', () => {
+  // The schedule comes from the current clock, so seed it with one accepted
+  // write to learn the scheduled theme, then point storage at the other one
+  // so the next boundary crossing must write. The disable/enable refresh
+  // first resets the module-private lastScheduledTheme left by earlier specs.
+  function seedDisagreement() {
+    localStorage.setItem('autoTheme', 'false');
+    window.refreshAutoTheme();
+    localStorage.setItem('autoTheme', 'true');
+    localStorage.setItem('autoThemeLightTime', '07:00');
+    localStorage.setItem('autoThemeDarkTime', '19:00');
+    window.refreshAutoTheme();
+    const scheduled = localStorage.getItem('theme');
+    const other = scheduled === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', other);
+    return { scheduled, other };
+  }
+
+  // Re-saving the current light time resets lastScheduledTheme and re-runs
+  // checkAndApply without changing the schedule — the same path a user
+  // editing the light time takes.
+  function crossBoundary() {
+    const lightInput = document.getElementById('auto-theme-light-time');
+    lightInput.value = '07:00';
+    lightInput.dispatchEvent(new Event('change'));
+  }
+
+  // Stand in for settings.js's commitTheme, which is not injected in this
+  // file, so a radio change exercises auto-theme's manual-override handler.
+  function commitManualTheme(theme) {
+    window.commitTheme = vi.fn((selected) => {
+      localStorage.setItem('theme', selected);
+      window.applyTheme();
+      return true;
+    });
+    const radio = document.querySelector('input[name="theme"][value="' + theme + '"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  it('a sync-rejected scheduled theme write keeps the boundary pending and toasts once', () => {
+    const { scheduled, other } = seedDisagreement();
+    const restore = failWriteFor('theme');
+    crossBoundary();
+
+    // The bridge rejected the write, so storage still holds the old theme
+    // and the boundary must stay unconsumed for the next tick to retry.
+    expect(localStorage.getItem('theme')).toBe(other);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    restore();
+    window.refreshAutoTheme();
+
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('an async-rejected scheduled theme write re-arms the boundary and toasts once', async () => {
+    const { scheduled, other } = seedDisagreement();
+    const restore = failWriteFor('theme', 'async');
+    crossBoundary();
+
+    // The bridge accepted the write optimistically; the failure only arrives
+    // through runtime.lastError in the chrome.storage callback.
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+    expect(window.showToast).not.toHaveBeenCalled();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // The rollback reverts storage, toast.js resyncs the UI and toasts once,
+    // and the boundary is re-armed so the switch is not lost until the next
+    // real schedule boundary.
+    expect(localStorage.getItem('theme')).toBe(other);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+    expect(window.showToast).toHaveBeenCalledWith(SAVE_ERROR_MESSAGE, 'error');
+
+    restore();
+    window.refreshAutoTheme();
+
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+    expect(window.showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a successful manual override when the stale scheduled write fails later (#1242)', async () => {
+    const { other } = seedDisagreement();
+    const restore = failWriteFor('theme', 'async');
+    crossBoundary();
+    // The scheduled write's failure is already queued; let the manual write
+    // land so the late failure arrives after a newer successful override.
+    restore();
+
+    commitManualTheme(other);
+    expect(localStorage.getItem('theme')).toBe(other);
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    restore();
+    window.refreshAutoTheme();
+
+    // The late failure must not re-arm the boundary, so the next tick keeps
+    // the manual theme instead of reapplying the rejected scheduled theme.
+    expect(localStorage.getItem('theme')).toBe(other);
+  });
+
+  it('a manual theme after a rejected scheduled write cancels the pending retry (#1242)', () => {
+    const { other } = seedDisagreement();
+    const restore = failWriteFor('theme');
+    crossBoundary();
+    expect(localStorage.getItem('theme')).toBe(other);
+
+    restore();
+    commitManualTheme(other);
+    window.refreshAutoTheme();
+
+    expect(localStorage.getItem('theme')).toBe(other);
   });
 });

@@ -11,6 +11,11 @@ const STORAGE_KEYS = ['autoTheme', 'autoThemeLightTime', 'autoThemeDarkTime', 't
 
 const restorers = [];
 let visibilityIntervals = [];
+let themeEvents = [];
+
+function collectThemeChanged(event) {
+  themeEvents.push(event.detail.theme);
+}
 
 function failWriteFor(key, mode) {
   const restore = failStorageWritesFor(key, mode);
@@ -51,8 +56,11 @@ beforeAll(() => {
 
 beforeEach(() => {
   visibilityIntervals = [];
+  themeEvents = [];
+  window.addEventListener('themeChanged', collectThemeChanged);
 
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  document.body.classList.remove('light-theme');
 
   const toggle = document.getElementById('auto-theme-toggle');
   toggle.checked = false;
@@ -62,7 +70,12 @@ beforeEach(() => {
   document.querySelectorAll('.theme-option').forEach((label) => label.classList.remove('auto-active'));
 
   window.loadTheme = () => localStorage.getItem('theme');
-  window.applyTheme = vi.fn();
+  window.resolveTheme = (theme) => theme;
+  // Mirror the real applyTheme's body-class toggle so the optimistic write and
+  // the rollback change the DOM the way production does (#1242).
+  window.applyTheme = vi.fn(() => {
+    document.body.classList.toggle('light-theme', localStorage.getItem('theme') === 'light');
+  });
 });
 
 afterEach(async () => {
@@ -74,8 +87,10 @@ afterEach(async () => {
     const restore = restorers.pop();
     restore();
   }
+  window.removeEventListener('themeChanged', collectThemeChanged);
   delete window.applyTheme;
   delete window.loadTheme;
+  delete window.resolveTheme;
 });
 
 describe('auto-theme fallback async rollback without toast.js (#1081)', () => {
@@ -137,5 +152,49 @@ describe('auto-theme fallback async rollback without toast.js (#1081)', () => {
     expect(toggle.checked).toBe(true);
     expect(visibilityIntervals).toHaveLength(1);
     expect(visibilityIntervals[0].destroyed).toBe(false);
+  });
+
+  it('re-applies the rolled-back theme and re-arms the scheduler after an async rejected theme write (#1242)', async () => {
+    // Learn the scheduled theme with one accepted write, then point storage
+    // at the other one so the next boundary crossing must write. The
+    // disable/enable refresh resets the boundary left by earlier specs.
+    localStorage.setItem('autoTheme', 'false');
+    window.refreshAutoTheme();
+    localStorage.setItem('autoTheme', 'true');
+    localStorage.setItem('autoThemeLightTime', '07:00');
+    localStorage.setItem('autoThemeDarkTime', '19:00');
+    window.refreshAutoTheme();
+    const scheduled = localStorage.getItem('theme');
+    const other = scheduled === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', other);
+
+    const restore = failWriteFor('theme', 'async');
+    // Re-saving the current light time resets lastScheduledTheme and re-runs
+    // checkAndApply without changing the schedule.
+    const lightInput = document.getElementById('auto-theme-light-time');
+    lightInput.value = '07:00';
+    lightInput.dispatchEvent(new Event('change'));
+
+    // Accepted optimistically until the bridge callback reports the failure.
+    expect(localStorage.getItem('theme')).toBe(scheduled);
+    window.applyTheme.mockClear();
+
+    await flushDeferredFailureSync();
+    await flushDeferredFailureSync();
+
+    // Without toast.js the fallback listener owns the resync: the bridge
+    // rolled its cache back and applyTheme must re-run so radios/body class
+    // match storage instead of keeping the optimistic theme.
+    expect(localStorage.getItem('theme')).toBe(other);
+    expect(window.applyTheme).toHaveBeenCalledTimes(1);
+    expect(document.body.classList.contains('light-theme')).toBe(other === 'light');
+    // The restored effective theme must reach event listeners (e.g. AI chat)
+    // so they do not keep the rejected optimistic theme.
+    expect(themeEvents[themeEvents.length - 1]).toBe(other);
+
+    // The boundary was re-armed, so the next tick persists the switch.
+    restore();
+    window.refreshAutoTheme();
+    expect(localStorage.getItem('theme')).toBe(scheduled);
   });
 });
