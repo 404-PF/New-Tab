@@ -100,4 +100,49 @@ describe('interactive background', () => {
     canvas.remove();
     container.remove();
   });
+
+  it('resizes the canvas when animation resumes after a hidden resize', () => {
+    const context = {
+      setTransform: vi.fn(), clearRect: vi.fn(), fillRect: vi.fn(), beginPath: vi.fn(),
+      arc: vi.fn(), fill: vi.fn(), drawImage: vi.fn(), createRadialGradient: () => ({ addColorStop: vi.fn() })
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1);
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    let hidden = false;
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    const container = document.getElementById('background-container');
+    let width = 800;
+    let height = 600;
+    container.getBoundingClientRect = () => ({ width, height, left: 0, top: 0 });
+    const canvas = document.createElement('canvas');
+    canvas.id = 'bg-interactive';
+    document.body.appendChild(canvas);
+
+    injectScript('src/features/interactive-background.js');
+    window._interactiveBackground.apply('interactive-aurora');
+    expect(canvas.style.width).toBe('800px');
+
+    // Hide the tab; animation stops and the resize listener is unbound.
+    hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // Resize while hidden — the canvas keeps its old dimensions.
+    width = 1200;
+    height = 900;
+    window.dispatchEvent(new Event('resize'));
+    expect(canvas.style.width).toBe('800px');
+
+    // Returning to the tab must re-size the canvas before the next frame.
+    hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(canvas.style.width).toBe('1200px');
+    expect(canvas.style.height).toBe('900px');
+
+    window._interactiveBackground.stop();
+    vi.restoreAllMocks();
+    canvas.remove();
+    container.remove();
+  });
 });

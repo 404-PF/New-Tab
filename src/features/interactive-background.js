@@ -254,6 +254,7 @@
       return;
     }
 
+    resizeCanvas();
     bindAnimationListeners();
 
     if (containerEl) {
