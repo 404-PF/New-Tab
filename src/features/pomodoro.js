@@ -271,9 +271,12 @@
     }
   }
 
-  function getNextPhase() {
+  function getNextPhase(shouldCountSession) {
     const settings = loadSettings();
     if (state.phase === PHASES.WORK) {
+      if (shouldCountSession === false) {
+        return PHASES.SHORT_BREAK;
+      }
       state.sessionsCompleted++;
       if (state.sessionsCompleted >= settings.sessionsBeforeLongBreak) {
         state.sessionsCompleted = 0;
@@ -515,7 +518,8 @@
   }
 
   function advancePhase(opts) {
-    const nextPhase = getNextPhase();
+    const shouldRecord = !opts || opts.record !== false;
+    const nextPhase = getNextPhase(shouldRecord);
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
     state.appliedPhaseDuration = state.timeRemaining;
@@ -532,9 +536,11 @@
     const isWork = state.phase === PHASES.WORK;
     const i18n = window.i18n;
     if (isWork) {
-      notifyWorkComplete(getTodoText(state.todoId), i18n);
-      if (shouldRecord) tryRecordWorkSession(state.todoId);
-    } else {
+      if (shouldRecord) {
+        notifyWorkComplete(getTodoText(state.todoId), i18n);
+        tryRecordWorkSession(state.todoId);
+      }
+    } else if (shouldRecord) {
       notifyBreakComplete(i18n);
     }
     advancePhase(opts);

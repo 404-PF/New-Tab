@@ -122,6 +122,43 @@ describe('Pomodoro pause -> reset/skip regression (issue #626)', () => {
   });
 });
 
+describe('Pomodoro skip is not a completed session (issue #1263)', () => {
+  it('emits no completion notification and does not advance the long-break counter', async () => {
+    vi.useFakeTimers();
+    const prevVI = window.VisibilityInterval;
+    window.VisibilityInterval = null;
+    chrome.notifications._notifications = {};
+    try {
+      window.savePomodoroDurations({
+        enabled: true,
+        workDuration: 25,
+        shortBreakDuration: 5,
+        longBreakDuration: 15,
+        sessionsBeforeLongBreak: 4
+      });
+      window.startPomodoro('todo-1');
+      for (let index = 0; index < 8; index++) {
+        await Promise.resolve();
+      }
+      expect(JSON.parse(localStorage.getItem('pomodoro_state')).sessionsCompleted).toBe(0);
+
+      document.querySelector('.pomodoro-skip-btn').click();
+      for (let index = 0; index < 8; index++) {
+        await Promise.resolve();
+      }
+
+      expect(Object.keys(chrome.notifications._notifications)).toHaveLength(0);
+
+      const afterSkip = JSON.parse(localStorage.getItem('pomodoro_state'));
+      expect(afterSkip.phase).toBe('shortBreak');
+      expect(afterSkip.sessionsCompleted).toBe(0);
+    } finally {
+      window.VisibilityInterval = prevVI;
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('Pomodoro leadership election regression (issue #763)', () => {
   function createSharedStorage() {
     const values = new Map();
