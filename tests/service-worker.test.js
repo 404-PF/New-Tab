@@ -827,6 +827,48 @@ describe('todo reminder notification actions (issue #1233)', () => {
     expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
   });
 
+  it('does not skip the next occurrence when a page save already advanced a recurring todo', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'weekly',
+        text: 'Weekly report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: 'weekly'
+      }
+    ]);
+    await checkReminders();
+
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let clobbered = false;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      if (items.todos && !clobbered) {
+        clobbered = true;
+        const pageList = JSON.parse(items.todos);
+        pageList.push({ id: 'page-added', text: 'Added in page', completed: false });
+        return originalSet({ todos: JSON.stringify(pageList) }, callback);
+      }
+      return originalSet(items, callback);
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_weekly', 0);
+      await flushAction();
+
+      const data = await chrome.storage.local.get('todos');
+      const todos = JSON.parse(data.todos);
+      const weekly = todos.find((t) => t.id === 'weekly');
+      expect(weekly.dueDate).toBe('2026-08-18');
+      expect(weekly.completed).toBe(false);
+      expect(todos.find((t) => t.id === 'page-added')).toBeTruthy();
+      expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
   it('snoozes the reminder and re-fires it after the snooze expires past grace', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // 30 s before the end-of-day due instant: inside the reminder window, so

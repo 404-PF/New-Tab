@@ -542,6 +542,7 @@ async function markTodoDoneFromNotification(todoId) {
   const update = { todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil, warnedInvalidDueDates };
 
   let todosJson = (await getFromStorage(['todos'])).todos;
+  let advancedDueDate = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const todos = parseTodosPayload(todosJson, null);
     let todosChanged = false;
@@ -549,7 +550,10 @@ async function markTodoDoneFromNotification(todoId) {
       const todo = todos.find((t) => t && t.id === todoId && !t.completed);
       if (todo) {
         if (RECURRENCE_VALUES.includes(todo.recurrence)) {
-          todo.dueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+          if (todo.dueDate !== advancedDueDate) {
+            advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+            todo.dueDate = advancedDueDate;
+          }
           todo.completed = false;
           todo.completedAt = null;
           if (Array.isArray(todo.subtasks)) {
