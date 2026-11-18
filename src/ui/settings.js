@@ -2570,6 +2570,20 @@ function resumeSemanticIfNeeded() {
       );
     } catch { alreadyReady = false; }
     if (alreadyReady) return;
+    // Do not relaunch while a load is already live: initNotesSemanticSetting
+    // can re-run mid-download (toast rollback, post-import initSettings) and
+    // would otherwise bump semanticStartGeneration and discard the explicit
+    // download completion (PR #1187). Mirrors the guard in
+    // requestSemanticModelLoad.
+    let serviceLoading = false;
+    try {
+      serviceLoading = !!(
+        window.EmbeddingService
+        && typeof window.EmbeddingService.getStatus === 'function'
+        && window.EmbeddingService.getStatus().status === 'loading'
+      );
+    } catch { serviceLoading = false; }
+    if (serviceLoading) return;
     const downloadState = readSemanticDownloadState();
     if (downloadState !== 'loading') return;
     shouldLaunch = true;

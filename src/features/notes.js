@@ -241,8 +241,11 @@
     try {
       if (_dragSourceId) return true;
       const active = document.activeElement;
-      if (active && active.classList && active.classList.contains('note-grip')
-        && active.closest('#notes-list')) return true;
+      // Any focus inside the list blocks: clearing innerHTML drops focus
+      // to body (PR #1187). Grip-focus was the first case; preview/delete/
+      // tag buttons focused via Tab hold the same risk after a
+      // blur-triggered rerank, so block on any descendant, not just grips.
+      if (active && typeof active.closest === 'function' && active.closest('#notes-list')) return true;
     } catch { /* ignore */ }
     return false;
   }
@@ -955,6 +958,10 @@
   function updateNoteText(id, text) {
     const note = notes.find(n => n.id === id);
     if (!note) return;
+    // Perf (PR #1187): handleNotesBlur calls this on every blur even when
+    // nothing changed, and purging the cached vector forces a UI-thread
+    // re-embed on the next search. Skip the no-op write entirely.
+    if (note.text === text) return;
     const previousNotes = notes.map(n => ({ ...n }));
     note.text = text;
     note.updatedAt = new Date().toISOString();

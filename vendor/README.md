@@ -36,7 +36,9 @@ in `devDependencies`, so `npm ci` installs the integrity-verified tree from
 
 The script copies the ESM builds + WASM into the layout above and verifies
 `embedding-loader.mjs` resolves. Tested with `@huggingface/transformers`
-4.3.2 + `onnxruntime-web` 1.31.1; if the copy script cannot locate the ESM
+4.3.2 + `onnxruntime-web` 1.31.0-dev.20260914-8d85527a0 (+ `onnxruntime-common`
+1.31.0-dev.20260911-2a43ec07e, matching the nested tree transformers resolves;
+see `backgrounds/tools/vendor-embeddings.js`); if the copy script cannot locate the ESM
 builds under `node_modules`, update the candidate filenames in
 `backgrounds/tools/vendor-embeddings.js` to match the installed layout.
 
