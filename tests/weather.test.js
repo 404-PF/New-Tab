@@ -447,6 +447,54 @@ describe('Weather widget', () => {
     expect(document.querySelector('.weather-temp').textContent).toContain('19');
   });
 
+  it('does not fall back to a stale auto-location cache when the weather fetch fails (#1264)', async () => {
+    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    const cache = JSON.parse(localStorage.getItem('weatherCache'));
+    cache.timestamp = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    localStorage.setItem('weatherCache', JSON.stringify(cache));
+
+    global.fetch = async () => {
+      throw new Error('Network unavailable');
+    };
+
+    const result = await window.WeatherWidget.refresh(true);
+
+    expect(result.ok).toBe(false);
+    expect(document.querySelector('.weather-temp')).toBeNull();
+    expect(document.querySelector('.weather-error')).not.toBeNull();
+  });
+
+  it('does not fall back to a stale manual-city cache when geocoding fails (#1264)', async () => {
+    const manualInput = document.getElementById('weather-manual-city');
+    const originalInputValue = manualInput.value;
+    try {
+      localStorage.setItem('weatherEnabled', 'true');
+      localStorage.setItem('weatherUnit', 'celsius');
+      localStorage.setItem('weatherLocationMode', 'manual');
+      localStorage.setItem('weatherManualCity', 'Paris');
+      manualInput.value = 'Paris';
+      localStorage.setItem('weatherCache', JSON.stringify({
+        data: createWeatherDataWithTemperature(19),
+        timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
+        locationMode: 'manual',
+        manualCity: 'Paris',
+        locationName: 'Paris'
+      }));
+
+      global.fetch = async () => {
+        throw new Error('Network unavailable');
+      };
+
+      const result = await window.WeatherWidget.refresh();
+
+      expect(result.ok).toBe(false);
+      expect(document.querySelector('.weather-temp')).toBeNull();
+      expect(document.querySelector('.weather-error')).not.toBeNull();
+    } finally {
+      manualInput.value = originalInputValue;
+    }
+  });
+
   it('runs the refresh pipeline when the widget toggle is off but ignoreWidgetToggle is set', async () => {
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');

@@ -499,8 +499,9 @@
         try {
           location = await geocodeCity(manualCity.trim());
         } catch (e) {
-          // Try to use stale cache as fallback only if it matches current settings
-          if (cache && cache.data && isCacheMatchingSettings(cache)) {
+          // Fall back to the cache only while it is within its TTL; older data
+          // must not be rendered as current (#1264).
+          if (isCacheValid(cache) && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, unit);
             return { ok: true, data: cache.data, locationName: cache.locationName };
           }
@@ -552,9 +553,10 @@
       return { ok: true, data: weatherData, locationName: newCache.locationName };
     } catch (e) {
       console.error('Weather refresh failed:', e);
-      // A cached auto-location result is only a safe fallback after the
-      // current geolocation has been confirmed to be within the tolerance.
-      if (cache && cache.data && isCacheMatchingSettings(cache, location)) {
+      // A cached auto-location result is only a safe fallback while it is
+      // within its TTL and the current geolocation has been confirmed to be
+      // within the tolerance (#1264).
+      if (isCacheValid(cache) && isCacheMatchingSettings(cache, location)) {
         renderWeather(cache.data, cache.locationName, unit);
         return { ok: true, data: cache.data, locationName: cache.locationName };
       }
