@@ -1160,4 +1160,48 @@ describe('remove from folder storage failures (#1137)', () => {
       if (strayIcon) strayIcon.remove();
     }
   });
+
+  it('repaints a renamed folder tile after an async rejected write', () => {
+    localStorage.setItem('appOrder', JSON.stringify(['folder-1']));
+    localStorage.setItem('appFolders', JSON.stringify([
+      { id: 'folder-1', name: 'Folder', apps: [] }
+    ]));
+    restoreWrites = failStorageWritesFor('appFolders', 'async');
+
+    const grid = createElement('div', 'app-grid');
+    const tile = document.createElement('a');
+    tile.id = 'folder-1';
+    tile.className = 'app-icon folder-icon';
+    tile.innerHTML = '<div class="icon"></div><span class="app-name">Renamed</span>';
+    grid.appendChild(tile);
+
+    const refreshFolderUI = vi.fn();
+    const renderFolderAppsInPopup = vi.fn();
+
+    try {
+      withWindowOverride('AppFolders', {
+        currentFolderId: null,
+        renderFolderAppsInPopup,
+        refreshFolderUI
+      }, () => {
+        // Optimistic rename: storage holds the new name and the tile was
+        // repainted from it, but chrome.storage rejects the write a macrotask
+        // later and the bridge rolls its cache back to 'Folder'.
+        expect(window.AppGridState.renameFolder('folder-1', 'Renamed')).toBe(true);
+        expect(window.AppGridState.getFolders()[0].name).toBe('Renamed');
+
+        vi.advanceTimersByTime(1);
+        expect(window.AppGridState.getFolders()[0].name).toBe('Folder');
+        vi.advanceTimersByTime(1);
+
+        // No popup is open (currentFolderId is null), so the popup-based
+        // refresh cannot repaint the tile: the rollback must refresh by id
+        // because the displayed name disagrees with storage.
+        expect(renderFolderAppsInPopup).toHaveBeenCalled();
+        expect(refreshFolderUI).toHaveBeenCalledWith('folder-1');
+      });
+    } finally {
+      grid.remove();
+    }
+  });
 });
