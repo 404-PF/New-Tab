@@ -220,13 +220,33 @@
     "message": "매일",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "낮 배경",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "낮 시작 시각",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "새 탭마다",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "밤 배경",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "밤 시작 시각",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "회전할 배경 선택",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "시간대",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "업로드한 배경",

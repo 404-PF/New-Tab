@@ -220,13 +220,33 @@
     "message": "每日",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "白天背景",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "白天开始于",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "每个新标签页",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "夜晚背景",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "夜晚开始于",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "选择要轮播的背景",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "昼夜",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "上传的背景",

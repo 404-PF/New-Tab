@@ -220,13 +220,33 @@
     "message": "Diariamente",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "Planos de fundo para o dia",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "O dia começa às",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "A cada nova aba",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "Planos de fundo para a noite",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "A noite começa às",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "Selecionar fundos para rotacionar",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "Horário do dia",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "Seus envios",

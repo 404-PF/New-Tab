@@ -34,6 +34,10 @@
     'bgRotationEnabled',
     'bgRotationInterval',
     'bgRotationSelection',
+    'bgRotationDayTime',
+    'bgRotationNightTime',
+    'bgRotationDaySelection',
+    'bgRotationNightSelection',
     'todos',
     'todoEnabled',
     'todoReminderEnabled',
@@ -533,7 +537,8 @@
       }
       // A cleared time input stores ''; skip so the backup stays importable
       // (the import validator rejects empty schedule values).
-      if (val === '' && (key === 'autoThemeLightTime' || key === 'autoThemeDarkTime')) {
+      if (val === '' && (key === 'autoThemeLightTime' || key === 'autoThemeDarkTime' ||
+        key === 'bgRotationDayTime' || key === 'bgRotationNightTime')) {
         return;
       }
       const persistentVal = pickPersistentFields(key, val);
@@ -709,6 +714,12 @@
     bgRotationEnabled: function (v) { return typeof v === 'boolean'; },
     bgRotationInterval: function (v) { return typeof v === 'string' || typeof v === 'number'; },
     bgRotationSelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
+    // Time-of-day rotation schedule (issue #1234): HH:MM boundary times and
+    // per-side pool selections; same time shape as autoThemeLightTime.
+    bgRotationDayTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); },
+    bgRotationNightTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); },
+    bgRotationDaySelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
+    bgRotationNightSelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
     todos: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     todoEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderEnabled: function (v) { return typeof v === 'boolean'; },

@@ -298,13 +298,33 @@
     "message": "Daily",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "Day backgrounds",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "Day starts at",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "Every new tab",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "Night backgrounds",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "Night starts at",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "Select backgrounds to rotate",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "Time of day",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "Your uploads",

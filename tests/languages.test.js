@@ -388,6 +388,27 @@ describe('Background rotation new-tab cadence translations (issue #1173)', () =>
   });
 });
 
+// "Time of day" rotation cadence (issue #1234): the interval option plus the
+// two boundary-time labels and the two side-picker labels ship localized in
+// every supported runtime table and in every chrome.i18n messages.json.
+describe('Background rotation time-of-day cadence translations (issue #1234)', () => {
+  const TOD_TRANSLATION_KEYS = [
+    'bgRotationTod',
+    'bgRotationDayTime',
+    'bgRotationNightTime',
+    'bgRotationDayPicker',
+    'bgRotationNightPicker'
+  ];
+
+  it('defines a localized string for every supported language', () => {
+    expectTranslationKeys(TOD_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('includes every time-of-day key in every _locales messages.json', () => {
+    TOD_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
+  });
+});
+
 describe('AI translations', () => {
   // Inspect getTranslations() directly rather than t(): t() silently falls
   // back to English when a locale lacks the key, which would hide a stale
