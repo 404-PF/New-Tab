@@ -546,6 +546,18 @@
           return true;
         }
       } else if (def.cssClass && el.classList.contains(def.cssClass)) {
+        // Escape must fully reset the Add App modal, not just hide it: the URL
+        // input keeps focus, so a later Enter would still save against a stale
+        // editingAppId. Blur it and route through the close hook that clears
+        // that state and the pending preview.
+        if (def.selector === '#add-app-modal') {
+          const urlInput = document.getElementById('add-app-url');
+          if (urlInput) urlInput.blur();
+          if (typeof window.closeAddAppModal === 'function') {
+            window.closeAddAppModal();
+            return true;
+          }
+        }
         // Route weather modal closing through WeatherApp.close() when available
         if (def.selector === '#weather-app-modal' && typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
           window.WeatherApp.close();

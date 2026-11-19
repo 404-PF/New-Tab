@@ -419,6 +419,32 @@ describe('Shortcuts - executeAction', () => {
     expect(() => Shortcuts.executeAction('closeModal')).not.toThrow();
   });
 
+  it('closeModal resets the Add App modal through its close hook and blurs the URL input', () => {
+    const modal = document.createElement('div');
+    modal.id = 'add-app-modal';
+    modal.classList.add('modal-open');
+    document.body.appendChild(modal);
+
+    const urlInput = document.createElement('input');
+    urlInput.id = 'add-app-url';
+    document.body.appendChild(urlInput);
+    urlInput.focus();
+    expect(document.activeElement).toBe(urlInput);
+
+    const closeAddAppModal = vi.fn();
+    window.closeAddAppModal = closeAddAppModal;
+
+    try {
+      Shortcuts.executeAction('closeModal');
+      expect(closeAddAppModal).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).not.toBe(urlInput);
+    } finally {
+      delete window.closeAddAppModal;
+      modal.remove();
+      urlInput.remove();
+    }
+  });
+
   it('toggleSimpleMode toggles checkbox and calls applySimpleMode', () => {
     let checkbox = document.getElementById('simple-mode-checkbox');
     if (!checkbox) {
