@@ -59,10 +59,10 @@
     'src/features/pomodoro.js',
     'src/features/pomodoro-stats.js',
     // Shared lazy loader for the on-device embedding modules (issue #1186):
-    // settings.js and notes.js delegate to window.EmbeddingScripts with no
-    // local twin (PR #1187: twins drift and trip the duplication gate).
-    // In production this file loads first, so there is one canonical
-    // source list and one in-flight promise.
+    // must execute before settings.js and notes.js, which delegate to
+    // window.EmbeddingScripts with no local twin (PR #1187: twins drift
+    // and trip the duplication gate), so both share one canonical source
+    // list and one in-flight promise.
     'src/ai/embeddings/embedding-scripts.js',
     'src/ui/settings.js',
     'src/ai/conversation-validator.js',

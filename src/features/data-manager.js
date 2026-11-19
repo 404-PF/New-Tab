@@ -289,9 +289,10 @@
 
     // A backup carries the semantic-search opt-in flag but never the model
     // bytes (Cache Storage + vectors are device-local). Prime the transient
-    // download marker BEFORE the initSettings() below so its resume path
-    // decides: same profile (granted/cached) → re-init; fresh profile →
-    // silent reset to off instead of a stuck "Starting…".
+    // download marker BEFORE the initSettings() below so an enabled import
+    // on this device defers to the first query (no silent ~300MB download)
+    // and Settings shows the 'Model not downloaded yet' hint until an
+    // explicit re-toggle warms it.
     if (typeof window.primeNotesSemanticImport === 'function') {
       window.primeNotesSemanticImport();
     }

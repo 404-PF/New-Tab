@@ -116,18 +116,26 @@ describe('PR #1187 Nov 16 follow-ups', () => {
   it('does not relaunch a passive resume while a load is live', async () => {
     localStorage.setItem('notesSemanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'loading');
+    let ensureCalls = 0;
     window.EmbeddingService = {
       isReady: function () { return false; },
       getStatus: function () { return { status: 'loading', progress: 0.3, error: '', modelId: 't' }; },
-      ensureModel: function () { return Promise.resolve({ id: 'harrier-int8' }); },
+      ensureModel: function () {
+        ensureCalls += 1;
+        return Promise.resolve({ id: 'harrier-int8' });
+      },
       cancelLoad: function () {}
     };
     // Ensure any stray passive from a previous test settled.
     for (let i = 0; i < 50 && window.__semanticResumeInFlight && window.__semanticResumeInFlight(); i += 1) {
       await new Promise(function (resolve) { setTimeout(resolve, 10); });
     }
+    const before = ensureCalls;
     window.resumeSemanticIfNeeded();
-    // No passive launch: the in-flight flag stays down synchronously.
+    // No passive launch: the in-flight flag stays down synchronously and
+    // the model load is not relaunched (PR #1187 review).
     expect(window.__semanticResumeInFlight()).toBe(false);
+    await new Promise(function (resolve) { setTimeout(resolve, 50); });
+    expect(ensureCalls).toBe(before);
   });
 });

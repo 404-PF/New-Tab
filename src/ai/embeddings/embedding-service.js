@@ -131,6 +131,10 @@
   // of hanging until the load timeout. Skipped when test hooks take over.
   // A thrown fetch error is environmental (not a 404), so loading proceeds
   // and the script onerror/timeout paths still report.
+  // HEAD checks carry their own timeout: the 20s VENDOR_LOAD_TIMEOUT_MS
+  // below starts only after these resolve, so a stalled HEAD would
+  // otherwise leave the load in 'loading' indefinitely (PR #1187 review).
+  const VENDOR_HEAD_TIMEOUT_MS = 8000;
   function checkVendorPresent() {
     if (getTestHooks()) return Promise.resolve(true);
     let doFetch = null;
@@ -142,16 +146,34 @@
       vendorFileURL('vendor/transformers/transformers.js'),
       vendorFileURL('vendor/onnxruntime-web/ort.web.mjs')
     ];
-    return Promise.all(urls.map(function (url) {
+    function headWithTimeout(url) {
+      let timer = null;
+      const timeout = new Promise(function (_, reject) {
+        timer = setTimeout(function () {
+          reject(new Error('Timed out checking embedding runtime (vendor/)'));
+        }, VENDOR_HEAD_TIMEOUT_MS);
+      });
       // Tri-state: ok → present; 404 → missing; anything else (405 for HEAD,
-      // 5xx, or a thrown fetch error) → unknown, let the script-tag load
-      // attempt decide via its own onerror/timeout paths.
-      return doFetch(url, { method: 'HEAD' }).then(function (res) {
+      // 5xx, timeout, or a thrown fetch error) → unknown, let the script-tag
+      // load attempt decide via its own onerror/timeout paths. Timeouts
+      // resolve to unknown (null), never to missing, so a slow network
+      // cannot falsely report a missing vendor tree.
+      const attempt = doFetch(url, { method: 'HEAD' }).then(function (res) {
         if (res && res.ok) return true;
         if (res && res.status === 404) return false;
         return null;
       }, function () { return null; });
-    })).then(function (results) {
+      return Promise.race([attempt, timeout]).then(function (result) {
+        if (timer) clearTimeout(timer);
+        return result;
+      }, function (err) {
+        if (timer) clearTimeout(timer);
+        // Timeout: treat as unknown, not missing.
+        if (err && err.message && err.message.indexOf('Timed out checking') === 0) return null;
+        return null;
+      });
+    }
+    return Promise.all(urls.map(headWithTimeout)).then(function (results) {
       if (results.indexOf(false) !== -1) {
         throw new Error(
           'Embedding runtime missing under vendor/ (run: node backgrounds/tools/vendor-embeddings.js)'
@@ -562,6 +584,10 @@
     const deleteGeneration = loadGeneration;
     liveProvider = null;
     loadPromise = null;
+    // Signal the in-flight cleanup immediately: liveProvider is already
+    // null so isReady() is false, but without this getStatus() still
+    // reports 'ready' until the async cleanup settles (PR #1187 review).
+    setState('loading', 0);
     const consts = getHarrierConsts();
     let vectorClearFn = null;
     try {

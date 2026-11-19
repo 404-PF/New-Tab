@@ -145,7 +145,11 @@
         });
       });
       return Promise.all(jobs).then(function (scored) {
-        const hasSignal = scored.some(function (s) { return s.cosine !== 0 || s.keyword !== 0; });
+        // Cosine-only signal: keyword matches alone must not count, or a
+        // vector-less search returns numeric _semanticScore values ordered
+        // by keyword score instead of falling back to displayed order
+        // (PR #1187 review).
+        const hasSignal = scored.some(function (s) { return s.cosine !== 0; });
         if (!hasSignal) {
           return keywordResults(notes, q);
         }

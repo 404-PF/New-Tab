@@ -60,9 +60,11 @@ Before committing, verify on a real browser (unpacked extension):
 2. If WASM fails to instantiate (recent ORT builds are threaded and may
    need cross-origin isolation the extension page lacks), try the alternate
    `ort-*.wasm` binaries and `ort.*.mjs` builds, keep the working set, and
-   update `backgrounds/tools/vendor-embeddings.js` candidate lists to match.
-3. Trim `onnxruntime-web/*.wasm` to the confirmed binary before committing
-   (the copy script stages all of them; ~87MB untrimmed).
+   update `backgrounds/tools/vendor-embeddings.js` candidate lists and the
+   `allowedWasm`/`allowedGlue` allow-lists to match.
+3. The copy script ships only the trimmed WASM allow-list (currently the
+   two `ort-wasm-simd-threaded` backends the ESM entries reference);
+   a rerun removes stale extras automatically.
 4. With the network panel open, confirm the Harrier weight fetch completes:
    Hub downloads can redirect to LFS/Xet mirrors outside `MODEL_ORIGINS`
    (`src/ui/settings.js`); extend that list if shards fetch cross-host, or

@@ -289,6 +289,18 @@ describe('PR #1187 latest review resolutions', () => {
       try { await window.NotesVectorCache.openVectorsDB(); } catch { /* ignore */ }
       await flush(2);
       expect(typeof handlers.close).toBe('function');
+      // Stale-transaction path (PR #1187 review): a cache operation that
+      // reaches database.transaction() with a dead connection must reset
+      // the cached promise so the next operation reopens instead of
+      // failing until reload.
+      const staleBefore = openCount;
+      let cached = 'not-null';
+      try { cached = await window.NotesVectorCache.getCachedVector('1', 'hello', 'test-model'); } catch { cached = null; }
+      expect(cached).toBeNull();
+      await flush(2);
+      try { await window.NotesVectorCache.openVectorsDB(); } catch { /* ignore */ }
+      await flush(2);
+      expect(openCount).toBeGreaterThan(staleBefore);
       // onclose drops the cached promise so the next call reopens.
       const before = openCount;
       handlers.close();

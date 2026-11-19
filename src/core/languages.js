@@ -167,6 +167,7 @@ const translations = {
     notesSemanticSearching: 'Semantic search…',
     notesSemanticLoading: 'Loading on-device model…',
     notesSemanticStarting: 'Starting download…',
+    notesSemanticNotDownloaded: 'Model not downloaded yet. Toggle off and on to download.',
     notesSemanticPermissionDenied: 'Model download needs Hugging Face access, which was not granted.',
     notesPlaceholder: 'Type your note here...',
     notesDeleteTooltip: 'Delete Note',

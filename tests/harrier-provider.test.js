@@ -85,13 +85,21 @@ describe('HarrierProvider registration', () => {
     await expect(provider.embedQuery('x')).rejects.toThrow('not loaded');
   });
 
-  it('registers into the generic registry', () => {
-    const factory = function (docs) {
-      return Promise.resolve(docs.map(function () { return [1, 0]; }));
+  it('registers into the generic registry', async () => {
+    // Stub-to-live: a metadata stub (e.g. the post-delete rejecting
+    // placeholder) registered first must survive the idempotent call and
+    // be replaced by the first real factory (PR #1187 review).
+    const stubDef = {
+      id: 'harrier-int8',
+      label: 'Harrier 270M INT8',
+      modelId: window.HarrierProvider.HARRIER_MODEL_ID,
+      dims: 640,
+      maxTokens: 512,
+      embed: function () { return Promise.reject(new Error('stub')); },
+      embedQuery: function () { return Promise.reject(new Error('stub')); }
     };
-    expect(window.HarrierProvider.registerHarrierProvider(factory)).toBe(true);
-    expect(window.EmbeddingRegistry.getEmbeddingProvider('harrier-int8')).not.toBeNull();
-    // Second call without a factory is idempotent.
+    expect(window.EmbeddingRegistry.registerEmbeddingProvider(stubDef)).toBe(true);
+    // Second call without a factory is idempotent (keeps the stub).
     expect(window.HarrierProvider.registerHarrierProvider(null)).toBe(true);
     expect(window.EmbeddingRegistry.listEmbeddingProviders()).toHaveLength(1);
     // A real factory passed after a stub replaces it.
@@ -100,6 +108,9 @@ describe('HarrierProvider registration', () => {
     };
     expect(window.HarrierProvider.registerHarrierProvider(factory2)).toBe(true);
     expect(window.EmbeddingRegistry.listEmbeddingProviders()).toHaveLength(1);
+    const live = window.EmbeddingRegistry.getEmbeddingProvider('harrier-int8');
+    expect(live).not.toBeNull();
+    await expect(live.embed(['hello'])).resolves.toEqual([[0, 1]]);
   });
 
   it('does not register a stub without a factory', () => {

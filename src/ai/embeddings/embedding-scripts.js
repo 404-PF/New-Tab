@@ -1,14 +1,16 @@
 // src/ai/embeddings/embedding-scripts.js - shared lazy loader for embedding modules (issue #1186)
 //
 // src/ui/settings.js and src/features/notes.js both need the embedding
-// modules on demand (lazy opt-in, never in the bootstrap bundle). This file
-// is the single canonical implementation; both callers delegate to it when
-// present and fall back to their local twin only when this file has not been
-// loaded (e.g. unit tests that inject a single module in isolation).
+// modules on demand (lazy opt-in; the five modules below are never in the
+// bootstrap bundle). This file is the single canonical implementation;
+// both callers delegate to it when present and fall back to their local
+// twin only when this file has not been loaded (e.g. unit tests that
+// inject a single module in isolation).
 //
-// Loaded via bootstrap scriptSources before src/ui/settings.js so Settings
-// and Notes share one in-flight promise instead of racing duplicate <script>
-// tags for the same module.
+// This loader itself ships in the bootstrap scriptSources list and must
+// execute before src/ui/settings.js and src/features/notes.js so Settings
+// and Notes share one in-flight promise instead of racing duplicate
+// <script> tags for the same module.
 
 (function () {
   'use strict';

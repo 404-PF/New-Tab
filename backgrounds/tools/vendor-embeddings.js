@@ -33,25 +33,36 @@ function rewriteBareSpecifiers(transformersPath) {
   // Same pattern family as the release import-graph verifier
   // (from\s*["']); the verifier additionally accepts extensionless and
   // dynamic forms, which the rewrite does not need to produce.
+  // The onnxruntime-common import is optional: Transformers 4.3.2 web
+  // builds still carry it, but a future web build may inline common and
+  // only import the webgpu entry. Requiring it would fail the release
+  // vendor step on that layout (PR #1187 review), so 0 matches skips
+  // with a log and >1 still fails closed. The webgpu import is required.
   const rewrites = [
-    ['from\\s*([\'"])onnxruntime-common\\1', 'from$1../onnxruntime-common/index.js$1'],
-    ['from\\s*([\'"])onnxruntime-web\\/webgpu\\1', 'from$1../onnxruntime-web/ort.webgpu.min.mjs$1']
+    { pattern: 'from\\s*([\'"])onnxruntime-common\\1', replacement: 'from$1../onnxruntime-common/index.js$1', required: false },
+    { pattern: 'from\\s*([\'"])onnxruntime-web\\/webgpu\\1', replacement: 'from$1../onnxruntime-web/ort.webgpu.min.mjs$1', required: true }
   ];
   let text = fs.readFileSync(transformersPath, 'utf8');
-  rewrites.forEach(function ([pattern, replacement]) {
-    const count = countOccurrences(text, pattern);
+  let applied = 0;
+  rewrites.forEach(function (entry) {
+    const count = countOccurrences(text, entry.pattern);
+    if (count === 0 && !entry.required) {
+      console.log('skipping optional rewrite /' + entry.pattern + '/ (not present in ' + path.relative(ROOT, transformersPath) + ')');
+      return;
+    }
     if (count !== 1) {
       console.error(
-        'Expected exactly 1 occurrence of /' + pattern + '/ in ' +
+        'Expected exactly 1 occurrence of /' + entry.pattern + '/ in ' +
         path.relative(ROOT, transformersPath) + ', found ' + count +
         '. Refusing to patch: inspect the bundle layout first.'
       );
       process.exit(1);
     }
-    text = text.replace(new RegExp(pattern, 'g'), replacement);
+    text = text.replace(new RegExp(entry.pattern, 'g'), entry.replacement);
+    applied += 1;
   });
   fs.writeFileSync(transformersPath, text);
-  console.log('rewrote 2 bare specifiers in ' + path.relative(ROOT, transformersPath));
+  console.log('rewrote ' + applied + ' bare specifiers in ' + path.relative(ROOT, transformersPath));
 }
 
 function main() {
@@ -144,24 +155,55 @@ function main() {
   }
   copyFile(webgpuEntry, path.join(VENDOR, 'onnxruntime-web', 'ort.webgpu.min.mjs'));
 
-  const wasmFiles = fs.readdirSync(ortBase).filter(function (f) { return f.endsWith('.wasm'); });
-  if (wasmFiles.length === 0) {
-    console.error('No .wasm files found under ' + ortBase);
+  // WASM + glue allow-list (PR #1187 review): the ESM entries above
+  // statically reference only these two backends (ort.wasm.min.mjs ->
+  // ort-wasm-simd-threaded.mjs, ort.webgpu.min.mjs ->
+  // ort-wasm-simd-threaded.asyncify.mjs). Copying every .wasm variant
+  // (threaded/JSEP/JSPi) ships ~87MB untrimmed, and the manual trim step
+  // is lost on the next rerun. Copy only the allow-list so the release
+  // ships trimmed by default; a rerun also removes stale extras. If ORT
+  // renames these files, the missing-file check below fails closed with
+  // the source listing so the list can be updated (see vendor/README.md).
+  const allowedWasm = [
+    'ort-wasm-simd-threaded.wasm',
+    'ort-wasm-simd-threaded.asyncify.wasm'
+  ];
+  const allowedGlue = [
+    'ort-wasm-simd-threaded.mjs',
+    'ort-wasm-simd-threaded.asyncify.mjs'
+  ];
+  const missingWasm = allowedWasm.filter(function (f) { return !fs.existsSync(path.join(ortBase, f)); });
+  if (missingWasm.length > 0) {
+    console.error('Missing expected ORT WASM in ' + ortBase + ': ' + missingWasm.join(', '));
+    console.error('Available .wasm: ' + fs.readdirSync(ortBase).filter(function (f) { return f.endsWith('.wasm'); }).join(', '));
     process.exit(1);
   }
-  wasmFiles.forEach(function (f) {
+  allowedWasm.forEach(function (f) {
     copyFile(path.join(ortBase, f), path.join(VENDOR, 'onnxruntime-web', f));
   });
-  // ORT's ESM entry dynamically imports its ort-wasm-*.mjs glue modules:
-  // copying only .wasm leaves the packaged runtime unable to start.
-  fs.readdirSync(ortBase).filter(function (f) {
-    return f.startsWith('ort-wasm-') && f.endsWith('.mjs');
-  }).forEach(function (f) {
+  const missingGlue = allowedGlue.filter(function (f) { return !fs.existsSync(path.join(ortBase, f)); });
+  if (missingGlue.length > 0) {
+    console.error('Missing expected ORT glue in ' + ortBase + ': ' + missingGlue.join(', '));
+    process.exit(1);
+  }
+  allowedGlue.forEach(function (f) {
     copyFile(path.join(ortBase, f), path.join(VENDOR, 'onnxruntime-web', f));
   });
-  console.log('NOTE: copied all .wasm files; trim to the binary your testing');
-  console.log('confirms (single-threaded ORT needs no threaded variants) before');
-  console.log('committing, then update this script\'s copy step if filenames change.');
+  // Trim stale extras from previous full-copy runs so a rerun cannot
+  // restore the untrimmed set the release would otherwise ship.
+  try {
+    fs.readdirSync(path.join(VENDOR, 'onnxruntime-web')).forEach(function (f) {
+      const isWasmExtra = f.endsWith('.wasm') && allowedWasm.indexOf(f) === -1;
+      const isGlueExtra = f.startsWith('ort-wasm-') && f.endsWith('.mjs') && allowedGlue.indexOf(f) === -1;
+      if (isWasmExtra || isGlueExtra) {
+        fs.unlinkSync(path.join(VENDOR, 'onnxruntime-web', f));
+        console.log('removed stale ' + f + ' (not in WASM allow-list)');
+      }
+    });
+  } catch (e) {
+    console.warn('Could not trim stale WASM extras:', e);
+  }
+  console.log('copied trimmed WASM allow-list (' + allowedWasm.join(', ') + '); update the list if ORT renames backends');
 
   const loader = path.join(VENDOR, 'embedding-loader.mjs');
   if (!fs.existsSync(loader)) {

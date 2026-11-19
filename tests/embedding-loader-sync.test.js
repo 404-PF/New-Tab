@@ -52,5 +52,18 @@ describe('embedding vendor self-hosting (PR #1187 CR7)', () => {
     );
     expect(tool).toContain('ort-wasm-');
     expect(tool).toContain('onnxruntime-common');
+    // Allow-list guard (PR #1187 review): the tool must copy only the
+    // trimmed WASM set, not every .wasm variant, so a missing copy step
+    // fails CI instead of shipping untrimmed binaries.
+    expect(tool).toContain('allowedWasm');
+    expect(tool).toContain('allowedGlue');
+    expect(tool).toContain('ort-wasm-simd-threaded.wasm');
+    expect(tool).toContain('ort-wasm-simd-threaded.asyncify.wasm');
+    // Copy operations for the three vendored trees + stale-trim.
+    expect(tool).toContain('onnxruntime-web');
+    expect(tool).toContain('onnxruntime-common');
+    expect(tool).toContain('copyFile');
+    expect(tool).toMatch(/copyFile\(.*ort\.web\.mjs/);
+    expect(tool).toMatch(/unlinkSync|stale/);
   });
 });

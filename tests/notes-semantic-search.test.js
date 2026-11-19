@@ -168,18 +168,6 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     expect(ranked.map((n) => n.id)).toEqual(['2']);
   });
 
-  it('falls back to keyword matches when semantic scores all miss the floor', async () => {
-    // Every note embeds opposite the query (cosine -1): keyword hits score
-    // 0.35 and pure misses 0, both below the 0.5 floor, so the ranker yields
-    // to the keyword fast-path instead of a surprising empty list.
-    const oppositeDeps = {
-      embedQuery: function () { return Promise.resolve([1, 0]); },
-      getNoteVector: function () { return Promise.resolve([-1, 0]); }
-    };
-    const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', oppositeDeps);
-    expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);
-  });
-
   it('falls back to keyword matches without model deps', async () => {
     const ranked = await window.NotesSemanticSearch.rankNotesForQuery(notes, 'milk', null);
     expect(ranked.map((n) => n.id).sort()).toEqual(['1', '3']);

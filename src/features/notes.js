@@ -626,7 +626,13 @@
       const currentIds = Array.isArray(_lastRenderedIds) ? _lastRenderedIds : [];
       const sameOrder = ranked.length === currentIds.length
         && ranked.every(function (n, i) { return currentIds[i] === n.id; });
-      if (sameOrder && ranked.length > 0) return;
+      if (sameOrder && ranked.length > 0) {
+        // Same order still counts as a semantic view: without this a
+        // subsequent drag uses the keyword reorder path and the next
+        // rerank undoes it (PR #1187 review).
+        _semanticRankedView = true;
+        return;
+      }
       renderSemanticResults(ranked);
     }).catch(function () {
       if (generation === _semanticGeneration) updateSemanticStatus('idle');

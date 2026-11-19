@@ -121,7 +121,11 @@ describe('PR #1187 human-review resolutions', () => {
         : { status: 'idle', progress: 0, error: '', modelId: 'test-model' };
     };
     startNotesQuery('feline');
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Poll past the 200ms rerank debounce: a fixed 250ms sleep flakes
+    // under CI scheduling delay (cubic P2 on PR #1187).
+    for (let i = 0; i < 100 && typeof pending.resolveEmbed !== 'function'; i += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, 20); });
+    }
     expect(typeof pending.resolveEmbed).toBe('function');
     // Disable mid-flight: sync pass shows keyword order (empty for feline).
     localStorage.setItem('notesSemanticEnabled', 'false');
@@ -186,7 +190,11 @@ describe('PR #1187 human-review resolutions', () => {
     expect(petsBtn).toBeTruthy();
     petsBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     startNotesQuery('e');
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Poll past the 200ms rerank debounce: a fixed 250ms sleep flakes
+    // under CI scheduling delay (cubic P2 on PR #1187).
+    for (let i = 0; i < 100 && typeof pending.resolveEmbed !== 'function'; i += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, 20); });
+    }
     expect(typeof pending.resolveEmbed).toBe('function');
     const workBtn = [...document.querySelectorAll('.note-tag-filter-btn')].find((b) => b.dataset.tag === 'work');
     workBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -231,7 +239,9 @@ describe('PR #1187 human-review resolutions', () => {
     expect(tracker.calls).toBe(0);
     // First semantic query warms the deferred model exactly once.
     startNotesQuery('feline');
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    for (let i = 0; i < 100 && tracker.calls === 0; i += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, 20); });
+    }
     expect(tracker.calls).toBe(1);
   });
 

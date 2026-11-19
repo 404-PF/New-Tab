@@ -181,6 +181,10 @@
     try {
       tx = database.transaction([STORE_NAME], 'readwrite');
     } catch (e) {
+      // Stale connection (see openVectorsDB): drop the cached promise so
+      // the next delete reopens instead of reusing the dead connection
+      // until onclose fires (PR #1187 review).
+      if (isStaleConnectionError(e)) dbPromise = null;
       console.warn(errorMessage, e);
       return null;
     }

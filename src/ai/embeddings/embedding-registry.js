@@ -93,8 +93,9 @@
       return false;
     }
     const hadActive = activeProviderId === def.id;
+    const persisted = readPersistedActiveId();
     providers.set(def.id, Object.freeze({ ...def }));
-    if (activeProviderId === null || hadActive) {
+    if (persisted === def.id || hadActive || (activeProviderId === null && !providers.has(persisted))) {
       activeProviderId = def.id;
       persistActiveId(def.id);
     }
