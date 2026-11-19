@@ -546,6 +546,15 @@
     return isValidDueDateString(dueDate) ? parseLocalDate(dueDate).getDate() : null;
   }
 
+  // Legacy rows have no stored anchor. A due date on the last day of its month
+  // was most likely clamped from 29-31, so anchor to 31 (clamped per month).
+  function deriveLegacyMonthlyAnchorDay(dueDate) {
+    if (!isValidDueDateString(dueDate)) return null;
+    const d = parseLocalDate(dueDate);
+    const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return d.getDate() === lastDayOfMonth ? 31 : d.getDate();
+  }
+
   // A month-end due date is clamped in short months (Jan 31 → Feb 28), so the
   // original day must be stored on the todo rather than re-derived from the
   // stored due date on every completion (issue #1276).
@@ -568,7 +577,7 @@
   // next completion (issue #1276).
   function ensureMonthlyRecurrenceAnchor(todo) {
     if (todo.recurrence !== 'monthly' || isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) return;
-    const derivedAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+    const derivedAnchorDay = deriveLegacyMonthlyAnchorDay(todo.dueDate);
     todo.recurrenceAnchorDay = derivedAnchorDay === null ? new Date().getDate() : derivedAnchorDay;
   }
 
@@ -1314,7 +1323,7 @@
       // Legacy monthly todos gained no anchor when they were created; seed it
       // from the stored due date so future completions keep that day (issue #1276).
       if (todo.recurrence === 'monthly') {
-        const derivedAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+        const derivedAnchorDay = deriveLegacyMonthlyAnchorDay(todo.dueDate);
         if (!isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay) && todo.recurrenceAnchorDay !== derivedAnchorDay) {
           todo.recurrenceAnchorDay = derivedAnchorDay;
           needsMigration = true;

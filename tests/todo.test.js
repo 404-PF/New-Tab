@@ -875,7 +875,8 @@ describe('Todo utilities', () => {
       ]));
 
       reloadTodosState();
-      expect(loadTodos()[0].recurrenceAnchorDay).toBe(28);
+      // Month-end legacy dates anchor to 31 so they snap to month-end going forward.
+      expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
 
       editTodo('legacy-clamped', 'Pay rent', 'medium', '2026-03-31', 'monthly');
       expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
