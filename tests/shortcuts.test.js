@@ -789,6 +789,25 @@ describe('Shortcuts - plain-key Focus Mode rebind (#1279)', () => {
     expect(localStorage.getItem('focusMode')).toBe('true');
     input.remove();
   });
+
+  it('does not swallow a Shift-modified rebind inside a text input', () => {
+    rebindToggleFocusMode('g', { shiftKey: true });
+    expect(Shortcuts.load().toggleFocusMode).toBe('Shift+G');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'G', shiftKey: true, bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(localStorage.getItem('focusMode')).toBe('false');
+    input.remove();
+  });
 });
 
 describe('Shortcuts - modal closing priority', () => {

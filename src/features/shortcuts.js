@@ -627,7 +627,7 @@
     // so the bound character can still be typed.
     const isModifiedAiCombo = combo === activeShortcuts.openAi && (e.ctrlKey || e.metaKey || e.altKey);
     const isModifiedFocusCombo = combo === activeShortcuts.toggleFocusMode &&
-      (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey);
+      (e.ctrlKey || e.metaKey || e.altKey);
     if (isTextInputFocused() && !isModifiedFocusCombo && !isModifiedAiCombo) return;
 
     for (const action in activeShortcuts) {
