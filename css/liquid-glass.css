@@ -53,8 +53,7 @@ body.glass-liquid .glass__highlight {
 }
 
 body.glass-liquid .glass__over-light {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 55%);
-  opacity: 0.6;
+  background: none;
 }
 
 body.glass-liquid .glass__hover {
@@ -119,13 +118,17 @@ body.glass-liquid.light-theme .app-icon.folder-icon:not(.drag-over-folder):not(.
    the opaque Classic fill becomes a tint the warp can sample through
    (#1155 did the same for app-icon tiles). */
 body.glass-liquid #motto-container.glass--liquid {
-  background: rgba(200, 200, 200, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  color: var(--glass-text-primary);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
 body.glass-liquid.light-theme #motto-container.glass--liquid {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: #1f2937;
 }
 
 /* Weather and focus indicator: replace the near-opaque fills (the light
