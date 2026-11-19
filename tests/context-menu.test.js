@@ -1172,10 +1172,17 @@ describe('remove from folder storage failures (#1137)', () => {
     const tile = document.createElement('a');
     tile.id = 'folder-1';
     tile.className = 'app-icon folder-icon';
-    tile.innerHTML = '<div class="icon"></div><span class="app-name">Renamed</span>';
+    tile.innerHTML = '<div class="icon"></div><span class="app-name">Folder</span>';
     grid.appendChild(tile);
 
-    const refreshFolderUI = vi.fn();
+    // Repaint the tile from the name storage currently holds, as the real
+    // AppFolders renderer does, so the assertion below observes an actual
+    // text change instead of only a function call.
+    const refreshFolderUI = vi.fn((folderId) => {
+      const folder = window.AppGridState.getFolders().find((f) => f.id === folderId);
+      const nameEl = tile.querySelector('.app-name');
+      if (folder && nameEl) nameEl.textContent = folder.name;
+    });
     const renderFolderAppsInPopup = vi.fn();
 
     try {
@@ -1185,10 +1192,14 @@ describe('remove from folder storage failures (#1137)', () => {
         refreshFolderUI
       }, () => {
         // Optimistic rename: storage holds the new name and the tile was
-        // repainted from it, but chrome.storage rejects the write a macrotask
-        // later and the bridge rolls its cache back to 'Folder'.
+        // repainted from it (promptRenameFolder calls refreshFolderUI here),
+        // but chrome.storage rejects the write a macrotask later and the
+        // bridge rolls its cache back to 'Folder'.
         expect(window.AppGridState.renameFolder('folder-1', 'Renamed')).toBe(true);
         expect(window.AppGridState.getFolders()[0].name).toBe('Renamed');
+        refreshFolderUI('folder-1');
+        expect(tile.querySelector('.app-name').textContent).toBe('Renamed');
+        refreshFolderUI.mockClear();
 
         vi.advanceTimersByTime(1);
         expect(window.AppGridState.getFolders()[0].name).toBe('Folder');
@@ -1196,9 +1207,11 @@ describe('remove from folder storage failures (#1137)', () => {
 
         // No popup is open (currentFolderId is null), so the popup-based
         // refresh cannot repaint the tile: the rollback must refresh by id
-        // because the displayed name disagrees with storage.
+        // because the displayed name disagrees with storage, leaving the
+        // tile showing the rolled-back name.
         expect(renderFolderAppsInPopup).toHaveBeenCalled();
         expect(refreshFolderUI).toHaveBeenCalledWith('folder-1');
+        expect(tile.querySelector('.app-name').textContent).toBe('Folder');
       });
     } finally {
       grid.remove();
