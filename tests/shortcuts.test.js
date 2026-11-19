@@ -740,6 +740,102 @@ describe('Shortcuts - handleKeydown', () => {
   });
 });
 
+describe('Shortcuts - plain-key Focus Mode rebind (#1279)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+  });
+
+  afterEach(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Shortcuts.reset();
+  });
+
+  function rebindToggleFocusMode(key, modifiers = {}) {
+    container.querySelector('[data-action="toggleFocusMode"]').click();
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...modifiers
+    }));
+  }
+
+  it('does not swallow a plain-letter rebind inside a text input', () => {
+    rebindToggleFocusMode('g');
+    expect(Shortcuts.load().toggleFocusMode).toBe('G');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', { key: 'g', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(localStorage.getItem('focusMode')).toBe('false');
+    input.remove();
+  });
+
+  it('still fires a plain-letter rebind outside text inputs', () => {
+    rebindToggleFocusMode('g');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', { key: 'g', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(localStorage.getItem('focusMode')).toBe('true');
+  });
+
+  it('keeps a modified rebind live inside text inputs', () => {
+    rebindToggleFocusMode('h', { ctrlKey: true });
+    expect(Shortcuts.load().toggleFocusMode).toBe('Ctrl+H');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'h', ctrlKey: true, bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    input.remove();
+  });
+
+  it('does not swallow a Shift-modified rebind inside a text input', () => {
+    rebindToggleFocusMode('g', { shiftKey: true });
+    expect(Shortcuts.load().toggleFocusMode).toBe('Shift+G');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'G', shiftKey: true, bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(localStorage.getItem('focusMode')).toBe('false');
+    input.remove();
+  });
+});
+
 describe('Shortcuts - modal closing priority', () => {
   it('closes #clear-completed-dialog before settings-modal', () => {
     const aiConfirm = document.getElementById('clear-completed-dialog');
