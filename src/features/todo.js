@@ -537,12 +537,35 @@
     return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
   }
 
+  function isValidRecurrenceAnchorDay(value) {
+    return Number.isInteger(value) && value >= 1 && value <= 31;
+  }
+
+  function deriveRecurrenceAnchorDay(dueDate) {
+    return isValidDueDateString(dueDate) ? parseLocalDate(dueDate).getDate() : null;
+  }
+
+  // A month-end due date is clamped in short months (Jan 31 → Feb 28), so the
+  // original day must be stored on the todo rather than re-derived from the
+  // stored due date on every completion (issue #1276).
+  function refreshRecurrenceAnchor(todo, previousDueDate, previousRecurrence, dueDateProvided) {
+    if (!todo.recurrence) {
+      todo.recurrenceAnchorDay = null;
+      return;
+    }
+    const dueDateChanged = dueDateProvided && todo.dueDate !== previousDueDate;
+    if (dueDateChanged || previousRecurrence !== todo.recurrence ||
+        !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+      todo.recurrenceAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+    }
+  }
+
   // Advance `date` by exactly one calendar month (delta can be ±1). A plain
   // setMonth rolls the date forward when the current day doesn't exist in the
   // target month (e.g. Jan 31 → Mar 3), skipping a month. Clamp to the 1st
   // first, then restore the day clamped to the target month's length
   // (e.g. Jan 31 → Feb 28).
-  function getNextDueDate(currentDueDate, recurrence) {
+  function getNextDueDate(currentDueDate, recurrence, recurrenceAnchorDay) {
     if (!RECURRENCE_VALUES.includes(recurrence)) {
       return currentDueDate;
     }
@@ -552,7 +575,9 @@
     const todayTimestamp = today.getTime();
     const base = currentDueDate ? parseLocalDate(currentDueDate) : new Date(today);
     base.setHours(0, 0, 0, 0);
-    const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
+    const monthlyAnchorDay = recurrence === 'monthly'
+      ? (isValidRecurrenceAnchorDay(recurrenceAnchorDay) ? recurrenceAnchorDay : base.getDate())
+      : null;
     // Advance from the scheduled due date so late completion does not move
     // the recurrence anchor to the completion date. Keep advancing until the
     // next occurrence is strictly in the future.
@@ -1204,6 +1229,7 @@
     }, -1);
 
     const normalizedDueTime = isValidDueTime(dueTime) && dueDate ? dueTime : null;
+    const normalizedRecurrence = RECURRENCE_VALUES.includes(recurrence) ? recurrence : null;
     const newTodo = {
       id: generateTodoId(),
       text: text.trim(),
@@ -1212,7 +1238,8 @@
       dueDate: dueDate,
       dueTime: normalizedDueTime,
       priority: priority || 'medium',
-      recurrence: RECURRENCE_VALUES.includes(recurrence) ? recurrence : null,
+      recurrence: normalizedRecurrence,
+      recurrenceAnchorDay: normalizedRecurrence ? deriveRecurrenceAnchorDay(dueDate) : null,
       details: normalizeTodoDetails(details),
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
@@ -1272,6 +1299,15 @@
         todo.dueTime = null;
         needsMigration = true;
       }
+      // Legacy monthly todos gained no anchor when they were created; seed it
+      // from the stored due date so future completions keep that day (issue #1276).
+      if (todo.recurrence === 'monthly') {
+        const derivedAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+        if (!isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay) && todo.recurrenceAnchorDay !== derivedAnchorDay) {
+          todo.recurrenceAnchorDay = derivedAnchorDay;
+          needsMigration = true;
+        }
+      }
       // Same normalization for free-form details (issue #1228): legacy rows
       // gain `details: null`, blank strings collapse, non-strings are dropped.
       const normalizedDetails = normalizeTodoDetails(todo.details);
@@ -1323,6 +1359,8 @@
     }
 
     const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+    const previousDueDate = todo.dueDate;
+    const previousRecurrence = todo.recurrence;
     todo.text = newText.trim();
     if (newPriority !== null && newPriority !== undefined) {
       todo.priority = newPriority;
@@ -1331,6 +1369,7 @@
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
     }
+    refreshRecurrenceAnchor(todo, previousDueDate, previousRecurrence, newDueDate !== undefined && newDueDate !== null);
     if (newDetails !== undefined) {
       todo.details = normalizeTodoDetails(newDetails);
     }
@@ -1355,7 +1394,7 @@
     const isRecurringCompletion = willComplete && todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence);
     if (isRecurringCompletion) {
       const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
-      const nextDueDate = getNextDueDate(todo.dueDate, todo.recurrence);
+      const nextDueDate = getNextDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
       todo.dueDate = nextDueDate;
       todo.completed = false;
       todo.completedAt = null;
@@ -1835,7 +1874,7 @@ function bulkCompleteSelected() {
     if (!selectedIds.has(todo.id) || todo.completed) return;
 
     if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
-      todo.dueDate = getNextDueDate(todo.dueDate, todo.recurrence);
+      todo.dueDate = getNextDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
       todo.completed = false;
       todo.completedAt = null;
       if (todo.subtasks) {
@@ -2669,6 +2708,7 @@ function updateTodoDueDate(todoId, newDate, dueDateElement, newDueTime) {
   } else if (!todo.dueDate) {
     todo.dueTime = null;
   }
+  refreshRecurrenceAnchor(todo, oldDate, todo.recurrence, true);
 
   // Save to localStorage
   if (!saveTodos(todos)) {
@@ -3275,6 +3315,8 @@ function validateTodoData(data) {
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
     if (item.recurrence !== undefined && item.recurrence !== null && !RECURRENCE_VALUES.includes(item.recurrence)) return false;
+    if (item.recurrenceAnchorDay !== undefined && item.recurrenceAnchorDay !== null &&
+        !isValidRecurrenceAnchorDay(item.recurrenceAnchorDay)) return false;
     // Free-form details (issue #1228): optional, but must be a string when
     // present and within the edit modal's 2000-character maxlength so a
     // hostile export can't store objects/arrays or oversized text here.
@@ -3377,6 +3419,9 @@ function showImportDialog(importedTodos) {
     todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
     todo.dueDate = item.dueDate || null;
     todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
+    if (todo.recurrence === 'monthly' && !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+      todo.recurrenceAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+    }
     todo.createdAt = item.createdAt || new Date().toISOString();
     todo.order = order;
     // Always materialize details so imported rows share the same shape as

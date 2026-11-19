@@ -734,6 +734,88 @@ describe('Todo utilities', () => {
     }
   });
 
+  it('getNextDueDate uses an explicit anchor instead of a clamped stored due date (issue #1276)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 1, 15)); // February 15, 2026
+
+    try {
+      expect(getNextDueDate('2026-02-28', 'monthly', 31)).toBe('2026-03-31');
+      expect(getNextDueDate('2026-02-28', 'monthly', 29)).toBe('2026-03-29');
+      expect(getNextDueDate('2026-02-28', 'weekly', 31)).toBe('2026-03-07');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('monthly completion keeps the original anchor through short months', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 15)); // January 15, 2026
+      addTodo('Anchor toggle 1276', '2026-01-31', 'medium', 'monthly');
+      const todo = loadTodos().find(t => t.text === 'Anchor toggle 1276');
+      expect(todo.recurrenceAnchorDay).toBe(31);
+
+      const dates = [];
+      for (const [year, month] of [[2026, 1], [2026, 2], [2026, 3]]) {
+        vi.setSystemTime(new Date(year, month, 15));
+        toggleTodo(todo.id);
+        dates.push(loadTodos().find(t => t.id === todo.id).dueDate);
+      }
+      expect(dates).toEqual(['2026-02-28', '2026-03-31', '2026-04-30']);
+      expect(loadTodos().find(t => t.id === todo.id).recurrenceAnchorDay).toBe(31);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bulk complete keeps the original monthly anchor through short months', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 15)); // January 15, 2026
+      addTodo('Anchor bulk 1276', '2026-01-31', 'medium', 'monthly');
+      const todo = loadTodos().find(t => t.text === 'Anchor bulk 1276');
+
+      for (const [year, month, expected] of [
+        [2026, 1, '2026-02-28'],
+        [2026, 2, '2026-03-31']
+      ]) {
+        vi.setSystemTime(new Date(year, month, 15));
+        selectedIds.clear();
+        selectedIds.add(todo.id);
+        bulkCompleteSelected();
+        const stored = loadTodos().find(t => t.id === todo.id);
+        expect(stored.dueDate).toBe(expected);
+        expect(stored.recurrenceAnchorDay).toBe(31);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('editTodo preserves the anchor on a time-only edit but adopts an explicitly changed due date', () => {
+    addTodo('Anchor edit 1276', '2026-01-31', 'medium', 'monthly');
+    const todo = loadTodos().find(t => t.text === 'Anchor edit 1276');
+    // Stand in for a stored due date already clamped to a short month.
+    saveTodos([{ ...todo, dueDate: '2026-02-28' }]);
+    reloadTodosState();
+
+    editTodo(todo.id, 'Anchor edit 1276', 'medium', '2026-02-28', 'monthly', '09:00');
+    expect(loadTodos().find(t => t.id === todo.id).recurrenceAnchorDay).toBe(31);
+
+    editTodo(todo.id, 'Anchor edit 1276', 'medium', '2026-03-15', 'monthly', '09:00');
+    expect(loadTodos().find(t => t.id === todo.id).recurrenceAnchorDay).toBe(15);
+  });
+
+  it('reloadTodosState seeds the monthly anchor for legacy recurring todos', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'legacy-monthly', text: 'Pay rent', completed: false, dueDate: '2026-01-31', recurrence: 'monthly' }
+    ]));
+
+    reloadTodosState();
+
+    expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
+  });
+
   it('isOverdue returns true for past date', () => {
     expect(isOverdue('2000-01-01')).toBe(true);
   });
