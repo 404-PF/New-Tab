@@ -935,13 +935,6 @@ const gamesReadyTranslations = {
   ru: { gamesReady: 'Готовы?', gamesReadyStart: 'Нажмите пробел или коснитесь, чтобы начать', gamesStart: 'Старт' }
 };
 
-function applyGamesReadyMerges(code) {
-  const target = translations[code];
-  const values = gamesReadyTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // On-screen D-pad labels for touch play (#1019). Same per-language map
 // pattern as gamesReadyTranslations so the strings stay out of the positional
 // createGamesTranslations arrays. Every locale in SUPPORTED_LANGUAGES needs
@@ -958,13 +951,6 @@ const gamesDpadTranslations = {
   ru: { gamesDpad: 'Крестовина', gamesDpadUp: 'Вверх', gamesDpadDown: 'Вниз', gamesDpadLeft: 'Влево', gamesDpadRight: 'Вправо' }
 };
 
-function applyGamesDpadMerges(code) {
-  const target = translations[code];
-  const values = gamesDpadTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // Configurable steering-key labels for the Games settings select (#1023).
 // Same per-language map pattern as gamesDpadTranslations so the strings stay
 // out of the positional createGamesTranslations arrays.
@@ -979,13 +965,6 @@ const gamesKeymapTranslations = {
   pt: { gamesKeymap: 'Teclas de direção', gamesKeymapWasd: 'Setas + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Teclado numérico' },
   ru: { gamesKeymap: 'Клавиши управления', gamesKeymapWasd: 'Стрелки + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Цифровой блок' }
 };
-
-function applyGamesKeymapMerges(code) {
-  const target = translations[code];
-  const values = gamesKeymapTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 // Label for the Games FPS-readout checkbox (#1036). Same per-language map
 // pattern as gamesKeymapTranslations so the string stays out of the
@@ -1002,13 +981,6 @@ const gamesFpsTranslations = {
   ru: { gamesFps: 'Показывать FPS в играх' }
 };
 
-function applyGamesFpsMerges(code) {
-  const target = translations[code];
-  const values = gamesFpsTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // Liquid Glass setting label (#1109).
 const liquidGlassTranslations = {
   en: { liquidGlass: 'Liquid Glass' },
@@ -1021,13 +993,6 @@ const liquidGlassTranslations = {
   pt: { liquidGlass: 'Vidro líquido' },
   ru: { liquidGlass: 'Жидкое стекло' }
 };
-
-function applyLiquidGlassMerges(code) {
-  const target = translations[code];
-  const values = liquidGlassTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const flappyBirdTranslations = {
   en: {
@@ -1076,13 +1041,6 @@ const flappyBirdTranslations = {
     gamesFlappyBirdControls: 'Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает'
   }
 };
-
-function applyFlappyBirdMerges(code) {
-  const target = translations[code];
-  const values = flappyBirdTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const pacmanTranslations = {
   en: {
@@ -1140,13 +1098,6 @@ const pacmanTranslations = {
     gamesLives: 'Жизни'
   }
 };
-
-function applyPacmanMerges(code) {
-  const target = translations[code];
-  const values = pacmanTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const pomodoroTranslations = {
   en: {
@@ -1333,13 +1284,6 @@ const ACCESSIBILITY_TRANSLATIONS = {
   }
 };
 
-function applyAccessibilityMerges(code) {
-  const target = translations[code];
-  const values = ACCESSIBILITY_TRANSLATIONS[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 const MIGRATE_LEGACY_TRANSLATIONS = {
   en: {
     migrateLegacyTitle: 'New Tab has moved',
@@ -1424,13 +1368,6 @@ const MIGRATE_LEGACY_TRANSLATIONS = {
   }
 };
 
-function applyMigrateLegacyMerges(code) {
-  const target = translations[code];
-  const values = MIGRATE_LEGACY_TRANSLATIONS[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // Todo stats summary labels (issue #1225). en lives in the inline table
 // above; the remaining runtime locales arrive from src/core/locales/<code>.js
 // and receive these keys through applyLocaleMerges() the same way the focus
@@ -1502,11 +1439,27 @@ const todoStatsSummaryTranslations = {
   }
 };
 
-function applyTodoStatsSummaryMerges(code) {
+const WHOLE_TABLE_MERGE_TABLES = [
+  gamesReadyTranslations,
+  gamesDpadTranslations,
+  gamesKeymapTranslations,
+  gamesFpsTranslations,
+  liquidGlassTranslations,
+  flappyBirdTranslations,
+  pacmanTranslations,
+  todoStatsSummaryTranslations,
+  ACCESSIBILITY_TRANSLATIONS,
+  MIGRATE_LEGACY_TRANSLATIONS
+];
+
+function applyWholeTableMerges(code) {
   const target = translations[code];
-  const values = todoStatsSummaryTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
+  if (!target) return;
+  WHOLE_TABLE_MERGE_TABLES.forEach(function (table) {
+    const values = table[code];
+    if (!values) return;
+    Object.assign(target, values);
+  });
 }
 
 // Runs every feature-string merge pass for a single locale. en runs it at
@@ -1520,17 +1473,8 @@ function applyLocaleMerges(code) {
   applyAiExportMerges(code);
   applyAiRenameMerges(code);
   applyGamesLevelMerges(code);
-  applyGamesReadyMerges(code);
-  applyGamesDpadMerges(code);
-  applyGamesKeymapMerges(code);
-  applyGamesFpsMerges(code);
-  applyLiquidGlassMerges(code);
-  applyFlappyBirdMerges(code);
-  applyPacmanMerges(code);
+  applyWholeTableMerges(code);
   applyPomodoroMerges(code);
-  applyTodoStatsSummaryMerges(code);
-  applyAccessibilityMerges(code);
-  applyMigrateLegacyMerges(code);
 }
 
 applyLocaleMerges('en');
