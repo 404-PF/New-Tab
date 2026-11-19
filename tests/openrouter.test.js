@@ -585,6 +585,19 @@ describe('OpenRouter contentless stream (#1278)', () => {
     expect(result).toMatchObject({ success: false, error: 'No content in response' });
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('returns a failure when the stream emits only whitespace deltas', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"   "}}]}\n',
+      'data: {"choices":[{"delta":{"content":"\\n\\t"}}]}\n',
+      'data: [DONE]\n\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi');
+
+    expect(result).toMatchObject({ success: false, error: 'No content in response' });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('OpenRouter non-JSON error bodies (#866)', () => {

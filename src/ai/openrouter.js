@@ -541,7 +541,7 @@ const OpenRouterAPI = (function() {
             processSseLine(buffer);
           }
 
-          if (!fullContent) {
+          if (!fullContent.trim()) {
             return {
               success: false,
               error: getTranslation('aiNoContent')
