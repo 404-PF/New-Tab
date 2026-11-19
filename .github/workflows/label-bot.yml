@@ -26,7 +26,7 @@ env:
 jobs:
   label:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,14 +36,13 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Install OpenCode
-        run: npm i -g opencode-ai
+      - name: Install Copilot CLI
+        run: npm i -g @github/copilot
 
       - name: Apply labels
         env:
           ITEM: ${{ github.event.issue.number || github.event.pull_request.number || inputs.number }}
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          OPENCODE_CONFIG_CONTENT: '{"permission":{"*":"allow"}}'
+          COPILOT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/prompt.md" <<EOF
@@ -53,4 +52,4 @@ jobs:
           3. Add assignee:coding-bot ONLY if the item is an issue, it is implementation-ready (clear, scoped, actionable, no open questions), and its author has write access. Check the author with gh issue view or gh pr view --json author, then gh api repos/$GH_REPO/collaborators/<author-login>/permission --jq .permission, which must be admin, maintain, or write.
           4. Apply labels with gh issue edit or gh pr edit --add-label. Do not post comments.
           EOF
-          opencode run -m opencode/hy4-flash-free "$(cat "$RUNNER_TEMP/prompt.md")"
+          copilot -p "$(cat "$RUNNER_TEMP/prompt.md")" --model claude-haiku-5.5 --allow-all
