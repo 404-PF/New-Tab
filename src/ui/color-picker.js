@@ -1,44 +1,7 @@
 // src/ui/color-picker.js - Modern Color Picker Component
 
-// One shared pair of document-level handlers serves every picker instance, so
-// listener count never scales with picker count. The pair is attached only
-// while a popup is open, so a hidden popup costs nothing at load. Classic
-// scripts share the browser's global scope, so these top-level names stay
-// color-specific and must not collide with font-picker.js.
-let activeColorPicker = null;
-let colorPickerListenerRefs = 0;
-
-function handleColorPickerDocumentClick(event) {
-  const picker = activeColorPicker;
-  if (!picker || !picker.isOpen || !picker.pickerElement) return;
-  if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
-    picker.hide();
-  }
-}
-
-function handleColorPickerDocumentKeydown(event) {
-  if (event.key !== 'Escape') return;
-  const picker = activeColorPicker;
-  if (picker && picker.isOpen) picker.hide();
-}
-
-function retainColorPickerListeners() {
-  colorPickerListenerRefs += 1;
-  if (colorPickerListenerRefs === 1) {
-    document.addEventListener('click', handleColorPickerDocumentClick);
-    document.addEventListener('keydown', handleColorPickerDocumentKeydown);
-  }
-}
-
-function releaseColorPickerListeners() {
-  if (colorPickerListenerRefs === 0) return;
-  colorPickerListenerRefs -= 1;
-  if (colorPickerListenerRefs === 0) {
-    document.removeEventListener('click', handleColorPickerDocumentClick);
-    document.removeEventListener('keydown', handleColorPickerDocumentKeydown);
-    activeColorPicker = null;
-  }
-}
+// Lazily attached, shared document listeners (see createPickerListenerManager).
+const colorPickerListeners = window.createPickerListenerManager();
 
 class ModernColorPicker {
   constructor(options = {}) {
@@ -149,11 +112,12 @@ class ModernColorPicker {
 
     // Attach the shared document listeners only while a popup is open.
     if (!this.isOpen) {
-      retainColorPickerListeners();
+      colorPickerListeners.retain();
     }
 
-    if (activeColorPicker && activeColorPicker !== this) {
-      activeColorPicker.hide();
+    const activePicker = colorPickerListeners.getActive();
+    if (activePicker && activePicker !== this) {
+      activePicker.hide();
     }
 
     // Position the popup near the swatch
@@ -172,14 +136,14 @@ class ModernColorPicker {
 
     this.pickerElement.classList.add('visible');
     this.isOpen = true;
-    activeColorPicker = this;
+    colorPickerListeners.setActive(this);
   }
 
   hide() {
-    if (activeColorPicker === this) activeColorPicker = null;
+    if (colorPickerListeners.getActive() === this) colorPickerListeners.setActive(null);
     if (this.isOpen) {
       this.isOpen = false;
-      releaseColorPickerListeners();
+      colorPickerListeners.release();
     }
     if (this.pickerElement) {
       this.pickerElement.classList.remove('visible');
@@ -234,12 +198,12 @@ class ModernColorPicker {
     if (this.destroyed) return;
     this.destroyed = true;
 
-    if (activeColorPicker === this) activeColorPicker = null;
+    if (colorPickerListeners.getActive() === this) colorPickerListeners.setActive(null);
     // Only a popup that actually opened retained the shared listeners, so
     // only it may release them - otherwise a live picker would lose them.
     if (this.isOpen) {
       this.isOpen = false;
-      releaseColorPickerListeners();
+      colorPickerListeners.release();
     }
 
     if (this.pickerElement && this.pickerElement.parentNode) {

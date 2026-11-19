@@ -1,44 +1,7 @@
 // src/ui/font-picker.js - Modern Font Picker Component
 
-// One shared pair of document-level handlers serves every picker instance, so
-// listener count never scales with picker count. The pair is attached only
-// while a popup is open, so a hidden popup costs nothing at load. Classic
-// scripts share the browser's global scope, so these top-level names stay
-// font-specific and must not collide with color-picker.js.
-let activeFontPicker = null;
-let fontPickerListenerRefs = 0;
-
-function handleFontPickerDocumentClick(event) {
-  const picker = activeFontPicker;
-  if (!picker || !picker.isOpen || !picker.pickerElement) return;
-  if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
-    picker.hide();
-  }
-}
-
-function handleFontPickerDocumentKeydown(event) {
-  if (event.key !== 'Escape') return;
-  const picker = activeFontPicker;
-  if (picker && picker.isOpen) picker.hide();
-}
-
-function retainFontPickerListeners() {
-  fontPickerListenerRefs += 1;
-  if (fontPickerListenerRefs === 1) {
-    document.addEventListener('click', handleFontPickerDocumentClick);
-    document.addEventListener('keydown', handleFontPickerDocumentKeydown);
-  }
-}
-
-function releaseFontPickerListeners() {
-  if (fontPickerListenerRefs === 0) return;
-  fontPickerListenerRefs -= 1;
-  if (fontPickerListenerRefs === 0) {
-    document.removeEventListener('click', handleFontPickerDocumentClick);
-    document.removeEventListener('keydown', handleFontPickerDocumentKeydown);
-    activeFontPicker = null;
-  }
-}
+// Lazily attached, shared document listeners (see createPickerListenerManager).
+const fontPickerListeners = window.createPickerListenerManager();
 
 class ModernFontPicker {
   constructor(options = {}) {
@@ -213,11 +176,12 @@ class ModernFontPicker {
 
     // Attach the shared document listeners only while a popup is open.
     if (!this.isOpen) {
-      retainFontPickerListeners();
+      fontPickerListeners.retain();
     }
 
-    if (activeFontPicker && activeFontPicker !== this) {
-      activeFontPicker.hide();
+    const activePicker = fontPickerListeners.getActive();
+    if (activePicker && activePicker !== this) {
+      activePicker.hide();
     }
 
     // Position the popup near the swatch
@@ -239,14 +203,14 @@ class ModernFontPicker {
 
     this.pickerElement.classList.add('visible');
     this.isOpen = true;
-    activeFontPicker = this;
+    fontPickerListeners.setActive(this);
   }
 
   hide() {
-    if (activeFontPicker === this) activeFontPicker = null;
+    if (fontPickerListeners.getActive() === this) fontPickerListeners.setActive(null);
     if (this.isOpen) {
       this.isOpen = false;
-      releaseFontPickerListeners();
+      fontPickerListeners.release();
     }
     if (this.pickerElement) {
       this.pickerElement.classList.remove('visible');
@@ -312,12 +276,12 @@ class ModernFontPicker {
     if (this.destroyed) return;
     this.destroyed = true;
 
-    if (activeFontPicker === this) activeFontPicker = null;
+    if (fontPickerListeners.getActive() === this) fontPickerListeners.setActive(null);
     // Only a popup that actually opened retained the shared listeners, so
     // only it may release them - otherwise a live picker would lose them.
     if (this.isOpen) {
       this.isOpen = false;
-      releaseFontPickerListeners();
+      fontPickerListeners.release();
     }
 
     if (this.pickerElement && this.pickerElement.parentNode) {

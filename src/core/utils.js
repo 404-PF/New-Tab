@@ -739,7 +739,59 @@
     }
   }
 
+  // Shared, lazy document-listener manager for picker popups (color/font).
+  // The click/keydown pair is attached only while a popup is open, and it
+  // always targets the currently active picker. Each picker type creates its
+  // own manager so their active slots and refcounts stay independent.
+  function createPickerListenerManager() {
+    let activePicker = null;
+    let listenerRefs = 0;
+
+    function handleDocumentClick(event) {
+      const picker = activePicker;
+      if (!picker || !picker.isOpen || !picker.pickerElement) return;
+      if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
+        picker.hide();
+      }
+    }
+
+    function handleDocumentKeydown(event) {
+      if (event.key !== 'Escape') return;
+      const picker = activePicker;
+      if (picker && picker.isOpen) picker.hide();
+    }
+
+    return {
+      getActive() {
+        return activePicker;
+      },
+
+      setActive(picker) {
+        activePicker = picker;
+      },
+
+      retain() {
+        listenerRefs += 1;
+        if (listenerRefs === 1) {
+          document.addEventListener('click', handleDocumentClick);
+          document.addEventListener('keydown', handleDocumentKeydown);
+        }
+      },
+
+      release() {
+        if (listenerRefs === 0) return;
+        listenerRefs -= 1;
+        if (listenerRefs === 0) {
+          document.removeEventListener('click', handleDocumentClick);
+          document.removeEventListener('keydown', handleDocumentKeydown);
+          activePicker = null;
+        }
+      }
+    };
+  }
+
   // Make utilities available globally
+  window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
   window.validateUrl = validateUrl;

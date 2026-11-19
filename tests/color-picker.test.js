@@ -2,6 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 import { expectSharedDocumentListeners } from './helpers/shared-picker-listeners.js';
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/ui/color-picker.js');
 });
 
