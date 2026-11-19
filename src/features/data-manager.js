@@ -1225,7 +1225,7 @@
                 writeStorage(key, merged, pendingWrites);
                 count++;
               }
-            } else if (typeof incoming === 'object' && incoming !== null && !Array.isArray(incoming)) {
+            } else if (incoming && typeof incoming === 'object' && !Array.isArray(incoming)) {
               // Object: shallow merge
               const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
               if (key === 'todoStats') {
