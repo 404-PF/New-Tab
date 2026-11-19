@@ -114,6 +114,24 @@ describe('applySearchBoxEnabled (issue #1243)', () => {
       restore();
     }
   });
+
+  it('keeps the wrapper and control on the saved value after a synchronous write rejection', () => {
+    localStorage.setItem('searchBoxEnabled', 'true');
+    window.applySearchBoxEnabled();
+    const restore = failStorageWritesFor('searchBoxEnabled', 'sync');
+    const checkbox = document.getElementById('search-box-enabled-setting');
+
+    try {
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(localStorage.getItem('searchBoxEnabled')).toBe('true');
+      expect(checkbox.checked).toBe(true);
+      expect(document.querySelector('.search-bar-wrapper').style.display).toBe('');
+    } finally {
+      restore();
+    }
+  });
 });
 
 describe('focusSearch shortcut while hidden (issue #1243)', () => {
