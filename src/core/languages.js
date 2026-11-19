@@ -253,6 +253,7 @@ const translations = {
     reminderLeadTime1day: '1 day before',
     enableNotes: 'Enable notes scratchpad',
     enableMotto: 'Enable daily motto',
+    enableSearchBox: 'Show search box',
     enableFocusMode: 'Enable focus mode',
     focusModeExit: 'Exit Focus Mode',
 

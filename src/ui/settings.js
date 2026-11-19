@@ -1929,6 +1929,31 @@ if (mottoEnabledSetting) {
   });
 }
 
+// Search box enabled
+function loadSearchBoxEnabled() {
+  return localStorage.getItem('searchBoxEnabled') !== 'false';
+}
+function applySearchBoxEnabled() {
+  const enabled = loadSearchBoxEnabled();
+  const searchBarWrapper = document.querySelector('.search-bar-wrapper');
+  if (searchBarWrapper) {
+    searchBarWrapper.style.display = enabled ? '' : 'none';
+  }
+  const searchBoxEnabledSetting = document.getElementById('search-box-enabled-setting');
+  if (searchBoxEnabledSetting) searchBoxEnabledSetting.checked = enabled;
+}
+
+const searchBoxEnabledSetting = document.getElementById('search-box-enabled-setting');
+if (searchBoxEnabledSetting) {
+  searchBoxEnabledSetting.addEventListener('change', function () {
+    const persisted = window.persistSetting('searchBoxEnabled', this.checked);
+    applySearchBoxEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
+    }
+  });
+}
+
 // Pomodoro settings
 function updatePomodoroDurationSettingsVisibility(durationSettings, enabled) {
   if (durationSettings) {
@@ -2797,6 +2822,7 @@ function initSettings() {
   applyEyeCareReminderSettings();
   applyNotesEnabled();
   applyMottoEnabled();
+  applySearchBoxEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
   applyGamesFps();
@@ -2878,6 +2904,7 @@ window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
 window.applyMottoEnabled = applyMottoEnabled;
+window.applySearchBoxEnabled = applySearchBoxEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.applyGamesKeymap = applyGamesKeymap;

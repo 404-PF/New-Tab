@@ -176,6 +176,7 @@ window.i18n.__registerLocale('ja', {
   reminderLeadTime1day: '1日前',
   enableNotes: 'メモ帳を有効にする',
   enableMotto: 'デイリーモットーを有効にする',
+  enableSearchBox: '検索ボックスを表示',
   enableFocusMode: 'フォーカスモードを有効にする',
   focusModeExit: 'フォーカスモードを終了',
   backgroundSettings: '背景',

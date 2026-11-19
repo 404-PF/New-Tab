@@ -163,6 +163,7 @@ window.i18n.__registerLocale('fr', {
   reminderLeadTime1day: '1 jour avant',
   enableNotes: 'Activer le bloc-notes',
   enableMotto: 'Activer la citation du jour',
+  enableSearchBox: 'Afficher la barre de recherche',
   enableFocusMode: 'Activer le mode focus',
   focusModeExit: 'Quitter le mode focus',
   backgroundSettings: 'Arrière-plan',
