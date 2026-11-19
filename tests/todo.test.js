@@ -866,6 +866,27 @@ describe('Todo utilities', () => {
     }
   });
 
+  it('legacy clamped monthly todos can be re-anchored by editing the due date', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 1, 15)); // February 15, 2026
+      localStorage.setItem('todos', JSON.stringify([
+        { id: 'legacy-clamped', text: 'Pay rent', completed: false, dueDate: '2026-02-28', recurrence: 'monthly' }
+      ]));
+
+      reloadTodosState();
+      expect(loadTodos()[0].recurrenceAnchorDay).toBe(28);
+
+      editTodo('legacy-clamped', 'Pay rent', 'medium', '2026-03-31', 'monthly');
+      expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
+
+      toggleTodo('legacy-clamped');
+      expect(loadTodos()[0].dueDate).toBe('2026-04-30');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('isOverdue returns true for past date', () => {
     expect(isOverdue('2000-01-01')).toBe(true);
   });
