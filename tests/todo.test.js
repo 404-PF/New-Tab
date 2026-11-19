@@ -887,6 +887,40 @@ describe('Todo utilities', () => {
     }
   });
 
+  it('storage-error resync of an unanchored legacy monthly todo does not reintroduce drift (issue #1276)', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 15)); // January 15, 2026
+      const legacyRow = {
+        id: 'legacy-resync', text: 'Pay rent', completed: false,
+        createdAt: '2026-01-01T00:00:00.000Z', priority: 'medium',
+        dueDate: '2026-01-31', recurrence: 'monthly'
+      };
+      localStorage.setItem('todos', JSON.stringify([legacyRow]));
+      reloadTodosState();
+      expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
+
+      // The rollback restores the raw row with no persisted anchor.
+      localStorage.setItem('todos', JSON.stringify([legacyRow]));
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'todos' } }));
+      vi.advanceTimersByTime(0);
+
+      // Completing the restored row seeds its anchor instead of drifting.
+      toggleTodo('legacy-resync');
+      let stored = loadTodos()[0];
+      expect(stored.dueDate).toBe('2026-02-28');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+
+      vi.setSystemTime(new Date(2026, 1, 15)); // February 15, 2026
+      toggleTodo('legacy-resync');
+      stored = loadTodos()[0];
+      expect(stored.dueDate).toBe('2026-03-31');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('isOverdue returns true for past date', () => {
     expect(isOverdue('2000-01-01')).toBe(true);
   });
