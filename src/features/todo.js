@@ -560,6 +560,17 @@
     }
   }
 
+  // Monthly todos created without a due date (or restored without an anchor by
+  // the storage-error resync path) reach a completion with no persisted anchor.
+  // Seed it before advancing so the generated day stays stable through short
+  // months instead of being re-derived from an already-clamped due date on the
+  // next completion (issue #1276).
+  function ensureMonthlyRecurrenceAnchor(todo) {
+    if (todo.recurrence !== 'monthly' || isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) return;
+    const derivedAnchorDay = deriveRecurrenceAnchorDay(todo.dueDate);
+    todo.recurrenceAnchorDay = derivedAnchorDay === null ? new Date().getDate() : derivedAnchorDay;
+  }
+
   // Advance `date` by exactly one calendar month (delta can be ±1). A plain
   // setMonth rolls the date forward when the current day doesn't exist in the
   // target month (e.g. Jan 31 → Mar 3), skipping a month. Clamp to the 1st
@@ -1394,6 +1405,7 @@
     const isRecurringCompletion = willComplete && todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence);
     if (isRecurringCompletion) {
       const previousTodo = { ...todo, subtasks: cloneSubtasks(todo.subtasks) };
+      ensureMonthlyRecurrenceAnchor(todo);
       const nextDueDate = getNextDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
       todo.dueDate = nextDueDate;
       todo.completed = false;
@@ -1874,6 +1886,7 @@ function bulkCompleteSelected() {
     if (!selectedIds.has(todo.id) || todo.completed) return;
 
     if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
+      ensureMonthlyRecurrenceAnchor(todo);
       todo.dueDate = getNextDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
       todo.completed = false;
       todo.completedAt = null;

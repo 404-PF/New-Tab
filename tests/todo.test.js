@@ -816,6 +816,56 @@ describe('Todo utilities', () => {
     expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
   });
 
+  it('completing a monthly todo without a due date persists the anchor instead of drifting (issue #1276)', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 31)); // January 31, 2026
+      addTodo('Anchor no date 1276', null, 'medium', 'monthly');
+      const todo = loadTodos().find(t => t.text === 'Anchor no date 1276');
+      expect(todo.dueDate).toBe(null);
+      expect(todo.recurrenceAnchorDay).toBe(null);
+
+      toggleTodo(todo.id);
+      let stored = loadTodos().find(t => t.id === todo.id);
+      expect(stored.dueDate).toBe('2026-02-28');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+
+      vi.setSystemTime(new Date(2026, 1, 15)); // February 15, 2026
+      toggleTodo(todo.id);
+      stored = loadTodos().find(t => t.id === todo.id);
+      expect(stored.dueDate).toBe('2026-03-31');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bulk complete persists the monthly anchor for a todo without a due date', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 31)); // January 31, 2026
+      addTodo('Anchor bulk no date 1276', null, 'medium', 'monthly');
+      const todo = loadTodos().find(t => t.text === 'Anchor bulk no date 1276');
+
+      selectedIds.clear();
+      selectedIds.add(todo.id);
+      bulkCompleteSelected();
+      let stored = loadTodos().find(t => t.id === todo.id);
+      expect(stored.dueDate).toBe('2026-02-28');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+
+      vi.setSystemTime(new Date(2026, 1, 15)); // February 15, 2026
+      selectedIds.clear();
+      selectedIds.add(todo.id);
+      bulkCompleteSelected();
+      stored = loadTodos().find(t => t.id === todo.id);
+      expect(stored.dueDate).toBe('2026-03-31');
+      expect(stored.recurrenceAnchorDay).toBe(31);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('isOverdue returns true for past date', () => {
     expect(isOverdue('2000-01-01')).toBe(true);
   });
