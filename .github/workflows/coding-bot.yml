@@ -31,8 +31,11 @@ jobs:
       - name: Find issues and PRs to work on
         id: find
         run: |
-          issues=$(gh issue list --label assignee:coding-bot --state open --json number --jq '[.[] | {type: "issue", number}]')
-          prs=$(gh pr list --label bot-driving --state open --json number --jq '[.[] | {type: "pr", number}]')
+          prs=$(gh pr list --label bot-driving --state open --limit 1000 --json number --jq '[.[] | {type: "pr", number}]')
+          issues='[]'
+          if [ "$(jq length <<< "$prs")" -le 5 ]; then
+            issues=$(gh issue list --label assignee:coding-bot --state open --json number --jq '[.[] | {type: "issue", number}]')
+          fi
           echo "items=$(jq -cn --argjson a "$issues" --argjson b "$prs" '$a + $b')" >> "$GITHUB_OUTPUT"
 
   work:
@@ -42,7 +45,6 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 5
       matrix:
         item: ${{ fromJSON(needs.discover.outputs.items) }}
     steps:
