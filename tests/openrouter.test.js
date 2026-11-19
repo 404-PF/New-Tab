@@ -560,6 +560,33 @@ describe('OpenRouter streaming resilience (#714)', () => {
 
 
 
+describe('OpenRouter contentless stream (#1278)', () => {
+  it('returns a failure instead of an empty success when the stream emits only [DONE]', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: [DONE]\n\n'
+    ]));
+
+    const chunks = [];
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi', [], chunk => chunks.push(chunk));
+
+    expect(result).toMatchObject({ success: false, error: 'No content in response' });
+    expect(chunks).toEqual([]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a failure for a stream with reasoning but no delta.content', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}\n',
+      'data: [DONE]\n\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi');
+
+    expect(result).toMatchObject({ success: false, error: 'No content in response' });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('OpenRouter non-JSON error bodies (#866)', () => {
   it('classifies a 401 with an HTML body as AUTH_ERROR', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
