@@ -42,6 +42,7 @@ DURATION_INPUT_IDS.forEach((id) => {
 
 beforeAll(() => {
   injectScript('src/core/motion.js');
+  injectScript('src/core/utils.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   // pomodoro.js must register loadPomodoroEnabled before settings.js binds

@@ -4,11 +4,11 @@ import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
   injectScript('src/core/motion.js');
+  injectScript('src/core/utils.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   injectScript('src/ui/settings.js');
   injectScript('src/core/dom-ready.js');
-  injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
   injectScript('src/core/update-checker.js');
 });
