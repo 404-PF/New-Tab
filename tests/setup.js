@@ -312,6 +312,7 @@ globalThis.window.i18n = {
       dueDate: 'Due Date',
       dueTime: 'Due Time',
       aiNetworkError: 'Network error occurred',
+      aiNoContent: 'No content in response',
       aiRateLimitRetryAfter: 'Rate limited. Try again in {seconds} seconds',
       clearDate: 'Clear',
       todayDate: 'Today',
