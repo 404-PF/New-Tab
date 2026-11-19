@@ -904,8 +904,9 @@ describe('Todo utilities', () => {
       localStorage.setItem('todos', JSON.stringify([legacyRow]));
       window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'todos' } }));
       vi.advanceTimersByTime(0);
+      expect(loadTodos()[0].recurrenceAnchorDay).toBe(31);
 
-      // Completing the restored row seeds its anchor instead of drifting.
+      // Completing the restored row keeps its anchor instead of drifting.
       toggleTodo('legacy-resync');
       let stored = loadTodos()[0];
       expect(stored.dueDate).toBe('2026-02-28');

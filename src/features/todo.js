@@ -180,6 +180,7 @@
       const persisted = loadTodos();
       if (JSON.stringify(persisted) === JSON.stringify(todos)) return;
       todos = persisted;
+      migrateTodos();
       applyFilters();
       // Resync reminders so the service worker drops the rolled-back todos.
       scheduleTodoReminderCheck();
