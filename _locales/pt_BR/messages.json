@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Marcar como feito",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Adiar",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "Baixa",
     "description": "Low priority label"

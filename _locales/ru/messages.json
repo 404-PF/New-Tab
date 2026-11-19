@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Отметить выполненным",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Отложить",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "Низкий",
     "description": "Low priority label"

@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Marquer comme fait",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Reporter",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "Basse",
     "description": "Low priority label"

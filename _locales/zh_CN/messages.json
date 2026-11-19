@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "标记完成",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "稍后提醒",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "低",
     "description": "Low priority label"

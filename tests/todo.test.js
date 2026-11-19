@@ -4773,3 +4773,115 @@ describe('Todo natural-language due dates (issue #1192)', () => {
     });
   });
 });
+
+describe('External todo sync (issue #1233)', () => {
+  it('reloads in-memory todos when storage changes outside the page', async () => {
+    addTodo('Original');
+    const id = loadTodos()[0].id;
+
+    await chrome.storage.local.set({
+      todos: JSON.stringify([
+        {
+          id,
+          text: 'Renamed externally',
+          completed: false,
+          completedAt: null,
+          recurrence: null,
+          dueDate: null,
+          dueTime: null,
+          priority: 'medium',
+          createdAt: '2026-11-16T00:00:00.000Z',
+          order: 0
+        }
+      ])
+    });
+
+    expect(document.querySelector('.todo-item .todo-text')?.textContent).toBe('Renamed externally');
+
+    // A later local save must carry the external change instead of clobbering
+    // it with the stale pre-change array.
+    addTodo('Second');
+    const texts = loadTodos().map((todo) => todo.text);
+    expect(texts).toContain('Renamed externally');
+    expect(texts).toContain('Second');
+    expect(texts).not.toContain('Original');
+  });
+
+  it('dispatches todoCompleted when another context completes a todo', async () => {
+    addTodo('External');
+    const id = loadTodos()[0].id;
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      await chrome.storage.local.set({
+        todos: JSON.stringify([
+          {
+            id,
+            text: 'External',
+            completed: true,
+            completedAt: '2026-11-16T12:00:00.000Z',
+            recurrence: null,
+            dueDate: null,
+            dueTime: null,
+            priority: 'medium',
+            createdAt: '2026-11-16T00:00:00.000Z',
+            order: 0
+          }
+        ])
+      });
+
+      expect(dispatched).toEqual([id]);
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
+  });
+
+  it('does not re-dispatch todoCompleted for its own save', async () => {
+    addTodo('Own');
+    const id = loadTodos()[0].id;
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      toggleTodo(id);
+
+      expect(loadTodos()[0].completed).toBe(true);
+      expect(dispatched).toEqual([id]);
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
+  });
+
+  it('keeps a service-worker dueDate advance across the next local save', async () => {
+    addTodo('Weekly', '2026-11-16', 'medium', 'weekly');
+    const id = loadTodos()[0].id;
+
+    // What the service worker persists after a recurring Mark done: the due
+    // date advanced one interval while the todo stays incomplete.
+    const advanced = { ...loadTodos()[0], dueDate: '2026-11-23' };
+    await chrome.storage.local.set({ todos: JSON.stringify([advanced]) });
+
+    addTodo('Another');
+    const stored = loadTodos().find((todo) => todo.id === id);
+    expect(stored.dueDate).toBe('2026-11-23');
+  });
+
+  it('ignores storage changes to keys other than todos', async () => {
+    addTodo('Keep me');
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      await chrome.storage.local.set({ todoSortOrder: 'az' });
+
+      expect(dispatched).toHaveLength(0);
+      expect(document.querySelector('.todo-item .todo-text')?.textContent).toBe('Keep me');
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
+  });
+});

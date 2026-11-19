@@ -165,7 +165,9 @@ globalThis.chrome = {
     getMessage(messageName, substitutions) {
       const messages = {
         todoReminderTitle: 'Todo Reminder',
-        todoReminderMessage: '$1$ \u2014 due $2$'
+        todoReminderMessage: '$1$ \u2014 due $2$',
+        todoReminderMarkDone: 'Mark done',
+        todoReminderSnooze: 'Snooze'
       };
       let msg = messages[messageName] || messageName;
       if (substitutions && Array.isArray(substitutions)) {
@@ -231,6 +233,16 @@ globalThis.chrome = {
       },
       _clearListeners() {
         chrome.notifications.onClicked._listeners = [];
+      }
+    },
+    onButtonClicked: {
+      _listeners: [],
+      addListener(fn) { chrome.notifications.onButtonClicked._listeners.push(fn); },
+      removeListener(fn) {
+        chrome.notifications.onButtonClicked._listeners = chrome.notifications.onButtonClicked._listeners.filter(l => l !== fn);
+      },
+      _clearListeners() {
+        chrome.notifications.onButtonClicked._listeners = [];
       }
     }
   },
