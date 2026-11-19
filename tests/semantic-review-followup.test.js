@@ -39,6 +39,7 @@ function patternCovers(pattern, host) {
 
 beforeAll(() => {
   injectScript('src/core/motion.js');
+  injectScript('src/core/utils.js');
   injectScript('src/ai/embeddings/embedding-scripts.js');
   injectScript('src/ai/embeddings/embedding-registry.js');
   injectScript('src/ai/embeddings/harrier-provider.js');
@@ -49,7 +50,6 @@ beforeAll(() => {
   injectScript('src/ui/font-picker.js');
   injectScript('src/ui/settings.js');
   injectScript('src/core/dom-ready.js');
-  injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
 });
 
