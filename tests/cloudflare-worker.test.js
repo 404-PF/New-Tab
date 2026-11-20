@@ -148,6 +148,23 @@ describe('OpenRouter proxy hardening (#1086)', () => {
     expect(upstreamFetch).not.toHaveBeenCalled();
   });
 
+  it('rejects message entries that are null or lack a string role', async () => {
+    const res = await postRequest(chatBody({ messages: [null, { role: 'user', content: 'hi' }] }));
+
+    expect(res.status).toBe(400);
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns a JSON 502 with CORS headers when the upstream fetch fails', async () => {
+    upstreamFetch.mockRejectedValueOnce(new TypeError('fetch failed'));
+
+    const res = await postRequest(chatBody());
+
+    expect(res.status).toBe(502);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect((await res.json()).error.code).toBe(502);
+  });
+
   it('returns 429 with Retry-After once the per-IP window is exhausted', async () => {
     const ip = nextIp();
     let attempts = 0;
