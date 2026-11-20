@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
+import { expectGeneralToggleMarkup } from './helpers/general-toggle-markup.js';
 import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 // Settings > General search-box toggle (issue #1243): the checkbox hides
@@ -48,20 +49,10 @@ afterEach(() => {
 
 describe('Search box toggle markup (issue #1243)', () => {
   it('ships the checkbox inside the General settings section', () => {
-    const parsed = document.implementation.createHTMLDocument('New Tab');
-    parsed.documentElement.innerHTML = HTML;
-
-    const checkbox = parsed.getElementById('search-box-enabled-setting');
-    expect(checkbox).not.toBeNull();
-    expect(checkbox.getAttribute('type')).toBe('checkbox');
-
-    const general = parsed.querySelector('.settings-section[data-section="general"]');
-    expect(general).not.toBeNull();
-    expect(general.contains(checkbox)).toBe(true);
-
-    const label = general.querySelector('label[for="search-box-enabled-setting"]');
-    expect(label).not.toBeNull();
-    expect(label.getAttribute('data-i18n')).toBe('enableSearchBox');
+    const label = expectGeneralToggleMarkup(HTML, {
+      id: 'search-box-enabled-setting',
+      i18nKey: 'enableSearchBox'
+    });
     expect(label.textContent).toBe('Show search box');
   });
 });

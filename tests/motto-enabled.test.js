@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { injectScript } from './helpers/inject-script.js';
+import { expectGeneralToggleMarkup } from './helpers/general-toggle-markup.js';
 
 // Settings > General daily-motto toggle (issue #1174): the checkbox hides
 // #motto-container when off, defaults to on, and round-trips through backup.
@@ -29,20 +30,7 @@ afterEach(() => {
 
 describe('Motto toggle markup (issue #1174)', () => {
   it('ships the checkbox inside the General settings section', () => {
-    const parsed = document.implementation.createHTMLDocument('New Tab');
-    parsed.documentElement.innerHTML = HTML;
-
-    const checkbox = parsed.getElementById('motto-enabled-setting');
-    expect(checkbox).not.toBeNull();
-    expect(checkbox.getAttribute('type')).toBe('checkbox');
-
-    const general = parsed.querySelector('.settings-section[data-section="general"]');
-    expect(general).not.toBeNull();
-    expect(general.contains(checkbox)).toBe(true);
-
-    const label = general.querySelector('label[for="motto-enabled-setting"]');
-    expect(label).not.toBeNull();
-    expect(label.getAttribute('data-i18n')).toBe('enableMotto');
+    expectGeneralToggleMarkup(HTML, { id: 'motto-enabled-setting', i18nKey: 'enableMotto' });
   });
 
   it('keeps the daily motto container in the page', () => {
