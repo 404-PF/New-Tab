@@ -1047,17 +1047,12 @@
       if (e.key === 'Escape') handleCancel();
     };
 
-    // Writes the settings keys themselves. Runs only after the backup's
-    // custom background media has been restored to IndexedDB, so an imported
-    // `homepageBg` never references a `custom_*` id whose blob is missing.
-    // When that restore failed (`mediaRestored` false) the custom
-    // `homepageBg` is skipped so the current value survives instead of
-    // pointing at a blob that was never written.
-    // Appends incoming items whose id is not already present. Items without
-    // an id are skipped, as are duplicates within either list.
+    // Appends incoming items whose id is not already present in `current`
+    // or earlier in `incoming`. Items without an id are skipped; existing
+    // entries are preserved as-is.
     const mergeItemsById = function (current, incoming) {
       const merged = Array.isArray(current) ? current.slice() : [];
-      const ids = {};
+      const ids = Object.create(null);
       merged.forEach(function (item) {
         if (item && item.id) ids[item.id] = true;
       });
@@ -1072,6 +1067,12 @@
       return { merged: merged, added: added };
     };
 
+    // Writes the settings keys themselves. Runs only after the backup's
+    // custom background media has been restored to IndexedDB, so an imported
+    // `homepageBg` never references a `custom_*` id whose blob is missing.
+    // When that restore failed (`mediaRestored` false) the custom
+    // `homepageBg` is skipped so the current value survives instead of
+    // pointing at a blob that was never written.
     const applySettingsKeys = function (mode, mediaRestored) {
       const keys = Object.keys(importedData);
       let count = 0;
