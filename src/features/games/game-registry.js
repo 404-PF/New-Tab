@@ -20,64 +20,95 @@
   let currentLaunchHadSave = false;
   let initialized = false;
 
-  let statsCache = null;
-  let statsCacheRaw;
   let mruCache = null;
   let mruCacheRaw;
-  let savesCache = null;
-  let savesCacheRaw;
 
   // ===================== Storage Helpers =====================
 
-  function loadStats() {
-    try {
-      const raw = localStorage.getItem(STATS_KEY);
-      if (raw === statsCacheRaw && statsCache !== null) return statsCache;
-      statsCacheRaw = raw;
-      if (!raw) {
-        statsCache = {};
-        return statsCache;
-      }
-      const parsed = JSON.parse(raw);
-      statsCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-      return statsCache;
-    } catch (e) {
-      console.warn('Failed to load games_stats:', e);
-      statsCache = {};
-      statsCacheRaw = undefined;
-      return statsCache;
-    }
-  }
-
   // Coalesce bursts: several failed writes in quick succession show one toast.
-  const STATS_TOAST_COALESCE_MS = 2000;
-  let lastStatsToastAt = -Infinity;
+  const TOAST_COALESCE_MS = 2000;
 
-  function showStatsSaveError() {
-    const now = Date.now();
-    if (now - lastStatsToastAt < STATS_TOAST_COALESCE_MS) return;
-    lastStatsToastAt = now;
-    let message = STATS_SAVE_ERROR_FALLBACK;
-    if (window.i18n && typeof window.i18n.t === 'function') {
-      const translated = window.i18n.t('gameStatsSaveError');
-      if (translated && translated !== 'gameStatsSaveError') message = translated;
+  // A localStorage key holding a plain JSON object, with a private read cache
+  // and its own toast coalescing.
+  function createJSONObjectStore({ key, errorI18nKey, fallback }) {
+    let cache = null;
+    let cacheRaw;
+    let lastToastAt = -Infinity;
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw === cacheRaw && cache !== null) return cache;
+        cacheRaw = raw;
+        if (!raw) {
+          cache = {};
+          return cache;
+        }
+        const parsed = JSON.parse(raw);
+        cache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        return cache;
+      } catch (e) {
+        console.warn(`Failed to load ${key}:`, e);
+        cache = {};
+        cacheRaw = undefined;
+        return cache;
+      }
     }
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, 'error');
-      return;
+
+    function showError() {
+      const now = Date.now();
+      if (now - lastToastAt < TOAST_COALESCE_MS) return;
+      lastToastAt = now;
+      let message = fallback;
+      if (window.i18n && typeof window.i18n.t === 'function') {
+        const translated = window.i18n.t(errorI18nKey);
+        if (translated && translated !== errorI18nKey) message = translated;
+      }
+      if (typeof window.showToast === 'function') {
+        window.showToast(message, 'error');
+        return;
+      }
+      console.warn(message);
     }
-    console.warn(message);
+
+    function fail(error) {
+      console.warn(`Failed to save ${key}:`, error || 'storage rejected the write');
+      // Drop the cache so the next read re-serves the value the storage bridge
+      // rolled back to, not the rejected object.
+      invalidate();
+      showError();
+      return false;
+    }
+
+    function save(value) {
+      return writeTrackedJSON(key, value, (cached, raw) => {
+        cache = cached;
+        cacheRaw = raw;
+      }, fail);
+    }
+
+    function invalidate() {
+      cache = null;
+      cacheRaw = undefined;
+    }
+
+    function resetToast() {
+      lastToastAt = -Infinity;
+    }
+
+    return { load, save, fail, showError, invalidate, resetToast };
   }
 
-  function failStatsSave(error) {
-    console.warn('Failed to save games_stats:', error || 'storage rejected the write');
-    // Drop the cache so the next read re-serves the value the storage bridge
-    // rolled back to, not the rejected stats.
-    statsCache = null;
-    statsCacheRaw = undefined;
-    showStatsSaveError();
-    return false;
-  }
+  const statsStore = createJSONObjectStore({
+    key: STATS_KEY,
+    errorI18nKey: 'gameStatsSaveError',
+    fallback: STATS_SAVE_ERROR_FALLBACK
+  });
+  const savesStore = createJSONObjectStore({
+    key: SAVES_KEY,
+    errorI18nKey: 'gameSavesSaveError',
+    fallback: SAVES_SAVE_ERROR_FALLBACK
+  });
 
   // Shared write path for the tracked JSON stores (stats, saves, MRU).
   // Resolves to whether the value persisted. The storage bridge's sync
@@ -122,13 +153,6 @@
     }
     commit(value, serialized);
     return Promise.resolve(true);
-  }
-
-  function saveStats(stats) {
-    return writeTrackedJSON(STATS_KEY, stats, (cached, raw) => {
-      statsCache = cached;
-      statsCacheRaw = raw;
-    }, failStatsSave);
   }
 
   function loadMRU() {
@@ -203,63 +227,6 @@
     return write;
   }
 
-  function loadSaves() {
-    try {
-      const raw = localStorage.getItem(SAVES_KEY);
-      if (raw === savesCacheRaw && savesCache !== null) return savesCache;
-      savesCacheRaw = raw;
-      if (!raw) {
-        savesCache = {};
-        return savesCache;
-      }
-      const parsed = JSON.parse(raw);
-      savesCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-      return savesCache;
-    } catch (e) {
-      console.warn('Failed to load games_saves:', e);
-      savesCache = {};
-      savesCacheRaw = undefined;
-      return savesCache;
-    }
-  }
-
-  // Coalesce bursts: several failed writes in quick succession show one toast.
-  const SAVES_TOAST_COALESCE_MS = 2000;
-  let lastSavesToastAt = -Infinity;
-
-  function showSavesSaveError() {
-    const now = Date.now();
-    if (now - lastSavesToastAt < SAVES_TOAST_COALESCE_MS) return;
-    lastSavesToastAt = now;
-    let message = SAVES_SAVE_ERROR_FALLBACK;
-    if (window.i18n && typeof window.i18n.t === 'function') {
-      const translated = window.i18n.t('gameSavesSaveError');
-      if (translated && translated !== 'gameSavesSaveError') message = translated;
-    }
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, 'error');
-      return;
-    }
-    console.warn(message);
-  }
-
-  function failSavesSave(error) {
-    console.warn('Failed to save games_saves:', error || 'storage rejected the write');
-    // Drop the cache so the next read re-serves the value the storage bridge
-    // rolled back to, not the rejected saves.
-    savesCache = null;
-    savesCacheRaw = undefined;
-    showSavesSaveError();
-    return false;
-  }
-
-  function saveSaves(saves) {
-    return writeTrackedJSON(SAVES_KEY, saves, (cached, raw) => {
-      savesCache = cached;
-      savesCacheRaw = raw;
-    }, failSavesSave);
-  }
-
   // Saves writes are serialized so each one is confirmed (or rolled back by
   // the storage bridge) before the next setItemAsync() starts: overlapping
   // writes would let the second write's rollback target be the first write's
@@ -284,12 +251,12 @@
       if (generation !== savesWriteGeneration) return Promise.resolve(true);
       let saves;
       try {
-        saves = { ...loadSaves() };
+        saves = { ...savesStore.load() };
         if (apply(saves) === false) return Promise.resolve(true);
       } catch (e) {
-        return Promise.resolve(failSavesSave(e));
+        return Promise.resolve(savesStore.fail(e));
       }
-      return saveSaves(saves);
+      return savesStore.save(saves);
     };
 
     const settle = () => {
@@ -323,7 +290,7 @@
   }
 
   function getSave(gameId) {
-    const entry = loadSaves()[gameId];
+    const entry = savesStore.load()[gameId];
     return isValidSaveEnvelope(entry) ? entry : null;
   }
 
@@ -399,7 +366,7 @@
   }
 
   function viewStats() {
-    const base = loadStats();
+    const base = statsStore.load();
     const queued = pendingStatsUpdates.filter((entry) => !entry.started);
     if (queued.length === 0) return base;
     const view = { ...base };
@@ -423,7 +390,7 @@
   }
 
   function getAllSaves() {
-    return loadSaves();
+    return savesStore.load();
   }
 
   // `updates` is either a partial stats object or an updater function
@@ -443,12 +410,12 @@
       try {
         // Stored state only: earlier writes have settled, and failures have
         // already been rolled back by the bridge.
-        all = { ...loadStats() };
+        all = { ...statsStore.load() };
         all[id] = applyUpdater(all, entry);
       } catch (e) {
-        return Promise.resolve(settle(failStatsSave(e)));
+        return Promise.resolve(settle(statsStore.fail(e)));
       }
-      return saveStats(all).then(settle);
+      return statsStore.save(all).then(settle);
     };
 
     const write = statsWritesInFlight === 0 ? run() : statsWriteChain.then(run);
@@ -594,23 +561,19 @@
 
   function handleStorageEvent(e) {
     if (!e || e.key === null) {
-      statsCache = null;
-      statsCacheRaw = undefined;
+      statsStore.invalidate();
       mruCache = null;
       mruCacheRaw = undefined;
-      savesCache = null;
-      savesCacheRaw = undefined;
+      savesStore.invalidate();
       return;
     }
     if (e.key === STATS_KEY) {
-      statsCache = null;
-      statsCacheRaw = undefined;
+      statsStore.invalidate();
     } else if (e.key === MRU_KEY) {
       mruCache = null;
       mruCacheRaw = undefined;
     } else if (e.key === SAVES_KEY) {
-      savesCache = null;
-      savesCacheRaw = undefined;
+      savesStore.invalidate();
     }
   }
 
@@ -646,13 +609,12 @@
     destroyCurrent();
     registeredGames = Object.create(null);
     launchOrder = [];
-    statsCache = null;
-    statsCacheRaw = undefined;
+    statsStore.invalidate();
     pendingStatsUpdates = [];
     statsWriteChain = Promise.resolve();
     statsWritesInFlight = 0;
-    lastStatsToastAt = -Infinity;
-    lastSavesToastAt = -Infinity;
+    statsStore.resetToast();
+    savesStore.resetToast();
     // Invalidate writes enqueued (but not yet run) before this reset, then
     // start fresh queues for the next test.
     savesWriteGeneration += 1;
@@ -663,8 +625,7 @@
     mruWritesInFlight = 0;
     mruCache = null;
     mruCacheRaw = undefined;
-    savesCache = null;
-    savesCacheRaw = undefined;
+    savesStore.invalidate();
   }
 
   window.GameRegistry = {
