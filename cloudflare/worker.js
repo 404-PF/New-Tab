@@ -303,8 +303,14 @@ export default {
     if (messages.length > MAX_MESSAGES) {
       return json(400, { error: { message: `messages exceeds limit of ${MAX_MESSAGES}`, code: 400 } });
     }
-    if (!messages.every(m => m && typeof m === 'object' && !Array.isArray(m) && typeof m.role === 'string')) {
-      return json(400, { error: { message: 'each message must be an object with a string role', code: 400 } });
+    if (!messages.every(m =>
+      m
+      && typeof m === 'object'
+      && !Array.isArray(m)
+      && ['user', 'assistant', 'system'].includes(m.role)
+      && typeof m.content === 'string'
+    )) {
+      return json(400, { error: { message: 'each message must have a supported role and string content', code: 400 } });
     }
 
     const model = ALLOWED_MODELS.has(body.model) ? body.model : 'openrouter/free';

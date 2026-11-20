@@ -149,10 +149,12 @@ describe('OpenRouter proxy hardening (#1086)', () => {
   });
 
   it('rejects message entries that are null or lack a string role', async () => {
-    const res = await postRequest(chatBody({ messages: [null, { role: 'user', content: 'hi' }] }));
+    for (const invalid of [null, {}, { role: null }, { role: 42 }]) {
+      const res = await postRequest(chatBody({ messages: [invalid, { role: 'user', content: 'hi' }] }));
 
-    expect(res.status).toBe(400);
-    expect(upstreamFetch).not.toHaveBeenCalled();
+      expect(res.status).toBe(400);
+      expect(upstreamFetch).not.toHaveBeenCalled();
+    }
   });
 
   it('returns a JSON 502 with CORS headers when the upstream fetch fails', async () => {
