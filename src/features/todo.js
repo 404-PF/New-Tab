@@ -2031,8 +2031,7 @@ function showClearCompletedDialog() {
   overlay?.addEventListener('click', handleCancel);
 }
 
-// Hide clear completed confirmation dialog and detach its listeners, so
-// Escape (which only strips the open class in shortcuts.js) cannot leak them.
+// Escape also routes here (accessibility.js and shortcuts.js), so listeners are detached on every close path.
 function hideClearCompletedDialog() {
   const dialog = document.getElementById('clear-completed-dialog');
   if (dialog) {
