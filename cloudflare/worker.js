@@ -226,8 +226,8 @@ async function tavilySearch(query, maxResults) {
 // URLs keep their raw '&' so query strings in cited links stay intact.
 function sanitizeGroundingText(value, { keepAmpersands = false } = {}) {
   let text = String(value).replace(/\s+/g, ' ');
-  if (!keepAmpersands) text = text.replace(/&/g, '&amp;');
-  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  if (!keepAmpersands) text = text.replaceAll('&', '&amp;');
+  return text.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 function groundingMessage(results, searchPrompt) {
