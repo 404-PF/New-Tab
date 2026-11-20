@@ -765,6 +765,24 @@ describe('todo reminder notification actions (issue #1233)', () => {
     expect(chrome.notifications._notifications['todo_reminder_plain']).toBeUndefined();
   });
 
+  it('does not clear another todo whose id only shares a prefix on Mark done', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'task', text: 'Short', completed: false, dueDate: '2026-08-11' },
+      { id: 'task_1', text: 'Other', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await chrome.storage.local.set({
+      todoReminderNotified: { 'task_1_2026-08-11': true }
+    });
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_task', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get(['todoReminderNotified']);
+    expect(data.todoReminderNotified).toEqual({ 'task_1_2026-08-11': true });
+  });
+
   it('re-merges Mark done when a concurrent page save overwrites the todos write', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));

@@ -189,7 +189,7 @@ function clearAllNotified(notified) {
 function clearEntriesForTodo(notified, todoId) {
   let updated = false;
   for (const key of Object.keys(notified)) {
-    if (key.startsWith(todoId + '_')) {
+    if (getTodoIdFromKey(key) === todoId) {
       delete notified[key];
       updated = true;
     }
@@ -616,7 +616,7 @@ async function snoozeTodoReminderFromNotification(todoId) {
     return;
   }
   for (const key of Object.keys(notified)) {
-    if (key.startsWith(todoId + '_')) notified[key] = PENDING_NOTIFIED_MARK;
+    if (getTodoIdFromKey(key) === todoId) notified[key] = PENDING_NOTIFIED_MARK;
   }
   if (typeof todo.dueDate === 'string') {
     const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
