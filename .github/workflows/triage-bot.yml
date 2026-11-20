@@ -16,9 +16,9 @@ concurrency:
 
 permissions:
   contents: read
+  issues: read
 
 env:
-  GH_TOKEN: ${{ secrets.GH_PAT }}
   GH_REPO: ${{ github.repository }}
 
 jobs:
@@ -29,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -40,7 +41,8 @@ jobs:
       - name: Triage issue
         env:
           ITEM: ${{ github.event.issue.number || inputs.number }}
-          COPILOT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/prompt.md" <<EOF
@@ -49,4 +51,9 @@ jobs:
           Write exactly one concise Markdown comment to $RUNNER_TEMP/triage.md with these sections: Validity (valid, invalid, or needs-info, with a one-line reason), Likely location (file:line or unknown), Severity (low, medium, high, or critical), Next step. Keep it under 150 words.
           EOF
           copilot -p "$(cat "$RUNNER_TEMP/prompt.md")" --model claude-haiku-5.5 --allow-all
-          gh issue comment "$ITEM" --body-file "$RUNNER_TEMP/triage.md"
+
+      - name: Post triage comment
+        env:
+          ITEM: ${{ github.event.issue.number || inputs.number }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: gh issue comment "$ITEM" --body-file "$RUNNER_TEMP/triage.md"

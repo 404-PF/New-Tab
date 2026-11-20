@@ -11,9 +11,9 @@ concurrency:
 
 permissions:
   contents: read
+  issues: read
 
 env:
-  GH_TOKEN: ${{ secrets.GH_PAT }}
   GH_REPO: ${{ github.repository }}
 
 jobs:
@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -34,6 +35,8 @@ jobs:
 
       - name: Compute issue quota (shared 5-issue budget with bug-bot)
         id: quota
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           b=$(gh issue list --state open --limit 1000 --json title --jq '[.[] | select(.title | startswith("[bug-bot]"))] | length')
           r=$(gh issue list --state open --limit 1000 --json title --jq '[.[] | select(.title | startswith("[refactor-bot]"))] | length')
@@ -42,11 +45,14 @@ jobs:
           echo "quota=$(( 5 - bug_quota ))" >> "$GITHUB_OUTPUT"
 
       - name: Snapshot existing issues
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: gh issue list --state all --limit 1000 --json number,title,state > "$RUNNER_TEMP/existing.json"
 
       - name: Suggest refactorings
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
           QUOTA: ${{ steps.quota.outputs.quota }}
         run: |
           cat > "$RUNNER_TEMP/prompt.md" <<EOF
@@ -59,6 +65,7 @@ jobs:
 
       - name: File new refactor issues
         env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           QUOTA: ${{ steps.quota.outputs.quota }}
         run: |
           jq -c --argjson n "$QUOTA" '.[:$n][]' "$RUNNER_TEMP/candidates.json" | while read -r c; do
