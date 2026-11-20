@@ -30,6 +30,8 @@ const stubElements = () => {
   stubElement('ai-scroll-to-bottom', 'button');
 };
 
+let realSendMessageStreaming;
+
 beforeAll(() => {
   stubElements();
 
@@ -55,6 +57,7 @@ beforeAll(() => {
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
   injectScript('src/ai/ai-service.js');
+  realSendMessageStreaming = OpenRouterAPI.sendMessageStreaming;
 });
 
 beforeEach(() => {
@@ -141,6 +144,52 @@ describe('AIService message normalization', () => {
 
     expect(conversation.messages).toEqual([]);
     expect(OpenRouterAPI.sendMessageStreaming).not.toHaveBeenCalled();
+  });
+});
+
+describe('AIService contentless stream (#1278)', () => {
+  it('drops the empty assistant message and shows an error when the stream has no content', async () => {
+    const conversation = {
+      id: 'conv_no_content',
+      title: 'NoContent',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    const originalIsWebGroundingEnabled = OpenRouterAPI.isWebGroundingEnabled;
+    const originalFetch = globalThis.fetch;
+    const encoder = new TextEncoder();
+
+    OpenRouterAPI.isWebGroundingEnabled = () => false;
+    OpenRouterAPI.sendMessageStreaming = realSendMessageStreaming;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      body: {
+        getReader: () => ({
+          read: vi.fn()
+            .mockResolvedValueOnce({ done: false, value: encoder.encode('data: [DONE]\n\n') })
+            .mockResolvedValue({ done: true })
+        })
+      }
+    });
+    document.getElementById('ai-chat-error').textContent = '';
+
+    try {
+      await AIService.sendMessage('hello');
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(conversation.messages).toHaveLength(1);
+      expect(conversation.messages[0]).toMatchObject({ role: 'user', content: 'hello' });
+      expect(document.getElementById('ai-chat-error').textContent).toBe('No content in response');
+      expect(document.getElementById('ai-chat-error').style.display).toBe('block');
+    } finally {
+      OpenRouterAPI.isWebGroundingEnabled = originalIsWebGroundingEnabled;
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 

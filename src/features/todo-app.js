@@ -131,22 +131,6 @@
 
   // ===================== Settings persistence =====================
 
-  // Guard the shared helper: toast.js may fail to load, and persistFeatureToggle
-  // checks the bridge's result: setItem returns false for a rejected write
-  // instead of throwing (#969).
-  function persistToggle(key, value) {
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle(key, value)
-        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (e) {
-      console.warn('Failed to save ' + key + ':', e);
-      persisted = false;
-    }
-    return persisted;
-  }
-
   function reportToggleSaveError() {
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
@@ -164,7 +148,7 @@
     const todoEnabledSetting = document.getElementById('todo-enabled-setting');
     if (todoEnabledSetting) {
       todoEnabledSetting.addEventListener('change', function () {
-        const persisted = persistToggle('todoEnabled', this.checked);
+        const persisted = window.persistSetting('todoEnabled', this.checked);
         applyTodoEnabled();
         if (!persisted) reportToggleSaveError();
       });
@@ -173,7 +157,7 @@
     const todoStatsEnabledSetting = document.getElementById('todo-stats-enabled-setting');
     if (todoStatsEnabledSetting) {
       todoStatsEnabledSetting.addEventListener('change', function () {
-        const persisted = persistToggle('todoStatsEnabled', this.checked);
+        const persisted = window.persistSetting('todoStatsEnabled', this.checked);
         applyTodoStatsEnabled();
         if (!persisted) reportToggleSaveError();
       });
@@ -183,7 +167,7 @@
     if (todoReminderEnabledSetting) {
       todoReminderEnabledSetting.addEventListener('change', function () {
         const wasEnabled = loadTodoReminderEnabled();
-        const persisted = persistToggle('todoReminderEnabled', this.checked);
+        const persisted = window.persistSetting('todoReminderEnabled', this.checked);
         // Reapply from storage so a rejected write snaps the control back
         // instead of leaving the unsaved value on screen.
         applyTodoReminderEnabled();
@@ -201,7 +185,7 @@
     const todoReminderLeadTime = document.getElementById('todo-reminder-lead-time');
     if (todoReminderLeadTime) {
       todoReminderLeadTime.addEventListener('change', function () {
-        const persisted = persistToggle('todoReminderLeadTime', this.value);
+        const persisted = window.persistSetting('todoReminderLeadTime', this.value);
         applyTodoReminderLeadTime();
         if (!persisted) {
           reportToggleSaveError();

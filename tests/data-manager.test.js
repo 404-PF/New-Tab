@@ -1841,6 +1841,86 @@ describe('DataManager background rotation re-apply (issue #1080)', () => {
     expectRotationRefreshed(1);
   });
 
+  it('includes the time-of-day keys in the export allowlist (issue #1234)', () => {
+    ['bgRotationDayTime', 'bgRotationNightTime', 'bgRotationDaySelection', 'bgRotationNightSelection'].forEach((key) => {
+      expect(window.DataManager.EXPORT_KEYS).toContain(key);
+    });
+  });
+
+  it('validates the shape of the time-of-day keys', () => {
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDayTime('07:00')).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationNightTime('23:59')).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDayTime('')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDayTime('noon')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationNightTime('24:00')).toBe(false);
+    // type="time" inputs require a two-digit hour; 7:00 would be cleared.
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDayTime('7:00')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDaySelection(['bg-1'])).toBe(true);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationDaySelection('bg-1')).toBe(false);
+    expect(window.DataManager.EXPECTED_SHAPES.bgRotationNightSelection([1])).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      bgRotationEnabled: true,
+      bgRotationInterval: 'tod',
+      bgRotationDayTime: '07:00',
+      bgRotationNightTime: '19:00',
+      bgRotationDaySelection: ['bg-1'],
+      bgRotationNightSelection: ['bg-2']
+    } })).toEqual({ valid: true });
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      bgRotationDayTime: 'noon'
+    } }).valid).toBe(false);
+  });
+
+  it('exports the schedule as time strings and selection arrays', async () => {
+    localStorage.setItem('bgRotationInterval', 'tod');
+    localStorage.setItem('bgRotationDayTime', '08:15');
+    localStorage.setItem('bgRotationNightTime', '21:45');
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['bg-1', 'bg-2']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['bg-3']));
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgRotationDayTime).toBe('08:15');
+    expect(exported.data.bgRotationNightTime).toBe('21:45');
+    expect(exported.data.bgRotationDaySelection).toEqual(['bg-1', 'bg-2']);
+    expect(exported.data.bgRotationNightSelection).toEqual(['bg-3']);
+  });
+
+  it('omits time-of-day time keys whose stored value is empty', async () => {
+    localStorage.setItem('bgRotationDayTime', '');
+    localStorage.setItem('bgRotationNightTime', '');
+
+    const exported = await exportDataForTest();
+
+    expect(exported.data.bgRotationDayTime).toBeUndefined();
+    expect(exported.data.bgRotationNightTime).toBeUndefined();
+  });
+
+  it('round-trips the time-of-day schedule through export and import', async () => {
+    localStorage.setItem('bgRotationInterval', 'tod');
+    localStorage.setItem('bgRotationDayTime', '06:45');
+    localStorage.setItem('bgRotationNightTime', '18:30');
+    localStorage.setItem('bgRotationDaySelection', JSON.stringify(['bg-1']));
+    localStorage.setItem('bgRotationNightSelection', JSON.stringify(['bg-2', 'bg-3']));
+
+    const exported = await exportDataForTest();
+    expect(window.DataManager.validateImportData(exported)).toEqual({ valid: true });
+
+    ['bgRotationDayTime', 'bgRotationNightTime', 'bgRotationDaySelection', 'bgRotationNightSelection'].forEach((key) => {
+      localStorage.removeItem(key);
+    });
+
+    const result = await importBackup(exported.data, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('bgRotationDayTime')).toBe('06:45');
+    expect(localStorage.getItem('bgRotationNightTime')).toBe('18:30');
+    expect(localStorage.getItem('bgRotationDaySelection')).toBe(JSON.stringify(['bg-1']));
+    expect(localStorage.getItem('bgRotationNightSelection')).toBe(JSON.stringify(['bg-2', 'bg-3']));
+    expectRotationRefreshed(1);
+  });
+
   it('still succeeds when window.BackgroundRotation is unavailable', async () => {
     rotation.restore();
     delete window.BackgroundRotation;

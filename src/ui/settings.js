@@ -45,21 +45,6 @@ const VIDEO_AUTOPLAY_KEY = 'videoAutoplay';
 const VIDEO_MUTED_KEY = 'videoMuted';
 const VIDEO_PAUSE_HIDDEN_KEY = 'videoPauseHidden';
 
-// Shared checked write for Settings-modal controls (#1149): the storage
-// bridge returns false instead of throwing on a rejected write, so check
-// the result via persistFeatureToggle when available, falling back to a
-// direct setItem. Returns whether the write was accepted.
-function persistSetting(key, value) {
-  try {
-    return typeof window.persistFeatureToggle === 'function'
-      ? window.persistFeatureToggle(key, value)
-      : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-  } catch (e) {
-    console.warn('Failed to save ' + key + ':', e);
-    return false;
-  }
-}
-
 function loadVideoAutoplay() {
   return localStorage.getItem(VIDEO_AUTOPLAY_KEY) !== 'false';
 }
@@ -178,7 +163,7 @@ function bindBgOverlayInput(input, key) {
   input.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149), so check the result and re-apply the rolled-back value.
-    const persisted = persistSetting(key, input.value);
+    const persisted = window.persistSetting(key, input.value);
     applyBgOverlaySettings();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -935,7 +920,7 @@ document.addEventListener('click', function (e) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): applyBg() re-reads storage so a rejection restores the
     // previous background, then report the failure.
-    const persisted = persistSetting('homepageBg', bgId);
+    const persisted = window.persistSetting('homepageBg', bgId);
     applyBg();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1032,7 +1017,7 @@ if (clockColorPicker) {
   clockColorPicker.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply the rolled-back style and report the failure.
-    const persisted = persistSetting('clockColor', this.value);
+    const persisted = window.persistSetting('clockColor', this.value);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1041,7 +1026,7 @@ if (clockColorPicker) {
 }
 if (clockFontPicker) {
   clockFontPicker.addEventListener('change', function () {
-    const persisted = persistSetting('clockFont', this.value);
+    const persisted = window.persistSetting('clockFont', this.value);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1055,7 +1040,7 @@ if (clockSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    const persisted = persistSetting('clockSize', size);
+    const persisted = window.persistSetting('clockSize', size);
     applyClockStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1084,7 +1069,7 @@ if (clockStyleReset) {
 const clockFormatPicker = document.getElementById('clock-format-picker');
 if (clockFormatPicker) {
   clockFormatPicker.addEventListener('change', function () {
-    const persisted = persistSetting('clockFormat', this.value);
+    const persisted = window.persistSetting('clockFormat', this.value);
     // Re-apply either way: after a rejected write the getters re-read the
     // rolled-back value instead of leaving the picker desynced (#1149).
     applyClockFormatSetting();
@@ -1178,7 +1163,7 @@ if (dateColorPicker) {
   dateColorPicker.addEventListener('input', function () {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply the rolled-back style and report the failure.
-    const persisted = persistSetting('dateColor', this.value);
+    const persisted = window.persistSetting('dateColor', this.value);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1187,7 +1172,7 @@ if (dateColorPicker) {
 }
 if (dateFontPicker) {
   dateFontPicker.addEventListener('change', function () {
-    const persisted = persistSetting('dateFont', this.value);
+    const persisted = window.persistSetting('dateFont', this.value);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1201,7 +1186,7 @@ if (dateSizeGroup) {
     if (!button) return;
     const size = parseInt(button.dataset.size, 10);
     if (!Number.isFinite(size)) return;
-    const persisted = persistSetting('dateSize', size);
+    const persisted = window.persistSetting('dateSize', size);
     applyDateStyle();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1230,7 +1215,7 @@ if (dateStyleReset) {
 const dateFormatPicker = document.getElementById('date-format-picker');
 if (dateFormatPicker) {
   dateFormatPicker.addEventListener('change', function () {
-    const persisted = persistSetting('dateFormat', this.value);
+    const persisted = window.persistSetting('dateFormat', this.value);
     // Re-apply either way: after a rejected write the getters re-read the
     // rolled-back value instead of leaving the picker desynced (#1149).
     applyDateFormatSetting();
@@ -1593,7 +1578,7 @@ function applyLanguageSetting() {
 // the previously stored theme (radio, body class) and the
 // listeners are told the restored effective theme, not the rejected one.
 function commitTheme(selectedTheme) {
-  const persisted = persistSetting('theme', selectedTheme);
+  const persisted = window.persistSetting('theme', selectedTheme);
   applyTheme();
   // Dispatch custom event for AI chat and other components to respond.
   // 'system' is resolved so listeners always receive a concrete theme.
@@ -1607,7 +1592,7 @@ function commitTheme(selectedTheme) {
 const liquidGlassSetting = document.getElementById('liquid-glass-setting');
 if (liquidGlassSetting) {
   liquidGlassSetting.addEventListener('change', function () {
-    const persisted = persistSetting('liquidGlassEnabled', this.checked);
+    const persisted = window.persistSetting('liquidGlassEnabled', this.checked);
     applyLiquidGlassEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1644,7 +1629,7 @@ document.addEventListener('change', function (e) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): resync the checkboxes from the rolled-back value and skip
     // the media side-effects so the video does not flash the new state.
-    const persisted = persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
+    const persisted = window.persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1693,7 +1678,7 @@ document.addEventListener('change', function (e) {
       }
     }
   } else if (e.target === videoMutedSetting) {
-    const persisted = persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
+    const persisted = window.persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1705,7 +1690,7 @@ document.addEventListener('change', function (e) {
       videoEl.muted = videoMutedSetting.checked;
     }
   } else if (e.target === videoPauseHiddenSetting) {
-    const persisted = persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
+    const persisted = window.persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
       reportFeatureToggleSaveError();
@@ -1732,7 +1717,7 @@ if (pomodoroStatsEnabledSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the checkbox and stats
     // panel snap back to the rolled-back value.
-    const persisted = persistSetting('pomodoroStatsEnabled', this.checked);
+    const persisted = window.persistSetting('pomodoroStatsEnabled', this.checked);
     applyPomodoroStatsEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -1798,7 +1783,7 @@ function saveEyeCareReminderState(updates) {
     ...current,
     ...updates
   };
-  const persisted = persistSetting('eyeCareReminder', JSON.stringify(next));
+  const persisted = window.persistSetting('eyeCareReminder', JSON.stringify(next));
   if (!persisted) {
     return false;
   }
@@ -1906,9 +1891,7 @@ function applyNotesEnabled() {
 const notesEnabledSetting = document.getElementById('notes-enabled-setting');
 if (notesEnabledSetting) {
   notesEnabledSetting.addEventListener('change', function () {
-    // Guard the shared helper: toast.js may fail to load, and an unguarded
-    // call would throw before the write (#969 review thread).
-    const persisted = persistSetting('notesEnabled', this.checked);
+    const persisted = window.persistSetting('notesEnabled', this.checked);
     applyNotesEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2103,7 +2086,7 @@ function applyMottoEnabled() {
 const mottoEnabledSetting = document.getElementById('motto-enabled-setting');
 if (mottoEnabledSetting) {
   mottoEnabledSetting.addEventListener('change', function () {
-    const persisted = persistSetting('mottoEnabled', this.checked);
+    const persisted = window.persistSetting('mottoEnabled', this.checked);
     applyMottoEnabled();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2175,7 +2158,7 @@ function startSemanticDownload(requestPermission) {
         renderNotesSemanticSettings();
         return;
       }
-      const persisted = persistSetting('notesSemanticEnabled', false);
+      const persisted = window.persistSetting('notesSemanticEnabled', false);
       clearSemanticDownloadState();
       applyNotesSemanticEnabled();
       if (!persisted) {
@@ -2212,7 +2195,7 @@ function startSemanticDownload(requestPermission) {
     }
     // A dead runtime must not strand the toggle on with "Starting…"
     // forever: reset the flag (and toast only on the gestured path).
-    persistSetting('notesSemanticEnabled', false);
+    window.persistSetting('notesSemanticEnabled', false);
     clearSemanticDownloadState();
     applyNotesSemanticEnabled();
     if (!passive && typeof window.showToast === 'function') {
@@ -2328,7 +2311,7 @@ function startSemanticModelDownload(els, passive, startGeneration) {
     if (!window.EmbeddingService || typeof window.EmbeddingService.ensureModel !== 'function') {
       // Modules loaded but the service never materialized: same reset as a
       // load failure so the toggle cannot stick on "Starting…".
-      persistSetting('notesSemanticEnabled', false);
+      window.persistSetting('notesSemanticEnabled', false);
       writeSemanticDownloadState('error');
       renderNotesSemanticSettings();
       if (!silent && typeof window.showToast === 'function') {
@@ -2395,7 +2378,7 @@ function bindSemanticCheckbox(els) {
   if (!els.checkbox || els.checkbox.dataset.semanticBound) return;
   els.checkbox.dataset.semanticBound = 'true';
   els.checkbox.addEventListener('change', function () {
-    const persisted = persistSetting('notesSemanticEnabled', this.checked);
+    const persisted = window.persistSetting('notesSemanticEnabled', this.checked);
     renderNotesSemanticSettings();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2438,7 +2421,7 @@ function bindSemanticCancel(els) {
     try {
       if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
     } catch { clearSemanticDownloadState(); }
-    const persisted = persistSetting('notesSemanticEnabled', false);
+    const persisted = window.persistSetting('notesSemanticEnabled', false);
     applyNotesSemanticEnabled();
     if (!persisted) reportFeatureToggleSaveError();
   });
@@ -2457,7 +2440,7 @@ function bindSemanticDelete(els) {
     const finishDelete = function (ok) {
       if (deleteGeneration !== semanticStartGeneration) return;
       if (ok) clearSemanticDownloadState();
-      const persisted = persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
+      const persisted = window.persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
       applyNotesSemanticEnabled();
       if (!persisted) reportFeatureToggleSaveError();
     };
@@ -2522,6 +2505,31 @@ function bindSemanticDelete(els) {
       console.warn('Failed to delete embedding model:', err);
       finishDelete(false);
       done();
+    }
+  });
+}
+
+// Search box enabled
+function loadSearchBoxEnabled() {
+  return localStorage.getItem('searchBoxEnabled') !== 'false';
+}
+function applySearchBoxEnabled() {
+  const enabled = loadSearchBoxEnabled();
+  const searchBarWrapper = document.querySelector('.search-bar-wrapper');
+  if (searchBarWrapper) {
+    searchBarWrapper.style.display = enabled ? '' : 'none';
+  }
+  const searchBoxEnabledSetting = document.getElementById('search-box-enabled-setting');
+  if (searchBoxEnabledSetting) searchBoxEnabledSetting.checked = enabled;
+}
+
+const searchBoxEnabledSetting = document.getElementById('search-box-enabled-setting');
+if (searchBoxEnabledSetting) {
+  searchBoxEnabledSetting.addEventListener('change', function () {
+    const persisted = window.persistSetting('searchBoxEnabled', this.checked);
+    applySearchBoxEnabled();
+    if (!persisted) {
+      reportFeatureToggleSaveError();
     }
   });
 }
@@ -2704,12 +2712,12 @@ function applyPomodoroEnabledAfterSettled() {
 }
 
 function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
-  if (!enabledCheckbox || typeof loadPomodoroEnabled !== 'function') return;
+  if (!enabledCheckbox) return;
 
-  enabledCheckbox.checked = loadPomodoroEnabled();
+  enabledCheckbox.checked = loadPomodoroSettings().enabled;
   updatePomodoroDurationSettingsVisibility(durationSettings, enabledCheckbox.checked);
   enabledCheckbox.addEventListener('change', function () {
-    const settings = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations() : {};
+    const settings = loadPomodoroSettings();
     settings.enabled = this.checked;
     const persisted = typeof savePomodoroDurations === 'function'
       ? savePomodoroDurations(settings) !== false
@@ -2728,9 +2736,7 @@ function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
 function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
   if (!input) return;
 
-  input.value = typeof loadPomodoroDurations === 'function'
-    ? loadPomodoroDurations()[setting]
-    : defaultValue;
+  input.value = loadPomodoroSettings()[setting];
   input.addEventListener('change', function () {
     const value = Math.max(min, Math.min(max, Number.parseInt(this.value, 10) || defaultValue));
     this.value = value;
@@ -2748,8 +2754,7 @@ function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
 // settings after a rejected write (#1129), mirroring the other
 // FEATURE_TOGGLE_RESYNC controls.
 function resyncPomodoroSettings() {
-  if (typeof loadPomodoroDurations !== 'function') return;
-  const settings = loadPomodoroDurations();
+  const settings = loadPomodoroSettings();
   const enabledCheckbox = document.getElementById('pomodoro-enabled-setting');
   const durationSettings = document.getElementById('pomodoro-duration-settings');
   if (enabledCheckbox) enabledCheckbox.checked = settings.enabled;
@@ -3084,7 +3089,7 @@ if (gamesEnabledSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the tile and checkbox snap
     // back to the rolled-back value, and only preload on success.
-    const persisted = persistSetting('games_enabled', enabled);
+    const persisted = window.persistSetting('games_enabled', enabled);
     if (!persisted) {
       applyGamesEnabled();
       reportFeatureToggleSaveError();
@@ -3165,7 +3170,7 @@ if (gamesKeymapSetting) {
         persisted = false;
       }
     } else {
-      persisted = persistSetting('games_keymap', keymap);
+      persisted = window.persistSetting('games_keymap', keymap);
       // Normalize like the helpers path: an unknown id reads back as the
       // default, so the select must show the resolved value, not the raw
       // input (#1149 review).
@@ -3208,7 +3213,7 @@ if (gamesFpsSetting) {
     // The bridge returns false instead of throwing on a rejected write
     // (#1149): re-apply without the override so the checkbox snaps back
     // to the rolled-back value.
-    const persisted = persistSetting('games_fps_enabled', this.checked);
+    const persisted = window.persistSetting('games_fps_enabled', this.checked);
     applyGamesFps();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -3547,6 +3552,7 @@ function initSettings() {
   applyNotesEnabled();
   initNotesSemanticSetting();
   applyMottoEnabled();
+  applySearchBoxEnabled();
   applyGamesEnabled();
   applyGamesKeymap();
   applyGamesFps();
@@ -3640,6 +3646,7 @@ window.resumeSemanticIfNeeded = resumeSemanticIfNeeded;
 // the passive path ran.
 try { window.__semanticResumeInFlight = function () { return semanticResumeInFlight; }; } catch { /* ignore */ }
 window.applyMottoEnabled = applyMottoEnabled;
+window.applySearchBoxEnabled = applySearchBoxEnabled;
 window.applyGamesEnabled = applyGamesEnabled;
 window.loadGamesEnabled = loadGamesEnabled;
 window.applyGamesKeymap = applyGamesKeymap;

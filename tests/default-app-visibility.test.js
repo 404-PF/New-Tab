@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 import { DEFAULT_APPS } from './helpers/default-apps.js';
+import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storage-write-failures.js';
 
 beforeAll(() => {
   injectScript('src/core/app-grid-storage.js');
@@ -309,6 +310,68 @@ describe('default app context menu hide action', () => {
         delete window.removeAppIcon;
       } else {
         window.removeAppIcon = originalRemoveAppIcon;
+      }
+    }
+  });
+
+  it('re-paints the grid after an async rejected hide write (#1238)', async () => {
+    AppGridStorage.saveOrder(['ai-app', 'weather-app', 'feedback-app', 'settings-app']);
+    const renderAllApps = vi.fn();
+    const removeAppIcon = vi.fn();
+    const renderDefaultAppVisibilityList = vi.fn();
+    const showToast = vi.fn();
+    const originals = {
+      renderAllApps: window.renderAllApps,
+      removeAppIcon: window.removeAppIcon,
+      renderDefaultAppVisibilityList: window.renderDefaultAppVisibilityList,
+      showToast: window.showToast
+    };
+    window.renderAllApps = renderAllApps;
+    window.removeAppIcon = removeAppIcon;
+    window.renderDefaultAppVisibilityList = renderDefaultAppVisibilityList;
+    window.showToast = showToast;
+    const restoreWrites = failStorageWritesFor('hiddenDefaultApps', 'async');
+
+    try {
+      openContextMenu(document.getElementById('ai-app'));
+      document.getElementById('hide-default-app').click();
+
+      // Optimistic half: hideDefaultApp returned true, so the tile is gone
+      // and storage reports the app hidden while chrome.storage has not
+      // accepted the write yet.
+      expect(AppGridState.isDefaultHidden('ai-app')).toBe(true);
+      expect(JSON.parse(localStorage.getItem('hiddenDefaultApps'))).toEqual(['ai-app']);
+      expect(removeAppIcon).toHaveBeenCalledExactlyOnceWith('ai-app');
+      expect(renderDefaultAppVisibilityList).toHaveBeenCalledOnce();
+      expect(renderAllApps).not.toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+
+      // One flush lands the failure callback (cache rollback + event), the
+      // next lands the macrotask-delayed resync repaint.
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+
+      expect(localStorage.getItem('hiddenDefaultApps')).toBeNull();
+      expect(AppGridState.isDefaultHidden('ai-app')).toBe(false);
+      expect(renderAllApps).toHaveBeenCalledOnce();
+      expect(renderDefaultAppVisibilityList).toHaveBeenCalledTimes(2);
+      // Exactly one toast: app-grid-storage.js owns it, the resync only repaints.
+      expect(showToast).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith(
+        'Failed to save app changes. Your last action was not saved.',
+        'error',
+        { duration: 3000 }
+      );
+    } finally {
+      restoreWrites();
+      await flushDeferredFailureSync();
+      await flushDeferredFailureSync();
+      for (const [name, original] of Object.entries(originals)) {
+        if (original === undefined) {
+          delete window[name];
+        } else {
+          window[name] = original;
+        }
       }
     }
   });

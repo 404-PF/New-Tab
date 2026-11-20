@@ -35,6 +35,17 @@ const pomodoroStatsSummaryGlobals = {
   getPomodoroMinutesByTodoThisWeek: 'readonly',
 };
 
+// Todo stats summary globals (issue #1225), mirroring the focus-stats block.
+// Shared by srcGlobals and testGlobals so browser scripts and Vitest tests
+// expose the same API shape without drift.
+const todoStatsSummaryGlobals = {
+  exportTodoStatsCsv: 'readonly',
+  getTodoStatsTotal: 'readonly',
+  getTodoStatsTrend: 'readonly',
+  getTodoStatsBestDay: 'readonly',
+  getTodoStatsRollingAverage: 'readonly',
+};
+
 const srcGlobals = {
   ...globals.browser,
   chrome: 'readonly',
@@ -110,9 +121,8 @@ const srcGlobals = {
   startPomodoro: 'readonly',
   stopPomodoro: 'readonly',
   togglePomodoroPause: 'readonly',
-  loadPomodoroEnabled: 'readonly',
+  loadPomodoroSettings: 'readonly',
   applyPomodoroEnabled: 'readonly',
-  loadPomodoroDurations: 'readonly',
   savePomodoroDurations: 'readonly',
   resyncPomodoroSettings: 'readonly',
   resyncPomodoroTimer: 'readonly',
@@ -147,6 +157,7 @@ const srcGlobals = {
   refreshEyeCareReminder: 'readonly',
   translateValidationMessage: 'readonly',
   showToast: 'readonly',
+  persistSetting: 'readonly',
   showFeatureToggleSaveError: 'readonly',
   safePause: 'readonly',
   safeLoad: 'readonly',
@@ -168,6 +179,7 @@ const srcGlobals = {
   TodoApp: 'readonly',
   applyNotesEnabled: 'readonly',
   applyMottoEnabled: 'readonly',
+  applySearchBoxEnabled: 'readonly',
   resyncClockDateStyle: 'readonly',
   WeatherApp: 'readonly',
   WeatherUtils: 'readonly',
@@ -197,6 +209,7 @@ const srcGlobals = {
   loadTodoStatsEnabled: 'readonly',
   getCompletedToday: 'readonly',
   getCompletedThisWeek: 'readonly',
+  ...todoStatsSummaryGlobals,
   loadPomodoroStats: 'readonly',
   savePomodoroStats: 'readonly',
   recordPomodoroSession: 'readonly',
@@ -411,6 +424,7 @@ const testGlobals = {
   loadTodoStatsEnabled: 'readonly',
   getCompletedToday: 'readonly',
   getCompletedThisWeek: 'readonly',
+  ...todoStatsSummaryGlobals,
   loadPomodoroStats: 'readonly',
   savePomodoroStats: 'readonly',
   recordPomodoroSession: 'readonly',
@@ -461,7 +475,9 @@ const testGlobals = {
   TodoApp: 'readonly',
   applyNotesEnabled: 'readonly',
   applyMottoEnabled: 'readonly',
+  applySearchBoxEnabled: 'readonly',
   resyncClockDateStyle: 'readonly',
+  persistSetting: 'readonly',
   showFeatureToggleSaveError: 'readonly',
   WeatherApp: 'readonly',
   WeatherUtils: 'readonly',
@@ -478,9 +494,8 @@ const testGlobals = {
   startPomodoro: 'readonly',
   stopPomodoro: 'readonly',
   togglePomodoroPause: 'readonly',
-  loadPomodoroEnabled: 'readonly',
+  loadPomodoroSettings: 'readonly',
   applyPomodoroEnabled: 'readonly',
-  loadPomodoroDurations: 'readonly',
   savePomodoroDurations: 'readonly',
   resyncPomodoroSettings: 'readonly',
   resyncPomodoroTimer: 'readonly',

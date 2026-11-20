@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "标记完成",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "稍后提醒",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "低",
     "description": "Low priority label"
@@ -212,13 +220,33 @@
     "message": "每日",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "白天背景",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "白天开始于",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "每个新标签页",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "夜晚背景",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "夜晚开始于",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "选择要轮播的背景",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "昼夜",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "上传的背景",
@@ -339,6 +367,30 @@
   "last30Days": {
     "message": "近30天",
     "description": "Stats label for last 30 days"
+  },
+  "todoStatsTotal": {
+    "message": "30 天总计",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "较昨日趋势",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "最佳一天",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "7 日平均（完成/天）",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "导出 CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "待办统计已开始下载。",
+    "description": "Toast shown after todo stats CSV download is started"
   },
   "statsToggle": {
     "message": "統計",
@@ -738,6 +790,14 @@
     "message": "现在",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "最高",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "最低",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "搜尋便箋...",
     "description": "Placeholder text for the notes search input"
@@ -821,6 +881,14 @@
   "todoEditText": {
     "message": "文本",
     "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditDetails": {
+    "message": "详情",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "详情",
+    "description": "Button that expands or collapses the details block on a todo row"
   },
   "todoEditPriority": {
     "message": "优先级",
@@ -923,6 +991,10 @@
   "pomodoroStatsExportSuccess": {
     "message": "專注統計已開始下載。",
     "description": "Toast shown after focus stats CSV download is started"
+  },
+  "pomodoroStatsSaveError": {
+    "message": "无法保存专注统计。您上次的操作未被保存。",
+    "description": "Error shown when a focus stats write cannot be persisted"
   },
   "gamesLoading": {
     "message": "正在載入遊戲…",

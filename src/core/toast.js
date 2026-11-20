@@ -324,6 +324,11 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyMottoEnabled();
     }
   },
+  searchBoxEnabled: function () {
+    if (typeof window.applySearchBoxEnabled === 'function') {
+      window.applySearchBoxEnabled();
+    }
+  },
   eyeCareReminder: function () {
     if (typeof window.applyEyeCareReminderSettings === 'function') {
       window.applyEyeCareReminderSettings();
@@ -676,6 +681,7 @@ function featureToggleControlDesynced(key) {
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
     }
     case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
+    case 'searchBoxEnabled': return desyncCheckboxControl('search-box-enabled-setting', key, false);
     case 'eyeCareReminder': {
       try {
         const state = JSON.parse(localStorage.getItem(key) || '{}');
@@ -763,8 +769,7 @@ function featureToggleControlDesynced(key) {
       return document.body.classList.contains('light-theme') !== (effective === 'light');
     }
     case 'pomodoro': {
-      if (typeof window.loadPomodoroDurations !== 'function') return false;
-      const stored = window.loadPomodoroDurations();
+      const stored = window.loadPomodoroSettings();
       const enabled = document.getElementById('pomodoro-enabled-setting');
       const work = document.getElementById('pomodoro-work-duration');
       const shortBreak = document.getElementById('pomodoro-short-break-duration');

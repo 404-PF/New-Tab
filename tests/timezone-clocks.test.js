@@ -26,6 +26,7 @@ beforeAll(() => {
   });
 
   injectScript('src/core/motion.js');
+  injectScript('src/core/utils.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   injectScript('src/core/toast.js');

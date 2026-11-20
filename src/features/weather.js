@@ -355,13 +355,28 @@
     const icon = getWeatherIcon(info.type);
     const displayLocation = locationName || t('weatherUnknownLocation');
 
+    // Today's high/low from the daily block of the same cached payload the
+    // Weather app modal renders. Guarded like renderExpandedForecast so a
+    // payload without daily data simply omits the line (issue #1226).
+    const daily = data.daily;
+    const rawHigh = daily && daily.temperature_2m_max ? daily.temperature_2m_max[0] : undefined;
+    const rawLow = daily && daily.temperature_2m_min ? daily.temperature_2m_min[0] : undefined;
+    const highVal = rawHigh === null || rawHigh === undefined ? Number.NaN : Number(rawHigh);
+    const lowVal = rawLow === null || rawLow === undefined ? Number.NaN : Number(rawLow);
+    const highLowHtml = Number.isFinite(highVal) && Number.isFinite(lowVal)
+      ? `<div class="weather-hl"><span class="weather-hl-high">${t('weatherHigh')}: ${getTemp(highVal, unit)}\u00B0</span><span class="weather-hl-low">${t('weatherLow')}: ${getTemp(lowVal, unit)}\u00B0</span></div>`
+      : '';
+
     el.className = 'weather-widget weather-data';
 
     el.innerHTML = `
       <div class="weather-current">
         <div class="weather-main">
           <div class="weather-icon">${icon}</div>
-          <div class="weather-temp">${temp}${tempUnit}</div>
+          <div class="weather-temp-wrap">
+            <div class="weather-temp">${temp}${tempUnit}</div>
+            ${highLowHtml}
+          </div>
         </div>
         <div class="weather-details">
           <div class="weather-condition">${label}</div>
@@ -484,8 +499,9 @@
         try {
           location = await geocodeCity(manualCity.trim());
         } catch (e) {
-          // Try to use stale cache as fallback only if it matches current settings
-          if (cache && cache.data && isCacheMatchingSettings(cache)) {
+          // Fall back to the cache only while it is within its TTL; older data
+          // must not be rendered as current (#1264).
+          if (isCacheValid(cache) && isCacheMatchingSettings(cache)) {
             renderWeather(cache.data, cache.locationName, unit);
             return { ok: true, data: cache.data, locationName: cache.locationName };
           }
@@ -537,9 +553,10 @@
       return { ok: true, data: weatherData, locationName: newCache.locationName };
     } catch (e) {
       console.error('Weather refresh failed:', e);
-      // A cached auto-location result is only a safe fallback after the
-      // current geolocation has been confirmed to be within the tolerance.
-      if (cache && cache.data && isCacheMatchingSettings(cache, location)) {
+      // A cached auto-location result is only a safe fallback while it is
+      // within its TTL and the current geolocation has been confirmed to be
+      // within the tolerance (#1264).
+      if (isCacheValid(cache) && isCacheMatchingSettings(cache, location)) {
         renderWeather(cache.data, cache.locationName, unit);
         return { ok: true, data: cache.data, locationName: cache.locationName };
       }

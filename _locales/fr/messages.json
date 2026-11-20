@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Marquer comme fait",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Reporter",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "Basse",
     "description": "Low priority label"
@@ -212,13 +220,33 @@
     "message": "Quotidien",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "Arrière-plans du jour",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "Le jour commence à",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "À chaque nouvel onglet",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "Arrière-plans de la nuit",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "La nuit commence à",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "Sélectionner les arrière-plans à tourner",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "Heure de la journée",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "Vos importations",
@@ -339,6 +367,30 @@
   "last30Days": {
     "message": "30 derniers jours",
     "description": "Stats label for last 30 days"
+  },
+  "todoStatsTotal": {
+    "message": "Total (30 jours)",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Tendance vs hier",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Meilleur jour",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "Moyenne 7 jours (tâches/jour)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Exporter CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Téléchargement des statistiques de tâches lancé.",
+    "description": "Toast shown after todo stats CSV download is started"
   },
   "statsToggle": {
     "message": "Statistiques",
@@ -738,6 +790,14 @@
     "message": "Maintenant",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "Max",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "Min",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "Rechercher dans les notes...",
     "description": "Placeholder text for the notes search input"
@@ -821,6 +881,14 @@
   "todoEditText": {
     "message": "Texte",
     "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditDetails": {
+    "message": "Détails",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "Détails",
+    "description": "Button that expands or collapses the details block on a todo row"
   },
   "todoEditPriority": {
     "message": "Priorité",
@@ -923,6 +991,10 @@
   "pomodoroStatsExportSuccess": {
     "message": "Téléchargement des statistiques de concentration lancé.",
     "description": "Toast shown after focus stats CSV download is started"
+  },
+  "pomodoroStatsSaveError": {
+    "message": "Impossible d’enregistrer les statistiques de concentration. Votre dernière action n’a pas été enregistrée.",
+    "description": "Error shown when a focus stats write cannot be persisted"
   },
   "gamesLoading": {
     "message": "Chargement des jeux…",

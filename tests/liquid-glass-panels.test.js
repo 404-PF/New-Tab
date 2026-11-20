@@ -39,7 +39,11 @@ describe('feature panel marking (#1159)', () => {
     ['weather app modal', /<div id="weather-app-modal"[^>]*data-liquid-glass="panel">/],
     ['todo app modal', /<div id="todo-app-modal"[^>]*data-liquid-glass="panel">/],
     ['games app dialog', /<dialog id="games-app-modal"[^>]*data-liquid-glass="panel">/],
-    ['games hub content', /<div class="games-hub-content" id="games-hub-content" data-liquid-glass="panel">/]
+    ['games hub content', /<div class="games-hub-content" id="games-hub-content" data-liquid-glass="panel">/],
+    ['rename app dialog', /<div class="rename-app-modal-content" data-liquid-glass="panel">/],
+    ['thumbnail app dialog', /<div class="thumbnail-app-modal-content" data-liquid-glass="panel">/],
+    ['delete app dialog', /<div class="delete-app-modal-content" data-liquid-glass="panel">/],
+    ['move-to-folder selector', /<div class="move-to-folder-selector-content" data-liquid-glass="panel">/]
   ])('marks the %s in the production markup', (_, pattern) => {
     expect(readRepoFile('New-Tab.html')).toMatch(pattern);
   });

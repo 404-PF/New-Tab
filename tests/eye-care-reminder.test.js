@@ -7,6 +7,7 @@ describe('eye-care reminder', () => {
     document.querySelector('.eye-care-reminder')?.remove();
     window.refreshEyeCareReminder = undefined;
     window.initEyeCareReminder = undefined;
+    injectScript('src/core/utils.js');
     injectScript('src/core/motion.js');
     // toast.js provides persistFeatureToggle, used by saveEyeCareReminderState.
     injectScript('src/core/toast.js');

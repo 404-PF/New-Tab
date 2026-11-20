@@ -140,7 +140,7 @@
       Intl.supportedValuesOf('timeZone').forEach(function (id) {
         if (seen[id]) return;
         seen[id] = true;
-        options.push({ id: id, city: id.split('/').pop().replace(/_/g, ' ') });
+        options.push({ id: id, city: id.split('/').pop().replaceAll('_', ' ') });
       });
     }
     // UTC is a valid zone everywhere, but Intl.supportedValuesOf omits it on

@@ -5,6 +5,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 function expectTranslationKeys(keys, options) {
   const differFromEnglish = Boolean(options && options.differFromEnglish);
+  const allowEnglishCopy = options && Array.isArray(options.allowEnglishCopy) ? options.allowEnglishCopy : [];
   const languages = window.i18n.getSupportedLanguages();
   const english = differFromEnglish ? window.i18n.getTranslations('en') : null;
 
@@ -17,7 +18,7 @@ function expectTranslationKeys(keys, options) {
       expect(localeTranslations[key].trim(), `${code}:${key}`).not.toBe('');
       // A locale that echoes the key name has no real translation.
       expect(localeTranslations[key], `${code}:${key}`).not.toBe(key);
-      if (differFromEnglish && code !== 'en') {
+      if (differFromEnglish && code !== 'en' && !allowEnglishCopy.includes(code)) {
         expect(localeTranslations[key], `${code}:${key}`).not.toBe(english[key]);
       }
     });
@@ -28,7 +29,9 @@ function expectTranslationKeys(keys, options) {
 // its own non-empty message and description. Shared by the save-error keys
 // that must exist both as runtime translations and as chrome.i18n messages.
 function expectMessagesJsonKey(key, options) {
-  const allowEnglishCopy = Boolean(options && options.allowEnglishCopy);
+  const allowEnglishCopyOption = options && options.allowEnglishCopy;
+  const allowEnglishCopyEverywhere = allowEnglishCopyOption === true;
+  const allowEnglishCopyLocales = Array.isArray(allowEnglishCopyOption) ? allowEnglishCopyOption : [];
   const localesDir = resolve(process.cwd(), '_locales');
   const locales = readdirSync(localesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -50,8 +53,9 @@ function expectMessagesJsonKey(key, options) {
     expect(entry.message.trim(), `${locale}`).not.toBe('');
     expect(entry.description, `${locale}`).toBeTypeOf('string');
     // en and en_US are the English source strings, so every other locale
-    // must ship its own copy rather than a copy of the English text.
-    if (!allowEnglishCopy && locale !== 'en' && locale !== 'en_US') {
+    // must ship its own copy rather than a copy of the English text, unless
+    // the caller exempted this locale.
+    if (!allowEnglishCopyEverywhere && !allowEnglishCopyLocales.includes(locale) && locale !== 'en' && locale !== 'en_US') {
       expect(entry.message, `${locale}:${key}`).not.toBe(english);
     }
   });
@@ -230,6 +234,18 @@ describe('Weather wind unit translations', () => {
   });
 });
 
+// Today's high/low labels rendered under the widget temperature (issue #1226).
+describe('Weather high/low translations', () => {
+  it('defines localized weatherHigh and weatherLow for every supported language', () => {
+    expectTranslationKeys(['weatherHigh', 'weatherLow'], { differFromEnglish: true });
+  });
+
+  it('includes weatherHigh and weatherLow in every _locales messages.json', () => {
+    expectMessagesJsonKey('weatherHigh');
+    expectMessagesJsonKey('weatherLow');
+  });
+});
+
 describe('Pomodoro translations', () => {
   it('falls back to English for every supported language', () => {
     const languages = window.i18n.getSupportedLanguages();
@@ -268,6 +284,25 @@ describe('Focus stats summary translations (issue #1171)', () => {
   it('ships every focus stats summary key in each _locales messages.json', () => {
     FOCUS_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
     expectMessagesJsonKey('pomodoroStatsSessionsUnit', { allowEnglishCopy: true });
+  });
+});
+
+const TODO_STATS_SUMMARY_TRANSLATION_KEYS = [
+  'todoStatsTotal',
+  'todoStatsTrend',
+  'todoStatsBestDay',
+  'todoStatsRollingAvg',
+  'todoStatsExport',
+  'todoStatsExportSuccess'
+];
+
+describe('Todo stats summary translations (issue #1225)', () => {
+  it('defines every todo stats summary label for all supported languages', () => {
+    expectTranslationKeys(TODO_STATS_SUMMARY_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('ships every todo stats summary key in each _locales messages.json', () => {
+    TODO_STATS_SUMMARY_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
   });
 });
 
@@ -350,6 +385,27 @@ describe('Background rotation new-tab cadence translations (issue #1173)', () =>
 
   it('includes bgRotationNewtab in every _locales messages.json', () => {
     expectMessagesJsonKey('bgRotationNewtab');
+  });
+});
+
+// "Time of day" rotation cadence (issue #1234): the interval option plus the
+// two boundary-time labels and the two side-picker labels ship localized in
+// every supported runtime table and in every chrome.i18n messages.json.
+describe('Background rotation time-of-day cadence translations (issue #1234)', () => {
+  const TOD_TRANSLATION_KEYS = [
+    'bgRotationTod',
+    'bgRotationDayTime',
+    'bgRotationNightTime',
+    'bgRotationDayPicker',
+    'bgRotationNightPicker'
+  ];
+
+  it('defines a localized string for every supported language', () => {
+    expectTranslationKeys(TOD_TRANSLATION_KEYS, { differFromEnglish: true });
+  });
+
+  it('includes every time-of-day key in every _locales messages.json', () => {
+    TOD_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
   });
 });
 
@@ -735,6 +791,16 @@ describe('Game saves save error translation (issue #1039)', () => {
   });
 });
 
+// Shared feedback string for a focus stats write the bridge rejected
+// (issue #1239).
+describe('Focus stats save error translation (issue #1239)', () => {
+  const key = 'pomodoroStatsSaveError';
+  it(`defines ${key} in every runtime table and messages.json`, () => {
+    expectTranslationKeys([key], { differFromEnglish: true });
+    expectMessagesJsonKey(key);
+  });
+});
+
 // Named AI assistant shortcut (issue #1185): the Settings -> Shortcuts row
 // label ships in every runtime locale table and every chrome.i18n
 // messages.json.
@@ -752,6 +818,24 @@ describe('Timezone picker truncation hint translations (issue #1199)', () => {
   it('defines timezoneMoreResults in every runtime table and messages.json', () => {
     expectTranslationKeys(['timezoneMoreResults'], { differFromEnglish: true });
     expectMessagesJsonKey('timezoneMoreResults');
+  });
+});
+
+// Todo details/notes field (issue #1228): the Edit modal label and the
+// collapsed row expand/collapse control. differFromEnglish still runs for
+// every locale — only the German copy is legitimately identical to English
+// ("Details"), so `de` alone is exempted; en is the source and the _locales
+// helper already exempts en/en_US.
+describe('Todo details translations (issue #1228)', () => {
+  const TODO_DETAILS_TRANSLATION_KEYS = ['todoEditDetails', 'todoDetailsToggle'];
+
+  it('defines the details strings in every supported language', () => {
+    expectTranslationKeys(TODO_DETAILS_TRANSLATION_KEYS, { differFromEnglish: true, allowEnglishCopy: ['de'] });
+  });
+
+  it('includes the details strings in every _locales messages.json', () => {
+    expectMessagesJsonKey('todoEditDetails', { allowEnglishCopy: ['de'] });
+    expectMessagesJsonKey('todoDetailsToggle', { allowEnglishCopy: ['de'] });
   });
 });
 

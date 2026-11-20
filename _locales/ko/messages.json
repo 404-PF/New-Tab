@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "완료로 표시",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "나중에",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "낮음",
     "description": "Low priority label"
@@ -212,13 +220,33 @@
     "message": "매일",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "낮 배경",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "낮 시작 시각",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "새 탭마다",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "밤 배경",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "밤 시작 시각",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "회전할 배경 선택",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "시간대",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "업로드한 배경",
@@ -339,6 +367,30 @@
   "last30Days": {
     "message": "최근 30일",
     "description": "Stats label for last 30 days"
+  },
+  "todoStatsTotal": {
+    "message": "30일 합계",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "어제 대비 추세",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "최고의 날",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "7일 평균 (완료/일)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "CSV 내보내기",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "할 일 통계 다운로드를 시작했습니다.",
+    "description": "Toast shown after todo stats CSV download is started"
   },
   "statsToggle": {
     "message": "통계",
@@ -738,6 +790,14 @@
     "message": "지금",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "최고",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "최저",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "메모 검색...",
     "description": "Placeholder text for the notes search input"
@@ -821,6 +881,14 @@
   "todoEditText": {
     "message": "텍스트",
     "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditDetails": {
+    "message": "세부 정보",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "세부 정보",
+    "description": "Button that expands or collapses the details block on a todo row"
   },
   "todoEditPriority": {
     "message": "우선순위",
@@ -923,6 +991,10 @@
   "pomodoroStatsExportSuccess": {
     "message": "집중 통계 다운로드를 시작했습니다.",
     "description": "Toast shown after focus stats CSV download is started"
+  },
+  "pomodoroStatsSaveError": {
+    "message": "집중 통계를 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
+    "description": "Error shown when a focus stats write cannot be persisted"
   },
   "gamesLoading": {
     "message": "게임을 불러오는 중…",

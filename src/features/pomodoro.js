@@ -271,9 +271,12 @@
     }
   }
 
-  function getNextPhase() {
+  function getNextPhase(shouldCountSession) {
     const settings = loadSettings();
     if (state.phase === PHASES.WORK) {
+      if (shouldCountSession === false) {
+        return PHASES.SHORT_BREAK;
+      }
       state.sessionsCompleted++;
       if (state.sessionsCompleted >= settings.sessionsBeforeLongBreak) {
         state.sessionsCompleted = 0;
@@ -492,7 +495,18 @@
       const minutes = Math.round(getPhaseDuration(PHASES.WORK) / 60);
       const detail = { minutes: minutes, todoId: todoId };
       if (typeof window.recordPomodoroSession === 'function') {
-        window.recordPomodoroSession(detail);
+        // Focus stats toast their own save failures; warn here so the timer
+        // log still carries the dropped session (#1239).
+        const recorded = window.recordPomodoroSession(detail);
+        if (recorded && typeof recorded.then === 'function') {
+          recorded.then((saved) => {
+            if (saved === false) console.warn('Focus session was not saved to focus stats.');
+          }).catch((err) => {
+            console.warn('Focus session was not saved to focus stats:', err);
+          });
+        } else if (recorded === false) {
+          console.warn('Focus session was not saved to focus stats.');
+        }
       } else {
         try {
           window.dispatchEvent(new CustomEvent('pomodoroSessionCompleted', { detail: detail }));
@@ -504,7 +518,8 @@
   }
 
   function advancePhase(opts) {
-    const nextPhase = getNextPhase();
+    const shouldRecord = !opts || opts.record !== false;
+    const nextPhase = getNextPhase(shouldRecord);
     state.phase = nextPhase;
     state.timeRemaining = getPhaseDuration(nextPhase);
     state.appliedPhaseDuration = state.timeRemaining;
@@ -521,9 +536,11 @@
     const isWork = state.phase === PHASES.WORK;
     const i18n = window.i18n;
     if (isWork) {
-      notifyWorkComplete(getTodoText(state.todoId), i18n);
-      if (shouldRecord) tryRecordWorkSession(state.todoId);
-    } else {
+      if (shouldRecord) {
+        notifyWorkComplete(getTodoText(state.todoId), i18n);
+        tryRecordWorkSession(state.todoId);
+      }
+    } else if (shouldRecord) {
       notifyBreakComplete(i18n);
     }
     advancePhase(opts);
@@ -1055,20 +1072,12 @@
     document.addEventListener('click', handleWidgetClick);
   }
 
-  function loadPomodoroEnabled() {
-    return loadSettings().enabled;
-  }
-
   function applyPomodoroEnabled() {
     if (!loadSettings().enabled && state.active) {
       stopTimer();
     }
     createStandaloneStartControl();
     updateStandaloneStartControl();
-  }
-
-  function loadPomodoroDurations() {
-    return loadSettings();
   }
 
   function savePomodoroDurations(durations) {
@@ -1123,9 +1132,8 @@
   window.startPomodoro = startTimer;
   window.stopPomodoro = stopTimer;
   window.togglePomodoroPause = togglePause;
-  window.loadPomodoroEnabled = loadPomodoroEnabled;
+  window.loadPomodoroSettings = loadSettings;
   window.applyPomodoroEnabled = applyPomodoroEnabled;
-  window.loadPomodoroDurations = loadPomodoroDurations;
   window.savePomodoroDurations = savePomodoroDurations;
   window.resyncPomodoroTimer = resyncPomodoroTimer;
   window.addFocusButtonToTodoActions = addFocusButtonToTodoActions;

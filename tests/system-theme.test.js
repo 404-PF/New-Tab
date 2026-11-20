@@ -49,6 +49,7 @@ let mql;
 const themeRadio = (value) => document.querySelector(`input[name="theme"][value="${value}"]`);
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/motion.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');

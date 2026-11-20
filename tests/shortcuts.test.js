@@ -419,6 +419,32 @@ describe('Shortcuts - executeAction', () => {
     expect(() => Shortcuts.executeAction('closeModal')).not.toThrow();
   });
 
+  it('closeModal resets the Add App modal through its close hook and blurs the URL input', () => {
+    const modal = document.createElement('div');
+    modal.id = 'add-app-modal';
+    modal.classList.add('modal-open');
+    document.body.appendChild(modal);
+
+    const urlInput = document.createElement('input');
+    urlInput.id = 'add-app-url';
+    document.body.appendChild(urlInput);
+    urlInput.focus();
+    expect(document.activeElement).toBe(urlInput);
+
+    const closeAddAppModal = vi.fn();
+    window.closeAddAppModal = closeAddAppModal;
+
+    try {
+      Shortcuts.executeAction('closeModal');
+      expect(closeAddAppModal).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).not.toBe(urlInput);
+    } finally {
+      delete window.closeAddAppModal;
+      modal.remove();
+      urlInput.remove();
+    }
+  });
+
   it('toggleSimpleMode toggles checkbox and calls applySimpleMode', () => {
     let checkbox = document.getElementById('simple-mode-checkbox');
     if (!checkbox) {
@@ -710,6 +736,102 @@ describe('Shortcuts - handleKeydown', () => {
 
     expect(localStorage.getItem('focusMode')).toBe('true');
 
+    input.remove();
+  });
+});
+
+describe('Shortcuts - plain-key Focus Mode rebind (#1279)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.getElementById('shortcuts-options');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'shortcuts-options';
+      document.body.appendChild(container);
+    }
+    Shortcuts.renderShortcutsSection();
+  });
+
+  afterEach(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Shortcuts.reset();
+  });
+
+  function rebindToggleFocusMode(key, modifiers = {}) {
+    container.querySelector('[data-action="toggleFocusMode"]').click();
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...modifiers
+    }));
+  }
+
+  it('does not swallow a plain-letter rebind inside a text input', () => {
+    rebindToggleFocusMode('g');
+    expect(Shortcuts.load().toggleFocusMode).toBe('G');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', { key: 'g', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(localStorage.getItem('focusMode')).toBe('false');
+    input.remove();
+  });
+
+  it('still fires a plain-letter rebind outside text inputs', () => {
+    rebindToggleFocusMode('g');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', { key: 'g', bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(localStorage.getItem('focusMode')).toBe('true');
+  });
+
+  it('keeps a modified rebind live inside text inputs', () => {
+    rebindToggleFocusMode('h', { ctrlKey: true });
+    expect(Shortcuts.load().toggleFocusMode).toBe('Ctrl+H');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'h', ctrlKey: true, bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(localStorage.getItem('focusMode')).toBe('true');
+    input.remove();
+  });
+
+  it('does not swallow a Shift-modified rebind inside a text input', () => {
+    rebindToggleFocusMode('g', { shiftKey: true });
+    expect(Shortcuts.load().toggleFocusMode).toBe('Shift+G');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    localStorage.setItem('focusMode', 'false');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'G', shiftKey: true, bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(localStorage.getItem('focusMode')).toBe('false');
     input.remove();
   });
 });

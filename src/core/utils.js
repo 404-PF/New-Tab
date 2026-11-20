@@ -724,7 +724,74 @@
     return normalizeCustomAppUrl(url) || '#';
   }
 
+  // Shared guarded write for feature toggles (#969, #1081, #1142): toast.js
+  // may fail to load, so resolve persistFeatureToggle at call time. The storage
+  // bridge returns false instead of throwing on a rejected write, so the result
+  // must be inspected. Returns whether the write was accepted.
+  function persistSetting(key, value) {
+    try {
+      return typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle(key, value)
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (e) {
+      console.warn('Failed to save ' + key + ':', e);
+      return false;
+    }
+  }
+
+  // Shared, lazy document-listener manager for picker popups (color/font).
+  // The click/keydown pair is attached only while a popup is open, and it
+  // always targets the currently active picker. Each picker type creates its
+  // own manager so their active slots and refcounts stay independent.
+  function createPickerListenerManager() {
+    let activePicker = null;
+    let listenerRefs = 0;
+
+    function handleDocumentClick(event) {
+      const picker = activePicker;
+      if (!picker || !picker.isOpen || !picker.pickerElement) return;
+      if (!picker.pickerElement.contains(event.target) && !picker.swatch.contains(event.target)) {
+        picker.hide();
+      }
+    }
+
+    function handleDocumentKeydown(event) {
+      if (event.key !== 'Escape') return;
+      const picker = activePicker;
+      if (picker && picker.isOpen) picker.hide();
+    }
+
+    return {
+      getActive() {
+        return activePicker;
+      },
+
+      setActive(picker) {
+        activePicker = picker;
+      },
+
+      retain() {
+        listenerRefs += 1;
+        if (listenerRefs === 1) {
+          document.addEventListener('click', handleDocumentClick);
+          document.addEventListener('keydown', handleDocumentKeydown);
+        }
+      },
+
+      release() {
+        if (listenerRefs === 0) return;
+        listenerRefs -= 1;
+        if (listenerRefs === 0) {
+          document.removeEventListener('click', handleDocumentClick);
+          document.removeEventListener('keydown', handleDocumentKeydown);
+          activePicker = null;
+        }
+      }
+    };
+  }
+
   // Make utilities available globally
+  window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
   window.validateUrl = validateUrl;
@@ -741,5 +808,6 @@
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;
   window.translateValidationMessage = translateValidationMessage;
+  window.persistSetting = persistSetting;
 
 })();

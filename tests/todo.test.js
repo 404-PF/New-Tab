@@ -569,6 +569,80 @@ describe('Todo filtering', () => {
     }
   });
 
+  it('refreshes the overdue view and badge when a timed todo passes due (issue #1205)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 9, 59, 50)); // Sep 15, 2026 09:59:50
+    const previousStatus = currentFilters.status;
+
+    try {
+      // Re-init under fake timers so the due-minute refresh timer is armed
+      // against the faked clock instead of the real one.
+      initTodo();
+      addTodo('Due at 10:00', '2026-09-15', 'medium', null, '10:00');
+      setFilter('overdue');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(0);
+      expect(document.getElementById('badge-overdue').textContent).toBe('0');
+
+      // Cross 10:00 with no further interaction; the scheduled refresh
+      // reruns applyFilters so rows, badge and pill membership agree.
+      vi.advanceTimersByTime(11000);
+      const row = document.querySelector('.todo-item');
+      expect(document.querySelectorAll('.todo-item')).toHaveLength(1);
+      expect(row.classList.contains('overdue')).toBe(true);
+      expect(document.getElementById('badge-overdue').textContent).toBe('1');
+    } finally {
+      currentFilters.status = previousStatus;
+      vi.useRealTimers();
+    }
+  });
+
+  it('never arms a NaN overdue timeout for a malformed persisted due date (issue #1205)', () => {
+    vi.useFakeTimers();
+    const previousStatus = currentFilters.status;
+    // Hand-rolled recorder instead of vi.spyOn: a spy taken while fake
+    // timers are active keeps the fake setTimeout as its "original", so any
+    // later vi.restoreAllMocks() would write that stale fake back onto the
+    // global after the clock has been uninstalled.
+    const originalSetTimeout = window.setTimeout;
+    const setTimeoutCalls = [];
+    window.setTimeout = (...args) => {
+      setTimeoutCalls.push(args);
+      return originalSetTimeout.apply(window, args);
+    };
+
+    try {
+      initTodo();
+      // The Overdue filter hides the malformed row, so renderTodos returns
+      // before formatting its date and the refresh below still gets to arm.
+      setFilter('overdue');
+      // The write-error resync reloads todos without migrating them, so this
+      // malformed dueDate reaches scheduleTodoOverdueRefresh untouched.
+      localStorage.setItem('todos', JSON.stringify([{
+        id: 'malformed-due',
+        text: 'Malformed due',
+        completed: false,
+        createdAt: '2026-09-15T09:00:00.000Z',
+        priority: 'medium',
+        dueDate: 'not-a-date',
+        dueTime: '10:00'
+      }]));
+
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'todos' } }));
+      vi.advanceTimersByTime(0);
+
+      // The resync body ran: the malformed todo is loaded and counted.
+      expect(document.getElementById('todo-count').textContent).toBe('0/1');
+      // An invalid Date parses to a NaN flip; arming the one-shot with it
+      // would make setTimeout fire immediately and re-render in a loop.
+      expect(setTimeoutCalls.some(call => Number.isNaN(call[1]))).toBe(false);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      currentFilters.status = previousStatus;
+      localStorage.removeItem('todos');
+      vi.useRealTimers();
+    }
+  });
+
   it('sorts incomplete before completed', () => {
     addTodo('Later');
     addTodo('Sooner');
@@ -818,6 +892,25 @@ describe('Todo validateTodoData', () => {
     };
     expect(validateTodoData(data)).toBe(false);
   });
+
+  it('accepts string, null, and absent details (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'line one\nline two' }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: null }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: '' }] })).toBe(true);
+  });
+
+  it('rejects non-string details (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 42 }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: { body: 'x' } }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: ['a'] }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: true }] })).toBe(false);
+  });
+
+  it('caps imported details at the edit modal maxlength (issue #1228)', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'x'.repeat(2000) }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'foo', completed: false, details: 'x'.repeat(2001) }] })).toBe(false);
+  });
 });
 
 describe('Todo import', () => {
@@ -887,6 +980,21 @@ describe('Todo import', () => {
     expect(all).toHaveLength(1);
     expect(all[0].priority).toBe('high');
     expect(all[0].text).toBe('Priority todo');
+  });
+
+  it('merge round-trips the details field (issue #1228)', () => {
+    const imported = [
+      { id: 'd1', text: 'With details', completed: false, details: 'line one\nline two' },
+      { id: 'd2', text: 'Without details', completed: false }
+    ];
+
+    showImportDialog(imported);
+    document.getElementById('import-merge-btn').click();
+
+    const all = loadTodos();
+    expect(all).toHaveLength(2);
+    expect(all.find(t => t.id === 'd1').details).toBe('line one\nline two');
+    expect(all.find(t => t.id === 'd2').details).toBeNull();
   });
 
   it('replace preserves extra fields like priority', () => {
@@ -2877,6 +2985,156 @@ describe('Todo subtasks', () => {
   });
 });
 
+describe('Todo details field (issue #1228)', () => {
+  it('addTodo stores details: null by default', () => {
+    addTodo('Plain todo');
+    expect(loadTodos()[0].details).toBeNull();
+  });
+
+  it('addTodo stores trimmed multiline details from the trailing argument', () => {
+    addTodo('With notes', null, 'medium', null, null, '  line one\nline two  ');
+    expect(loadTodos()[0].details).toBe('line one\nline two');
+  });
+
+  it('addTodo normalizes blank details to null', () => {
+    addTodo('Blank notes', null, 'medium', null, null, '   \n  ');
+    expect(loadTodos()[0].details).toBeNull();
+  });
+
+  it('editTodo sets and clears details while other fields stay intact', () => {
+    addTodo('Task');
+    const id = loadTodos()[0].id;
+
+    expect(editTodo(id, 'Task', 'high', null, null, undefined, 'first\nsecond')).toBe(true);
+    expect(loadTodos()[0].details).toBe('first\nsecond');
+    expect(loadTodos()[0].priority).toBe('high');
+
+    expect(editTodo(id, 'Task', 'high', null, null, undefined, '')).toBe(true);
+    expect(loadTodos()[0].details).toBeNull();
+    expect(loadTodos()[0].priority).toBe('high');
+  });
+
+  it('editTodo without the details argument leaves details unchanged', () => {
+    addTodo('Task', null, 'medium', null, null, 'keep me');
+    const id = loadTodos()[0].id;
+
+    expect(editTodo(id, 'Renamed')).toBe(true);
+    expect(loadTodos()[0].details).toBe('keep me');
+    expect(loadTodos()[0].text).toBe('Renamed');
+  });
+
+  it('details survive a reload of the stored todos', () => {
+    addTodo('Task', null, 'medium', null, null, 'persisted context');
+    initTodo();
+    expect(loadTodos()[0].details).toBe('persisted context');
+  });
+
+  it('migrateTodos gives legacy todos details: null and drops non-strings', () => {
+    localStorage.setItem('todos', JSON.stringify([
+      { id: 'legacy-1', text: 'Legacy one', completed: false, createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'legacy-2', text: 'Legacy two', completed: false, createdAt: '2026-01-02T00:00:00Z', details: 42 },
+      { id: 'legacy-3', text: 'Legacy three', completed: false, createdAt: '2026-01-03T00:00:00Z', details: '  ' }
+    ]));
+    initTodo();
+
+    const stored = loadTodos();
+    expect(stored[0].details).toBeNull();
+    expect(stored[1].details).toBeNull();
+    expect(stored[2].details).toBeNull();
+  });
+
+  it('openEditModal populates the details textarea and saveEdit persists it', () => {
+    addTodo('Task');
+    const id = loadTodos()[0].id;
+    const detailsInput = document.getElementById('todo-edit-details');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('');
+
+    detailsInput.value = 'step one\nstep two';
+    saveEdit();
+
+    expect(loadTodos()[0].details).toBe('step one\nstep two');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('step one\nstep two');
+  });
+
+  it('saveEdit with an empty details textarea clears stored details', () => {
+    addTodo('Task', null, 'medium', null, null, 'to be cleared');
+    const id = loadTodos()[0].id;
+    const detailsInput = document.getElementById('todo-edit-details');
+
+    openEditModal(id);
+    expect(detailsInput.value).toBe('to be cleared');
+
+    detailsInput.value = '';
+    saveEdit();
+
+    expect(loadTodos()[0].details).toBeNull();
+    expect(loadTodos()[0].text).toBe('Task');
+  });
+
+  it('renders a collapsed details block only when details are non-empty', () => {
+    addTodo('No details');
+    addTodo('Has details', null, 'medium', null, null, 'some context');
+
+    const items = document.querySelectorAll('.todo-item');
+    expect(items).toHaveLength(2);
+    expect(items[0].querySelector('.todo-details')).toBeNull();
+
+    const details = items[1].querySelector('.todo-details');
+    expect(details).not.toBeNull();
+    const body = details.querySelector('.todo-details-body');
+    expect(body.hidden).toBe(true);
+    expect(body.textContent).toBe('some context');
+    const toggle = details.querySelector('.todo-details-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('renders details with textContent so markup stays literal', () => {
+    addTodo('Injection', null, 'medium', null, null, '<img src=x onerror="alert(1)">');
+
+    const body = document.querySelector('.todo-details-body');
+    expect(body.textContent).toBe('<img src=x onerror="alert(1)">');
+    expect(body.querySelector('img')).toBeNull();
+  });
+
+  it('clicking the details toggle expands and collapses the block', () => {
+    addTodo('Task', null, 'medium', null, null, 'context');
+    const toggle = document.querySelector('.todo-details-toggle');
+    const body = document.querySelector('.todo-details-body');
+
+    toggle.click();
+    expect(body.hidden).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+    expect(body.hidden).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('keeps the expanded state across re-renders', () => {
+    addTodo('Task', null, 'medium', null, null, 'context');
+    document.querySelector('.todo-details-toggle').click();
+
+    renderTodos();
+
+    expect(document.querySelector('.todo-details-body').hidden).toBe(false);
+    expect(document.querySelector('.todo-details-toggle').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('drops expansion state once the todo is deleted', () => {
+    addTodo('First', null, 'medium', null, null, 'first context');
+    document.querySelector('.todo-details-toggle').click();
+    deleteTodo(loadTodos()[0].id);
+
+    addTodo('Second', null, 'medium', null, null, 'second context');
+    expect(document.querySelector('.todo-details-body').hidden).toBe(true);
+    expect(document.querySelector('.todo-details-toggle').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
 describe('Date picker month navigation', () => {
   it('custom picker advances exactly one month from the 31st', () => {
     vi.useFakeTimers();
@@ -4513,5 +4771,117 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       expect(stored[0].text).toBe('Call mom on');
       expect(stored[0].dueDate).toBe('2026-11-13');
     });
+  });
+});
+
+describe('External todo sync (issue #1233)', () => {
+  it('reloads in-memory todos when storage changes outside the page', async () => {
+    addTodo('Original');
+    const id = loadTodos()[0].id;
+
+    await chrome.storage.local.set({
+      todos: JSON.stringify([
+        {
+          id,
+          text: 'Renamed externally',
+          completed: false,
+          completedAt: null,
+          recurrence: null,
+          dueDate: null,
+          dueTime: null,
+          priority: 'medium',
+          createdAt: '2026-11-16T00:00:00.000Z',
+          order: 0
+        }
+      ])
+    });
+
+    expect(document.querySelector('.todo-item .todo-text')?.textContent).toBe('Renamed externally');
+
+    // A later local save must carry the external change instead of clobbering
+    // it with the stale pre-change array.
+    addTodo('Second');
+    const texts = loadTodos().map((todo) => todo.text);
+    expect(texts).toContain('Renamed externally');
+    expect(texts).toContain('Second');
+    expect(texts).not.toContain('Original');
+  });
+
+  it('dispatches todoCompleted when another context completes a todo', async () => {
+    addTodo('External');
+    const id = loadTodos()[0].id;
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      await chrome.storage.local.set({
+        todos: JSON.stringify([
+          {
+            id,
+            text: 'External',
+            completed: true,
+            completedAt: '2026-11-16T12:00:00.000Z',
+            recurrence: null,
+            dueDate: null,
+            dueTime: null,
+            priority: 'medium',
+            createdAt: '2026-11-16T00:00:00.000Z',
+            order: 0
+          }
+        ])
+      });
+
+      expect(dispatched).toEqual([id]);
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
+  });
+
+  it('does not re-dispatch todoCompleted for its own save', async () => {
+    addTodo('Own');
+    const id = loadTodos()[0].id;
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      toggleTodo(id);
+
+      expect(loadTodos()[0].completed).toBe(true);
+      expect(dispatched).toEqual([id]);
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
+  });
+
+  it('keeps a service-worker dueDate advance across the next local save', async () => {
+    addTodo('Weekly', '2026-11-16', 'medium', 'weekly');
+    const id = loadTodos()[0].id;
+
+    // What the service worker persists after a recurring Mark done: the due
+    // date advanced one interval while the todo stays incomplete.
+    const advanced = { ...loadTodos()[0], dueDate: '2026-11-23' };
+    await chrome.storage.local.set({ todos: JSON.stringify([advanced]) });
+
+    addTodo('Another');
+    const stored = loadTodos().find((todo) => todo.id === id);
+    expect(stored.dueDate).toBe('2026-11-23');
+  });
+
+  it('ignores storage changes to keys other than todos', async () => {
+    addTodo('Keep me');
+    const dispatched = [];
+    const onCompleted = (event) => dispatched.push(event.detail.id);
+    window.addEventListener('todoCompleted', onCompleted);
+
+    try {
+      await chrome.storage.local.set({ todoSortOrder: 'az' });
+
+      expect(dispatched).toHaveLength(0);
+      expect(document.querySelector('.todo-item .todo-text')?.textContent).toBe('Keep me');
+    } finally {
+      window.removeEventListener('todoCompleted', onCompleted);
+    }
   });
 });

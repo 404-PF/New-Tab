@@ -13,6 +13,17 @@ describe('OfflineMode', () => {
     expect(OfflineMode.getResponse('help').content.toLowerCase()).toContain('offline');
   });
 
+  it.each([
+    ['5 km to miles', '5 km = 3.1069 mi'],
+    ['10 km to miles', '10 km = 6.2137 mi'],
+    ['100 F to C', '100°F = 37.78°C'],
+    ['5 公里 to 英里', '5 km = 3.1069 mi'],
+    ['10 公里 to 英里', '10 km = 6.2137 mi'],
+    ['100 华氏度 to 摄氏度', '100°F = 37.78°C']
+  ])('converts the help-text example %s successfully', (query, content) => {
+    expect(OfflineMode.getResponse(query)).toEqual({ success: true, content, mode: 'offline' });
+  });
+
   it('uses the active language for offline acknowledgements', () => {
     const originalI18n = window.i18n;
     window.i18n = { ...(originalI18n || {}), currentLanguage: () => 'zh' };
@@ -35,7 +46,9 @@ describe('OfflineMode', () => {
     ['1 吨 to 千克', '1 ton = 907.1847 kg'],
     ['1 mm to km', '1 mm = 0.000001 km'],
     ['1 mg to ton', '1 mg = 1.10231e-9 ton'],
-    ['100 F to C', '100°F = 37.78°C']
+    ['100 F to C', '100°F = 37.78°C'],
+    ['1 mile to km', '1 mi = 1.6093 km'],
+    ['1 km to mile', '1 km = 0.6214 mi']
   ])('converts %s offline', (query, content) => {
     expect(OfflineMode.getResponse(query)).toEqual({ success: true, content, mode: 'offline' });
   });

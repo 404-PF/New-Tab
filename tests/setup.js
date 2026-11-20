@@ -165,7 +165,9 @@ globalThis.chrome = {
     getMessage(messageName, substitutions) {
       const messages = {
         todoReminderTitle: 'Todo Reminder',
-        todoReminderMessage: '$1$ \u2014 due $2$'
+        todoReminderMessage: '$1$ \u2014 due $2$',
+        todoReminderMarkDone: 'Mark done',
+        todoReminderSnooze: 'Snooze'
       };
       let msg = messages[messageName] || messageName;
       if (substitutions && Array.isArray(substitutions)) {
@@ -231,6 +233,16 @@ globalThis.chrome = {
       },
       _clearListeners() {
         chrome.notifications.onClicked._listeners = [];
+      }
+    },
+    onButtonClicked: {
+      _listeners: [],
+      addListener(fn) { chrome.notifications.onButtonClicked._listeners.push(fn); },
+      removeListener(fn) {
+        chrome.notifications.onButtonClicked._listeners = chrome.notifications.onButtonClicked._listeners.filter(l => l !== fn);
+      },
+      _clearListeners() {
+        chrome.notifications.onButtonClicked._listeners = [];
       }
     }
   },
@@ -312,6 +324,7 @@ globalThis.window.i18n = {
       dueDate: 'Due Date',
       dueTime: 'Due Time',
       aiNetworkError: 'Network error occurred',
+      aiNoContent: 'No content in response',
       aiRateLimitRetryAfter: 'Rate limited. Try again in {seconds} seconds',
       clearDate: 'Clear',
       todayDate: 'Today',
@@ -442,6 +455,8 @@ globalThis.window.i18n = {
       editTodo: 'Edit Todo',
       todoEditTitle: 'Edit Todo',
       todoEditText: 'Text',
+      todoEditDetails: 'Details',
+      todoDetailsToggle: 'Details',
       todoEditPriority: 'Priority',
       newAppTitle: 'Add New App',
       newAppDescription: 'Enter a website URL to add it to your apps',
@@ -489,6 +504,7 @@ globalThis.window.i18n = {
       pomodoroStatsExport: 'Export CSV',
       pomodoroStatsSessionsUnit: 'sessions',
       pomodoroStatsExportSuccess: 'Focus stats download started.',
+      pomodoroStatsSaveError: 'Failed to save focus stats. Your last action was not saved.',
       pomodoroStartFocus: 'Start Focus',
       pomodoroStopFocus: 'Stop Focus',
       pomodoroWorkComplete: 'Focus session complete!',
@@ -499,6 +515,12 @@ globalThis.window.i18n = {
       currentStreak: 'Current Streak',
       longestStreak: 'Longest Streak',
       last30Days: 'Last 30 Days',
+      todoStatsTotal: '30-Day Total',
+      todoStatsTrend: 'Trend vs Yesterday',
+      todoStatsBestDay: 'Best Day',
+      todoStatsRollingAvg: '7-Day Avg (completions/day)',
+      todoStatsExport: 'Export CSV',
+      todoStatsExportSuccess: 'Todo stats download started.',
       eyeCareReminderEnabled: 'Enable eye-care reminder',
       eyeCareReminderDescription: 'Follow the 20-20-20 rule with a gentle break prompt while this tab is visible.',
       eyeCareReminderInterval: 'Break interval',
@@ -674,6 +696,8 @@ globalThis.window.i18n = {
       weatherWindKmh: 'km/h',
       weatherWindMph: 'mph',
       weatherHumidity: 'Humidity',
+      weatherHigh: 'High',
+      weatherLow: 'Low',
       weatherWidgetCloseLabel: 'Close weather widget',
       enableFocusMode: 'Enable focus mode',
       todoSubtasks: 'Subtasks',
@@ -917,6 +941,7 @@ document.body.appendChild(dataImportDialog);
 // Edit modal stubs
 document.body.appendChild(createStubElement('div', 'todo-edit-modal'));
 document.body.appendChild(createStubElement('input', 'todo-edit-text'));
+document.body.appendChild(createStubElement('textarea', 'todo-edit-details'));
 document.body.appendChild(createStubElement('select', 'todo-edit-priority'));
 const recurrenceSelect = createStubElement('select', 'todo-edit-recurrence');
 ['', 'daily', 'weekly', 'monthly'].forEach(value => {
@@ -972,6 +997,7 @@ document.body.appendChild(createStubElement('select', 'date-font-picker'));
 document.body.appendChild(createStubElement('select', 'date-format-picker'));
 document.body.appendChild(createStubElement('input', 'todo-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'motto-enabled-setting'));
+document.body.appendChild(createStubElement('input', 'search-box-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-reminder-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'todo-stats-enabled-setting'));
 document.body.appendChild(createStubElement('input', 'pomodoro-stats-enabled-setting'));
@@ -1044,6 +1070,11 @@ document.body.appendChild(createStubElement('span', 'todo-stats-current-streak')
 document.body.appendChild(createStubElement('span', 'todo-stats-longest-streak'));
 document.body.appendChild(createStubElement('div', 'todo-stats-heatmap'));
 document.body.appendChild(createStubElement('button', 'todo-stats-clear'));
+document.body.appendChild(createStubElement('span', 'todo-stats-total'));
+document.body.appendChild(createStubElement('span', 'todo-stats-trend'));
+document.body.appendChild(createStubElement('span', 'todo-stats-best-day'));
+document.body.appendChild(createStubElement('span', 'todo-stats-rolling-avg'));
+document.body.appendChild(createStubElement('button', 'todo-stats-export'));
 
 // Pomodoro stats elements
 document.body.appendChild(createStubElement('button', 'pomodoro-stats-toggle'));

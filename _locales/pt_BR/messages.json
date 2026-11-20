@@ -124,6 +124,14 @@
       }
     }
   },
+  "todoReminderMarkDone": {
+    "message": "Marcar como feito",
+    "description": "Label of the first action button on the todo reminder notification"
+  },
+  "todoReminderSnooze": {
+    "message": "Adiar",
+    "description": "Label of the second action button on the todo reminder notification (10 minutes)"
+  },
   "priorityLow": {
     "message": "Baixa",
     "description": "Low priority label"
@@ -212,13 +220,33 @@
     "message": "Diariamente",
     "description": "Rotation interval option"
   },
+  "bgRotationDayPicker": {
+    "message": "Planos de fundo para o dia",
+    "description": "Label for the day background picker in time-of-day rotation"
+  },
+  "bgRotationDayTime": {
+    "message": "O dia começa às",
+    "description": "Label for the time-of-day rotation day boundary input"
+  },
   "bgRotationNewtab": {
     "message": "A cada nova aba",
     "description": "Rotation interval option"
   },
+  "bgRotationNightPicker": {
+    "message": "Planos de fundo para a noite",
+    "description": "Label for the night background picker in time-of-day rotation"
+  },
+  "bgRotationNightTime": {
+    "message": "A noite começa às",
+    "description": "Label for the time-of-day rotation night boundary input"
+  },
   "bgRotationPicker": {
     "message": "Selecionar fundos para rotacionar",
     "description": "Label for the background picker in rotation settings"
+  },
+  "bgRotationTod": {
+    "message": "Horário do dia",
+    "description": "Rotation interval option"
   },
   "bgRotationUploads": {
     "message": "Seus envios",
@@ -339,6 +367,30 @@
   "last30Days": {
     "message": "Últimos 30 dias",
     "description": "Stats label for last 30 days"
+  },
+  "todoStatsTotal": {
+    "message": "Total (30 dias)",
+    "description": "Label for the 30-day todo stats total"
+  },
+  "todoStatsTrend": {
+    "message": "Tendência vs ontem",
+    "description": "Label for the day-over-day todo stats trend"
+  },
+  "todoStatsBestDay": {
+    "message": "Melhor dia",
+    "description": "Label for the best todo stats day"
+  },
+  "todoStatsRollingAvg": {
+    "message": "Média 7 dias (concluídos/dia)",
+    "description": "Label for the 7-day rolling average todo stats"
+  },
+  "todoStatsExport": {
+    "message": "Exportar CSV",
+    "description": "Button that exports todo stats as CSV"
+  },
+  "todoStatsExportSuccess": {
+    "message": "Download das estatísticas de tarefas iniciado.",
+    "description": "Toast shown after todo stats CSV download is started"
   },
   "statsToggle": {
     "message": "Estatísticas",
@@ -738,6 +790,14 @@
     "message": "Agora",
     "description": "Label for the current hour in hourly forecast"
   },
+  "weatherHigh": {
+    "message": "Máx",
+    "description": "Label for today's high temperature in the weather widget"
+  },
+  "weatherLow": {
+    "message": "Mín",
+    "description": "Label for today's low temperature in the weather widget"
+  },
   "notesSearchPlaceholder": {
     "message": "Pesquisar notas...",
     "description": "Placeholder text for the notes search input"
@@ -821,6 +881,14 @@
   "todoEditText": {
     "message": "Texto",
     "description": "Label for the todo text field in the edit dialog"
+  },
+  "todoEditDetails": {
+    "message": "Detalhes",
+    "description": "Label for the details textarea in the todo edit modal"
+  },
+  "todoDetailsToggle": {
+    "message": "Detalhes",
+    "description": "Button that expands or collapses the details block on a todo row"
   },
   "todoEditPriority": {
     "message": "Prioridade",
@@ -923,6 +991,10 @@
   "pomodoroStatsExportSuccess": {
     "message": "Download das estatísticas de foco iniciado.",
     "description": "Toast shown after focus stats CSV download is started"
+  },
+  "pomodoroStatsSaveError": {
+    "message": "Não foi possível salvar as estatísticas de foco. Sua última ação não foi salva.",
+    "description": "Error shown when a focus stats write cannot be persisted"
   },
   "gamesLoading": {
     "message": "Carregando jogos…",

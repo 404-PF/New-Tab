@@ -37,7 +37,7 @@ describe('tier-2 surface marks (#1158)', () => {
 
   it('marks each JS-built surface at creation', () => {
     expect(read('src/features/context-menu.js')).toMatch(
-      /contextMenu\.className = 'app-context-menu';\s*\n\s*contextMenu\.setAttribute\('data-liquid-glass', 'panel'\);/
+      /contextMenu\.className = 'app-context-menu';\s*\n\s*contextMenu\.setAttribute\('data-liquid-glass', 'icon'\);/
     );
     expect(read('src/core/toast.js')).toMatch(
       /toast\.setAttribute\('data-liquid-glass', 'panel'\);/

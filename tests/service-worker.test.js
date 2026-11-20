@@ -92,9 +92,11 @@ describe('service worker todo reminders', () => {
       // Drop the listeners the previous evaluation registered so the shared
       // chrome mocks don't accumulate a second copy of each handler.
       chrome.notifications.onClicked._clearListeners();
+      chrome.notifications.onButtonClicked._clearListeners();
       chrome.runtime.onMessage._clearListeners();
       injectScript('backgrounds/service-worker.js');
       expect(chrome.notifications.onClicked._listeners).toHaveLength(1);
+      expect(chrome.notifications.onButtonClicked._listeners).toHaveLength(1);
       expect(chrome.runtime.onMessage._listeners).toHaveLength(1);
 
       warnSpy.mockClear();
@@ -687,6 +689,425 @@ describe('service worker storage lastError handling (issue #994)', () => {
     } finally {
       setSpy.mockRestore();
       createSpy.mockRestore();
+    }
+  });
+});
+
+describe('todo reminder notification actions (issue #1233)', () => {
+  beforeAll(() => {
+    // Earlier describes re-injected the worker several times; start from one
+    // clean copy of every listener this suite drives directly.
+    chrome.notifications.onClicked._clearListeners();
+    chrome.notifications.onButtonClicked._clearListeners();
+    chrome.runtime.onMessage._clearListeners();
+    injectScript('backgrounds/service-worker.js');
+  });
+
+  // The button handler kicks off an async runExclusive task; one macrotask
+  // drains the microtask chain the mocked storage calls resolve through.
+  function flushAction() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  async function seedReminder(todos, leadTime = '30') {
+    await chrome.storage.local.set({
+      todoReminderEnabled: 'true',
+      todoReminderLeadTime: leadTime,
+      todoReminderNotified: {},
+      todos: JSON.stringify(todos)
+    });
+  }
+
+  it('adds Mark done and Snooze action buttons to the reminder notification', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'due', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+
+    await checkReminders();
+
+    const notification = chrome.notifications._notifications['todo_reminder_due'];
+    expect(notification).toBeTruthy();
+    expect(notification.buttons).toEqual([
+      { title: 'Mark done' },
+      { title: 'Snooze' }
+    ]);
+  });
+
+  it('completes the todo and clears its reminder state on Mark done', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'plain',
+        text: 'Finish report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: null,
+        subtasks: [{ id: 's1', text: 'part', checked: true }]
+      }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get(['todos', 'todoReminderNotified', 'todoReminderSnoozedUntil']);
+    const todos = JSON.parse(data.todos);
+    expect(todos[0].completed).toBe(true);
+    expect(typeof todos[0].completedAt).toBe('string');
+    // Non-recurring todos keep their subtask checks (mirror of toggleTodo).
+    expect(todos[0].subtasks[0].checked).toBe(true);
+    expect(data.todoReminderNotified).toEqual({});
+    expect(data.todoReminderSnoozedUntil).toEqual({});
+    expect(chrome.notifications._notifications['todo_reminder_plain']).toBeUndefined();
+  });
+
+  it('re-merges Mark done when a concurrent page save overwrites the todos write', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'plain', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await checkReminders();
+
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let clobbered = false;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      if (items.todos && !clobbered) {
+        clobbered = true;
+        // Stand in for a page saveTodos() that lands after the worker's write.
+        const pageList = JSON.parse(items.todos);
+        pageList.push({ id: 'page-added', text: 'Added in page', completed: false });
+        return originalSet({ todos: JSON.stringify(pageList) }, callback);
+      }
+      return originalSet(items, callback);
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 0);
+      await flushAction();
+
+      const data = await chrome.storage.local.get('todos');
+      const todos = JSON.parse(data.todos);
+      expect(todos.find((t) => t.id === 'plain').completed).toBe(true);
+      expect(todos.find((t) => t.id === 'page-added')).toBeTruthy();
+      expect(chrome.notifications._notifications['todo_reminder_plain']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
+  it('advances a recurring todo instead of completing it on Mark done', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'weekly',
+        text: 'Weekly report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: 'weekly',
+        subtasks: [{ id: 's1', text: 'part', checked: true }]
+      }
+    ]);
+    await checkReminders();
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_weekly', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get('todos');
+    const todos = JSON.parse(data.todos);
+    expect(todos[0].dueDate).toBe('2026-08-18');
+    expect(todos[0].completed).toBe(false);
+    expect(todos[0].completedAt).toBeNull();
+    expect(todos[0].subtasks[0].checked).toBe(false);
+    expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
+  });
+
+  it('does not skip the next occurrence when a page save already advanced a recurring todo', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'weekly',
+        text: 'Weekly report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: 'weekly'
+      }
+    ]);
+    await checkReminders();
+
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+    let clobbered = false;
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      if (items.todos && !clobbered) {
+        clobbered = true;
+        const pageList = JSON.parse(items.todos);
+        pageList.push({ id: 'page-added', text: 'Added in page', completed: false });
+        return originalSet({ todos: JSON.stringify(pageList) }, callback);
+      }
+      return originalSet(items, callback);
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_weekly', 0);
+      await flushAction();
+
+      const data = await chrome.storage.local.get('todos');
+      const todos = JSON.parse(data.todos);
+      const weekly = todos.find((t) => t.id === 'weekly');
+      expect(weekly.dueDate).toBe('2026-08-18');
+      expect(weekly.completed).toBe(false);
+      expect(todos.find((t) => t.id === 'page-added')).toBeTruthy();
+      expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
+  it('schedules a recurring todo whose due date a page save cleared before Mark done', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'weekly',
+        text: 'Weekly report',
+        completed: false,
+        dueDate: '2026-08-11',
+        recurrence: 'weekly'
+      }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeTruthy();
+
+    // The page clears the due date after the banner was shown but before the
+    // button is clicked; the recurring todo must still be rescheduled.
+    const pageList = JSON.parse((await chrome.storage.local.get('todos')).todos);
+    pageList[0].dueDate = null;
+    await chrome.storage.local.set({ todos: JSON.stringify(pageList) });
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_weekly', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get('todos');
+    const weekly = JSON.parse(data.todos).find((t) => t.id === 'weekly');
+    expect(weekly.dueDate).toBe('2026-08-18');
+    expect(weekly.completed).toBe(false);
+    expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
+  });
+
+  it('snoozes the reminder and re-fires it after the snooze expires past grace', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 30 s before the end-of-day due instant: inside the reminder window, so
+    // the first check fires a real notification to snooze.
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 59, 30));
+    await seedReminder(
+      [{ id: 'rent', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }],
+      '0'
+    );
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_rent']).toBeTruthy();
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_rent', 1);
+    await flushAction();
+
+    const snoozed = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+    // The notified mark is demoted to pending so the reminder reliably
+    // re-fires after the snooze even though grace has long lapsed.
+    expect(snoozed.todoReminderNotified).toEqual({ 'rent_2026-08-11': 'pending' });
+    expect(snoozed.todoReminderSnoozedUntil['rent']).toBe(Date.now() + 10 * 60 * 1000);
+    expect(chrome.alarms._alarms['todoSnooze_rent']).toEqual({ delayInMinutes: 10 });
+    expect(chrome.notifications._notifications['todo_reminder_rent']).toBeUndefined();
+
+    // Still snoozed: the pending mark must not re-fire during suppression.
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_rent']).toBeUndefined();
+
+    // 20 minutes past due: the snooze expired and the #1090 grace window is
+    // long gone, yet the pending mark must deliver the reminder again.
+    vi.setSystemTime(new Date(2026, 7, 12, 0, 20, 0));
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_rent']).toBeTruthy();
+
+    const confirmed = await chrome.storage.local.get('todoReminderNotified');
+    expect(confirmed.todoReminderNotified['rent_2026-08-11']).toBeGreaterThan(0);
+
+    // Timestamp-confirmed: a further check must not double-fire. The
+    // notification-ID list alone cannot prove that (recreating the same ID
+    // leaves the list unchanged), so record the create count instead.
+    const createSpy = vi.spyOn(chrome.notifications, 'create');
+    const createsBeforeFinalCheck = createSpy.mock.calls.length;
+    try {
+      await checkReminders();
+      expect(createSpy.mock.calls.length).toBe(createsBeforeFinalCheck);
+      expect(Object.keys(chrome.notifications._notifications)).toEqual(['todo_reminder_rent']);
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
+
+  it('serializes a Mark done click behind an in-flight reminder check', async () => {
+    await seedReminder([
+      { id: 'queued', text: 'Queued', completed: false, dueDate: '2026-08-11' }
+    ]);
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+
+    // Hang the leading check on its storage read so the button click below is
+    // forced through runExclusive's pending queue instead of racing it.
+    let resolveFirstGet;
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    const getSpy = vi.spyOn(chrome.storage.local, 'get').mockImplementation((keys, callback) => {
+      if (resolveFirstGet) return originalGet(keys, callback);
+      return new Promise((resolve) => {
+        resolveFirstGet = () => {
+          originalGet(keys, callback).then(resolve);
+        };
+      });
+    });
+
+    try {
+      const firstPromise = checkReminders();
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_queued', 0);
+      await flushAction();
+
+      // The mutation must not run while the check holds the critical section.
+      const during = await chrome.storage.local.get('todos');
+      expect(JSON.parse(during.todos)[0].completed).toBe(false);
+
+      resolveFirstGet();
+      await firstPromise;
+      await flushAction();
+
+      const after = await chrome.storage.local.get('todos');
+      expect(JSON.parse(after.todos)[0].completed).toBe(true);
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it('ignores clicks on unrelated notifications and unknown button indices', async () => {
+    await seedReminder([
+      { id: 'safe', text: 'Untouched', completed: false, dueDate: '2026-08-11' }
+    ]);
+    const listener = chrome.notifications.onButtonClicked._listeners[0];
+
+    expect(() => listener('other_notification', 0)).not.toThrow();
+    expect(() => listener('todo_reminder_safe', 7)).not.toThrow();
+    await flushAction();
+
+    const data = await chrome.storage.local.get('todos');
+    expect(JSON.parse(data.todos)[0].completed).toBe(false);
+  });
+
+  it('drops reminder state for a todo that vanished before Mark done', async () => {
+    await chrome.storage.local.set({
+      todoReminderNotified: { 'ghost_2026-08-11': Date.now() },
+      todoReminderSnoozedUntil: { ghost: Date.now() + 60000 },
+      todos: JSON.stringify([])
+    });
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_ghost', 0);
+    await flushAction();
+
+    const data = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+    expect(data.todoReminderNotified).toEqual({});
+    expect(data.todoReminderSnoozedUntil).toEqual({});
+    expect(chrome.notifications._notifications['todo_reminder_ghost']).toBeUndefined();
+  });
+
+  it('clears a todo snooze when a sync invalidates its reminder state', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 59, 30));
+    await seedReminder(
+      [{ id: 'rent', text: 'Pay rent', completed: false, dueDate: '2026-08-11' }],
+      '0'
+    );
+    await checkReminders();
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_rent', 1);
+    await flushAction();
+    const during = await chrome.storage.local.get('todoReminderSnoozedUntil');
+    expect(during.todoReminderSnoozedUntil.rent).toBe(Date.now() + 10 * 60 * 1000);
+
+    // A reschedule syncs the todo by id, invalidating its reminder state; the
+    // snooze must be dropped with it, or it would suppress the revised
+    // schedule until expiry and then lose it to the grace cutoff.
+    await checkReminders(
+      JSON.stringify([{ id: 'rent', text: 'Pay rent', completed: false, dueDate: '2026-08-12' }]),
+      { todoId: 'rent' }
+    );
+
+    const after = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+    expect(after.todoReminderNotified).toEqual({});
+    expect(after.todoReminderSnoozedUntil).toEqual({});
+  });
+
+  it('keeps the reminder notification available when the Mark done write fails', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'plain', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      try {
+        if (callback) callback();
+      } finally {
+        chrome.runtime.lastError = null;
+      }
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 0);
+      await flushAction();
+
+      // The failed write must leave the banner in place so the action can be
+      // retried, and the todo itself must stay unchanged.
+      expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+      const data = await chrome.storage.local.get('todos');
+      expect(JSON.parse(data.todos)[0].completed).toBe(false);
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
+
+  it('keeps the reminder notification available when the Snooze write fails', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
+    await seedReminder([
+      { id: 'plain', text: 'Finish report', completed: false, dueDate: '2026-08-11' }
+    ]);
+    await checkReminders();
+    expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+    const before = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+
+    const setSpy = vi.spyOn(chrome.storage.local, 'set').mockImplementation((items, callback) => {
+      chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      try {
+        if (callback) callback();
+      } finally {
+        chrome.runtime.lastError = null;
+      }
+    });
+
+    try {
+      chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_plain', 1);
+      await flushAction();
+
+      // The failed snooze persist must leave the banner in place so the action
+      // can be retried, and must not leave partial state or an alarm behind.
+      expect(chrome.notifications._notifications['todo_reminder_plain']).toBeTruthy();
+      const after = await chrome.storage.local.get(['todoReminderNotified', 'todoReminderSnoozedUntil']);
+      expect(after).toEqual(before);
+      expect(chrome.alarms._alarms['todoSnooze_plain']).toBeUndefined();
+    } finally {
+      setSpy.mockRestore();
     }
   });
 });

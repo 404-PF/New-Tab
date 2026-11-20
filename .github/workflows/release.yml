@@ -104,11 +104,9 @@ jobs:
             exit 1
           fi
           git fetch origin main --no-tags || true
-          if ! git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-            if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null || echo HEAD)" ]; then
-              echo "::error::Tag $TAG does not point to a commit on main"
-              exit 1
-            fi
+          if ! git merge-base --is-ancestor HEAD origin/main 2>/dev/null && [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null || echo HEAD)" ]; then
+            echo "::error::Tag $TAG does not point to a commit on main"
+            exit 1
           fi
           echo "✓ Tag $TAG validated"
 

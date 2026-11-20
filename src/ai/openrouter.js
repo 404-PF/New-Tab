@@ -541,6 +541,13 @@ const OpenRouterAPI = (function() {
             processSseLine(buffer);
           }
 
+          if (!fullContent.trim()) {
+            return {
+              success: false,
+              error: getTranslation('aiNoContent')
+            };
+          }
+
           return {
             success: true,
             content: fullContent,

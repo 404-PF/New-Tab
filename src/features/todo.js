@@ -36,6 +36,11 @@
   const selectedIds = new Set();
   let selectionAnchorId = null;
 
+  // Rows whose free-form details block is expanded (issue #1228). Memory
+  // only, like todoSearchQuery; re-rendered rows restore it so toggling a
+  // subtask or filter never silently collapses an open details block.
+  const expandedDetailsIds = new Set();
+
   // Undo window for deletes (issue #1135). A single slot holds one group of
   // removed todos with their pre-delete indices: a later delete replaces it
   // (last wins, mirroring the single-toast model in toast.js). The slot lives
@@ -198,6 +203,56 @@
     }
     // applyFilters also refreshes the progress ring, counts and filter pills.
     applyFilters();
+  }
+
+  // The service worker mutates todos outside the page (notification "Mark
+  // done" / "Snooze" handling, #1233), and a settings import can write from
+  // another context. Without this listener the in-memory list keeps the old
+  // state, and the next saveTodos() would clobber the external change with our
+  // stale copy. Own writes are skipped by the exact-string comparison (the
+  // bridge echoes every set, including ours, synchronously); genuine false ->
+  // true transitions also re-dispatch todoCompleted so stats count an
+  // externally completed todo exactly like a local toggle, and a recurring
+  // todo whose dueDate advanced (notification Mark done) counts as a
+  // completion too. Two deliberate
+  // deviations from reloadTodosState(): normalizeTodosInPlace() instead of
+  // migrateTodos() so reloading never triggers a persistence side effect of
+  // its own (a fixture seed or import migrates through its own path), and a
+  // try/catch so a render failure in this listener cannot propagate back into
+  // the chrome.storage.set() call that emitted the event and poison the write.
+  if (globalThis.chrome?.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      try {
+        if (areaName !== 'local' || !changes || !changes.todos) return;
+        const change = changes.todos;
+        // A replace-mode import can delete the todos key entirely: let an
+        // absent newValue through so loadTodos() refreshes the list to empty.
+        if (change.newValue !== undefined && change.newValue !== null && typeof change.newValue !== 'string') return;
+        if (change.newValue === JSON.stringify(todos)) return;
+        const previous = todos;
+        todos = loadTodos();
+        normalizeTodosInPlace();
+        applyFilters();
+        // renderTodos() replaced every row: rebuild any open inline date
+        // picker so its handlers capture the current todo object and anchor
+        // instead of the pre-replacement ones — otherwise a later time change
+        // persists the stale due date over the external advance (#1233).
+        refreshInlineDatePickers();
+        for (const todo of todos) {
+          const before = previous.find(t => t && t.id === todo.id);
+          if (!before || before.completed) continue;
+          // Recurring todos completed from a notification advance dueDate
+          // instead of flipping completed, so count that as a completion too.
+          const advancedDueDate =
+            RECURRENCE_VALUES.includes(todo.recurrence) && before.dueDate !== todo.dueDate;
+          if (todo.completed || advancedDueDate) {
+            window.dispatchEvent(new CustomEvent('todoCompleted', { detail: { id: todo.id } }));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to apply external todo change:', e);
+      }
+    });
   }
 
   function createReminderAlarmFallback() {
@@ -432,7 +487,7 @@
     // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
     const before = text.slice(0, matchStart);
     const after = text.slice(matchEnd);
-    const beforeText = before.replace(/\s+$/, '');
+    const beforeText = before.trimEnd();
     const afterText = after.replace(/^\s+/, '');
     const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
     const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
@@ -753,15 +808,17 @@
     }
 
     // Text search (issue #1060). AND with the pill filters: match the todo
-    // text or any subtask text, case-insensitively. The sort below still runs
-    // on whatever survives, so all five sort modes compose unchanged.
+    // text, any subtask text, or the free-form details (issue #1228),
+    // case-insensitively. The sort below still runs on whatever survives, so
+    // all five sort modes compose unchanged.
     if (todoSearchQuery) {
       const query = todoSearchQuery.toLowerCase();
       filtered = filtered.filter(todo => {
         const textMatch = typeof todo.text === 'string' && todo.text.toLowerCase().includes(query);
         const subtaskMatch = Array.isArray(todo.subtasks) &&
           todo.subtasks.some(subtask => typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(query));
-        return textMatch || subtaskMatch;
+        const detailsMatch = typeof todo.details === 'string' && todo.details.toLowerCase().includes(query);
+        return textMatch || subtaskMatch || detailsMatch;
       });
     }
 
@@ -807,6 +864,14 @@
     const emptyState = elements.emptyState;
 
     if (!todoList || !emptyState) return;
+
+    // Drop details expansion state for todos that no longer exist (issue #1228).
+    if (expandedDetailsIds.size > 0) {
+      const liveIds = new Set(todos.map(todo => todo.id));
+      expandedDetailsIds.forEach(id => {
+        if (!liveIds.has(id)) expandedDetailsIds.delete(id);
+      });
+    }
 
     // Get existing element positions (First step of FLIP)
     const existingItems = {};
@@ -981,6 +1046,31 @@
 
       li.appendChild(todoItemRow);
 
+      // Free-form details (issue #1228). Only rendered when non-empty so
+      // plain rows stay exactly as they were, collapsed by default, and built
+      // with textContent so stored text can never inject markup.
+      if (typeof todo.details === 'string' && todo.details.trim()) {
+        const detailsContainer = document.createElement('div');
+        detailsContainer.className = 'todo-details';
+
+        const detailsToggle = document.createElement('button');
+        detailsToggle.type = 'button';
+        detailsToggle.className = 'todo-details-toggle';
+        detailsToggle.dataset.todoId = todo.id;
+        const detailsExpanded = expandedDetailsIds.has(todo.id);
+        detailsToggle.setAttribute('aria-expanded', detailsExpanded ? 'true' : 'false');
+        detailsToggle.textContent = window.i18n ? window.i18n.t('todoDetailsToggle') : 'Details';
+
+        const detailsBody = document.createElement('div');
+        detailsBody.className = 'todo-details-body';
+        detailsBody.hidden = !detailsExpanded;
+        detailsBody.textContent = todo.details;
+
+        detailsContainer.appendChild(detailsToggle);
+        detailsContainer.appendChild(detailsBody);
+        li.appendChild(detailsContainer);
+      }
+
       // Subtasks
       if (todo.subtasks && todo.subtasks.length > 0) {
         const subtasksContainer = document.createElement('div');
@@ -1094,8 +1184,16 @@
     return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
   }
 
+  // Free-form context on a task (issue #1228). Blank or non-string input
+  // collapses to null so "no details" has one canonical stored shape.
+  function normalizeTodoDetails(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
   // Add a new todo
-  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null) {
+  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null, details = null) {
     if (!text.trim()) return;
 
     // Seed the next order from the same scale getManualOrderValue compares on
@@ -1115,6 +1213,7 @@
       dueTime: normalizedDueTime,
       priority: priority || 'medium',
       recurrence: RECURRENCE_VALUES.includes(recurrence) ? recurrence : null,
+      details: normalizeTodoDetails(details),
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
     };
@@ -1133,8 +1232,12 @@
   }
 
   // Migrate existing todos to have completedAt property
-  function migrateTodos() {
-    const previousTodos = cloneTodos(todos);
+  // Fill legacy/missing fields (recurrence, completedAt, dueTime) and drop
+  // malformed dueDates, in memory only. Returns whether anything changed.
+  // Split out of migrateTodos so callers that must not trigger a persistence
+  // side effect — notably the external-write listener above — can still
+  // sanitize dirty data before rendering it.
+  function normalizeTodosInPlace() {
     let needsMigration = false;
 
     todos.forEach(todo => {
@@ -1169,7 +1272,21 @@
         todo.dueTime = null;
         needsMigration = true;
       }
+      // Same normalization for free-form details (issue #1228): legacy rows
+      // gain `details: null`, blank strings collapse, non-strings are dropped.
+      const normalizedDetails = normalizeTodoDetails(todo.details);
+      if (todo.details !== normalizedDetails) {
+        todo.details = normalizedDetails;
+        needsMigration = true;
+      }
     });
+
+    return needsMigration;
+  }
+
+  function migrateTodos() {
+    const previousTodos = cloneTodos(todos);
+    const needsMigration = normalizeTodosInPlace();
 
     if (needsMigration) {
       if (!saveTodos(todos)) {
@@ -1196,8 +1313,10 @@
     }
   }
 
-  // Edit a todo
-  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime) {
+  // Edit a todo. `newDetails` is a trailing optional argument so every
+  // existing positional call site keeps its meaning (issue #1228): pass
+  // undefined to leave details untouched, a string to set/clear them.
+  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime, newDetails) {
     const todo = todos.find(t => t.id === id);
     if (!todo) {
       return false;
@@ -1211,6 +1330,9 @@
     applyDueDateAndTime(todo, newDueDate, newDueTime);
     if (newRecurrence !== undefined) {
       todo.recurrence = RECURRENCE_VALUES.includes(newRecurrence) ? newRecurrence : null;
+    }
+    if (newDetails !== undefined) {
+      todo.details = normalizeTodoDetails(newDetails);
     }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
@@ -1473,6 +1595,9 @@
 
 // Filter management
 function applyFilters() {
+  // Snapshot taken before filtering: a due instant crossed while the rows
+  // render must not be dropped by the re-arm below (review thread).
+  const renderStartedAt = Date.now();
   filterTodos();
   pruneTodoSelection();
   renderTodos();
@@ -1480,6 +1605,10 @@ function applyFilters() {
   updateProgressRing();
   updateFilterCounts();
   updateBulkActions();
+  // Add/complete/delete and filter changes all funnel through here, so
+  // re-arming here keeps the due-minute timer aligned with the list
+  // (issue #1205).
+  scheduleTodoOverdueRefresh(renderStartedAt);
 }
 
 // The Today filter and badge compare due dates against the current local
@@ -1500,6 +1629,56 @@ function scheduleTodoMidnightRefresh() {
     applyFilters();
     scheduleTodoMidnightRefresh();
   }, nextMidnight.getTime() - now.getTime());
+}
+
+// A timed todo flips overdue the instant its due minute passes, but nothing
+// re-rendered the list at that moment while the tab idled (issue #1205).
+// Arm a one-shot timeout for the earliest not-yet-overdue timed todo; each
+// fire re-applies the filters (row classes, Overdue badge and pill
+// membership), which re-arms for whatever is due next and leaves the timer
+// cleared when no incomplete timed todo is pending.
+let overdueRefreshTimer = null;
+
+// setTimeout delays are 32-bit signed ints (max ~24.8 days); a due instant
+// further out is armed for the cap and re-armed on fire until it is reached.
+const MAX_OVERDUE_TIMEOUT_MS = 2147483647;
+
+function scheduleTodoOverdueRefresh(renderStartedAt = Date.now()) {
+  if (overdueRefreshTimer) {
+    clearTimeout(overdueRefreshTimer);
+    overdueRefreshTimer = null;
+  }
+  let flipAt = null;
+  todos.forEach(todo => {
+    if (todo.completed || !todo.dueDate || !todo.dueTime) return;
+    const due = getDueDateTime(todo.dueDate, todo.dueTime);
+    // A malformed dueDate parses to an invalid Date, which is truthy but
+    // yields a NaN timestamp; arming with NaN would make setTimeout fire
+    // immediately and re-apply filters in a tight loop. Skip those todos.
+    const dueTimestamp = due?.getTime();
+    if (!Number.isFinite(dueTimestamp)) return;
+    // isOverdue() is a strict `<`, so the row only flips one ms after the
+    // due instant; arming for that ms avoids re-firing on the exact instant
+    // and finding the todo still "not overdue".
+    const flip = dueTimestamp + 1;
+    // Boundaries passed before the caller started rendering were rendered
+    // as overdue; only a boundary crossed while rendering stays pending, so
+    // it re-applies the filters a ms later instead of being dropped
+    // (review thread).
+    if (flip <= renderStartedAt) return;
+    if (flipAt === null || flip < flipAt) {
+      flipAt = flip;
+    }
+  });
+  if (flipAt === null) return;
+  const delay = Math.min(MAX_OVERDUE_TIMEOUT_MS, Math.max(1, flipAt - Date.now()));
+  overdueRefreshTimer = setTimeout(() => {
+    overdueRefreshTimer = null;
+    applyFilters();
+    // renderTodos() replaced every row; rebind an open inline date picker
+    // to its fresh anchor (or close it when the row left the view).
+    refreshInlineDatePickers(false);
+  }, delay);
 }
 
 // Update filter pill UI
@@ -2090,6 +2269,25 @@ function handleTodoListClick(event) {
     const todoId = subtaskDelete.dataset.todoId;
     const subtaskId = subtaskDelete.dataset.subtaskId;
     deleteSubtask(todoId, subtaskId);
+    return;
+  }
+
+  // Expand/collapse the free-form details block under the row (issue #1228)
+  const detailsToggle = target.closest('.todo-details-toggle');
+  if (detailsToggle) {
+    event.stopPropagation();
+    const detailsContainer = detailsToggle.closest('.todo-details');
+    const detailsBody = detailsContainer ? detailsContainer.querySelector('.todo-details-body') : null;
+    if (detailsBody) {
+      const expanded = detailsBody.hidden;
+      detailsBody.hidden = !expanded;
+      detailsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      if (expanded) {
+        expandedDetailsIds.add(detailsToggle.dataset.todoId);
+      } else {
+        expandedDetailsIds.delete(detailsToggle.dataset.todoId);
+      }
+    }
     return;
   }
 
@@ -2709,9 +2907,11 @@ function openEditModal(id) {
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
   const modal = document.getElementById('todo-edit-modal');
+  const detailsInput = document.getElementById('todo-edit-details');
 
   if (textInput) textInput.value = todo.text;
   if (prioritySelect) prioritySelect.value = todo.priority || 'medium';
+  if (detailsInput) detailsInput.value = todo.details || '';
   const recurrenceSelect = document.getElementById('todo-edit-recurrence');
   if (recurrenceSelect) recurrenceSelect.value = todo.recurrence || '';
 
@@ -2760,11 +2960,15 @@ function saveEdit() {
   const textInput = document.getElementById('todo-edit-text');
   const prioritySelect = document.getElementById('todo-edit-priority');
   const subtaskInput = document.getElementById('todo-edit-subtask-input');
+  const detailsInput = document.getElementById('todo-edit-details');
 
   const newText = textInput ? textInput.value.trim() : '';
   const newPriority = prioritySelect ? prioritySelect.value : null;
   const recurrenceSelect = document.getElementById('todo-edit-recurrence');
   const newRecurrence = recurrenceSelect ? (recurrenceSelect.value || null) : null;
+  // Undefined (no textarea in the DOM) leaves stored details untouched; an
+  // empty value deliberately clears them (issue #1228).
+  const newDetails = detailsInput ? detailsInput.value : undefined;
 
   if (!newText) {
     // Show error or focus on text input
@@ -2792,7 +2996,7 @@ function saveEdit() {
     }
   }
 
-  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence)) {
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence, undefined, newDetails)) {
     // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
     editModalState.pendingSubtaskIds.clear();
     closeEditModal(false);
@@ -3003,6 +3207,9 @@ function initTodo() {
   // Re-run the filters at the next local midnight so the Today list and
   // badge never go stale overnight (issue #1085).
   scheduleTodoMidnightRefresh();
+  // Re-arm the due-minute refresh so timed todos flip overdue without a
+  // click even after a re-init (issue #1205).
+  scheduleTodoOverdueRefresh();
 
   return true;
 }
@@ -3068,6 +3275,10 @@ function validateTodoData(data) {
     if (item.completedAt !== undefined && item.completedAt !== null && typeof item.completedAt !== 'string') return false;
     if (item.order !== undefined && (typeof item.order !== 'number' || !Number.isFinite(item.order) || !Number.isInteger(item.order) || item.order < 0)) return false;
     if (item.recurrence !== undefined && item.recurrence !== null && !RECURRENCE_VALUES.includes(item.recurrence)) return false;
+    // Free-form details (issue #1228): optional, but must be a string when
+    // present and within the edit modal's 2000-character maxlength so a
+    // hostile export can't store objects/arrays or oversized text here.
+    if (item.details !== undefined && item.details !== null && (typeof item.details !== 'string' || item.details.length > 2000)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
       const subtaskIds = new Set();
@@ -3168,6 +3379,9 @@ function showImportDialog(importedTodos) {
     todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
     todo.createdAt = item.createdAt || new Date().toISOString();
     todo.order = order;
+    // Always materialize details so imported rows share the same shape as
+    // addTodo output (null when absent or blank).
+    todo.details = normalizeTodoDetails(item.details);
     return todo;
   }
 
@@ -3213,16 +3427,7 @@ function showImportDialog(importedTodos) {
   };
 
   const handleReplace = () => {
-    const newTodos = importedTodos.map((item, index) => {
-      const todo = { ...item };
-      todo.completed = !!item.completed;
-      todo.completedAt = item.completed ? (item.completedAt || item.createdAt || new Date().toISOString()) : null;
-      todo.dueDate = item.dueDate || null;
-      todo.dueTime = isValidDueTime(item.dueTime) && todo.dueDate ? item.dueTime : null;
-      todo.createdAt = item.createdAt || new Date().toISOString();
-      todo.order = index;
-      return todo;
-    });
+    const newTodos = importedTodos.map((item, index) => createImportedTodo(item, index));
     
     closeAllInlineDatePickers();
     if (!saveTodos(newTodos)) {

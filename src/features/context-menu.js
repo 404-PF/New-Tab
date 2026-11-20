@@ -81,7 +81,7 @@ function setContextMenuPreviewIcon(previewIcon, iconUrl) {
 const contextMenu = document.createElement('div');
 contextMenu.id = 'app-context-menu';
 contextMenu.className = 'app-context-menu';
-contextMenu.setAttribute('data-liquid-glass', 'panel');
+contextMenu.setAttribute('data-liquid-glass', 'icon');
 
 // Common helper to add hover
 function addHover(el) {
@@ -513,6 +513,19 @@ window.addEventListener('storageBridgeWriteError', function (event) {
         affectedFolderIds.forEach(function (folderId) {
           window.AppFolders.refreshFolderUI(folderId);
         });
+        // A rejected rename repainted the tile with the optimistic name before
+        // storage rolled back. A rename from the grid/context menu has no
+        // currentFolderId for the popup refresh below, so repaint any tile whose
+        // name disagrees with the rolled-back value storage now holds.
+        if (folders) {
+          folders.forEach(function (folder) {
+            const tile = document.getElementById(folder.id);
+            const nameEl = tile && tile.querySelector('.app-name');
+            if (nameEl && nameEl.textContent !== folder.name) {
+              window.AppFolders.refreshFolderUI(folder.id);
+            }
+          });
+        }
       }
       if (typeof window.AppFolders.renderFolderAppsInPopup === 'function') {
         window.AppFolders.renderFolderAppsInPopup();

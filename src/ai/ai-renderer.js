@@ -625,7 +625,7 @@ const AIRenderer = (function() {
     const sources = extractSourceLinks(message.content);
     if (sources.length === 0) return '';
     const items = sources.map(source => {
-      const safeUrl = escapeHTML(source.url).replace(/"/g, '&quot;');
+      const safeUrl = escapeHTML(source.url).replaceAll('"', '&quot;');
       const safeLabel = escapeHTML(source.label);
       return '<li><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeLabel + '</a></li>';
     }).join('');

@@ -228,6 +228,57 @@
     return 3;
   }
 
+  // Summary helpers over the 30-day heatmap window (issue #1225). Day values
+  // are plain completion counts, unlike pomodoro's {sessions, minutes} rows.
+  function getTodoStatsTotal(stats) {
+    const rows = getHeatmapData(stats);
+    let total = 0;
+    for (const row of rows) total += row.count;
+    return total;
+  }
+
+  function getTodoStatsTrend(stats) {
+    const data = stats || loadStats();
+    const today = data.days[getToday()] || 0;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const delta = today - (data.days[formatDate(yesterday)] || 0);
+    const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+    return { deltaCompletions: delta, direction: direction };
+  }
+
+  // Compact day-over-day trend for the summary card: arrow plus signed
+  // completion delta (e.g. "↑ +2"), language-neutral so no translation is
+  // needed. Mirrors pomodoro-stats.js formatTrend.
+  function formatTodoStatsTrend(trend) {
+    const arrow = trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→';
+    const delta = trend.deltaCompletions;
+    return arrow + ' ' + (delta > 0 ? '+' + delta : String(delta));
+  }
+
+  function getTodoStatsBestDay(stats) {
+    const rows = getHeatmapData(stats);
+    let best = null;
+    for (const row of rows) {
+      if (!best || row.count > best.count) best = row;
+    }
+    return best;
+  }
+
+  function formatTodoStatsBestDay(stats) {
+    const best = getTodoStatsBestDay(stats);
+    return best && best.count > 0 ? best.date + ' (' + best.count + ')' : '—';
+  }
+
+  function getTodoStatsRollingAverage(windowDays, stats) {
+    const n = Number.isInteger(windowDays) && windowDays > 0 ? Math.min(windowDays, HEATMAP_DAYS) : 7;
+    const rows = getHeatmapData(stats);
+    const slice = rows.slice(rows.length - n);
+    let total = 0;
+    for (const row of slice) total += row.count;
+    return Math.round((total / n) * 10) / 10;
+  }
+
   function renderHeatmap(stats) {
     const container = document.getElementById('todo-stats-heatmap');
     if (!container) return;
@@ -248,6 +299,20 @@
     }
   }
 
+  // Summary row below the heatmap: 30-day total, day-over-day trend, best
+  // day and 7-day average completions per day (issue #1225).
+  function paintSummary(stats) {
+    const data = stats || loadStats();
+    const total = document.getElementById('todo-stats-total');
+    const trend = document.getElementById('todo-stats-trend');
+    const best = document.getElementById('todo-stats-best-day');
+    const avg = document.getElementById('todo-stats-rolling-avg');
+    if (total) total.textContent = String(getTodoStatsTotal(data));
+    if (trend) trend.textContent = formatTodoStatsTrend(getTodoStatsTrend(data));
+    if (best) best.textContent = formatTodoStatsBestDay(data);
+    if (avg) avg.textContent = String(getTodoStatsRollingAverage(7, data));
+  }
+
   function renderStats() {
     if (!isStatsEnabled()) return;
 
@@ -266,6 +331,7 @@
     if (longestStreakEl) longestStreakEl.textContent = String(stats.longestStreak);
 
     renderHeatmap(stats);
+    paintSummary(stats);
   }
 
   function isStatsEnabled() {
@@ -287,6 +353,34 @@
     if (!saved) showStatsSaveError();
   }
 
+  // Download the 30-day window (the same rows as the heatmap) as a
+  // date,count CSV file. Follows the Blob/anchor pattern from
+  // pomodoro-stats.js (issue #1225).
+  function exportTodoStatsCsv() {
+    const rows = getHeatmapData();
+    const lines = ['date,count'];
+    for (const row of rows) lines.push(row.date + ',' + row.count);
+    return lines.join('\n');
+  }
+
+  function exportCsv() {
+    const blob = new Blob([exportTodoStatsCsv()], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'todo-stats-' + getToday() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    if (typeof window.showToast === 'function') {
+      const raw = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('todoStatsExportSuccess')
+        : null;
+      window.showToast(raw && raw !== 'todoStatsExportSuccess' ? raw : 'Todo stats download started.', 'success');
+    }
+  }
+
   // A synchronous bridge failure both dispatches storageBridgeWriteError and
   // makes setItem return false, so the save caller has already repainted from
   // the rolled-back store and toasted. Only an async rejection (setItem
@@ -300,7 +394,11 @@
       ['todo-stats-today', getCompletedToday(stats)],
       ['todo-stats-week', getCompletedThisWeek(stats)],
       ['todo-stats-current-streak', stats.currentStreak],
-      ['todo-stats-longest-streak', stats.longestStreak]
+      ['todo-stats-longest-streak', stats.longestStreak],
+      ['todo-stats-total', getTodoStatsTotal(stats)],
+      ['todo-stats-trend', formatTodoStatsTrend(getTodoStatsTrend(stats))],
+      ['todo-stats-best-day', formatTodoStatsBestDay(stats)],
+      ['todo-stats-rolling-avg', String(getTodoStatsRollingAverage(7, stats))]
     ];
     return expected.some(function (entry) {
       const el = document.getElementById(entry[0]);
@@ -337,6 +435,11 @@
       clearBtn.addEventListener('click', clearStats);
     }
 
+    const exportBtn = document.getElementById('todo-stats-export');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', exportCsv);
+    }
+
     window.addEventListener('todoCompleted', recordCompletion);
   }
 
@@ -357,5 +460,10 @@
   };
   window.getCompletedToday = getCompletedToday;
   window.getCompletedThisWeek = getCompletedThisWeek;
+  window.getTodoStatsTotal = getTodoStatsTotal;
+  window.getTodoStatsTrend = getTodoStatsTrend;
+  window.getTodoStatsBestDay = getTodoStatsBestDay;
+  window.getTodoStatsRollingAverage = getTodoStatsRollingAverage;
+  window.exportTodoStatsCsv = exportTodoStatsCsv;
 
 })();

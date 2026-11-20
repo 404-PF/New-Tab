@@ -300,6 +300,130 @@ describe('Todo stats retention', () => {
   });
 });
 
+describe('Todo stats summary row (issue #1225)', () => {
+  it('paints total, trend, best day and rolling average', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    saveTodoStats({
+      days: { [getToday()]: 3, [getDateDaysAgo(1)]: 1 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    renderTodoStats();
+    expect(document.getElementById('todo-stats-total').textContent).toBe('4');
+    // Today versus yesterday's single completion: up by two.
+    expect(document.getElementById('todo-stats-trend').textContent).toBe('↑ +2');
+    expect(document.getElementById('todo-stats-best-day').textContent).toBe(`${getToday()} (3)`);
+    expect(document.getElementById('todo-stats-rolling-avg').textContent).toBe('0.6');
+  });
+
+  it('shows dashes and zeros when no todo data exists', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    renderTodoStats();
+    expect(document.getElementById('todo-stats-total').textContent).toBe('0');
+    expect(document.getElementById('todo-stats-trend').textContent).toBe('→ 0');
+    expect(document.getElementById('todo-stats-best-day').textContent).toBe('—');
+    expect(document.getElementById('todo-stats-rolling-avg').textContent).toBe('0');
+  });
+
+  it('reports a down trend when today has fewer completions', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    saveTodoStats({
+      days: { [getToday()]: 1, [getDateDaysAgo(1)]: 4 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    renderTodoStats();
+    expect(document.getElementById('todo-stats-trend').textContent).toBe('↓ -3');
+    expect(document.getElementById('todo-stats-best-day').textContent).toBe(`${getDateDaysAgo(1)} (4)`);
+  });
+
+  it('clearing stats resets the summary row', () => {
+    localStorage.setItem('todoStatsEnabled', 'true');
+    saveTodoStats({
+      days: { [getToday()]: 2 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    renderTodoStats();
+    expect(document.getElementById('todo-stats-total').textContent).toBe('2');
+    clearTodoStats();
+    expect(document.getElementById('todo-stats-total').textContent).toBe('0');
+    expect(document.getElementById('todo-stats-best-day').textContent).toBe('—');
+    expect(document.getElementById('todo-stats-trend').textContent).toBe('→ 0');
+  });
+
+  it('exposes the summary helpers on window', () => {
+    saveTodoStats({
+      days: { [getToday()]: 3, [getDateDaysAgo(1)]: 1 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    expect(window.getTodoStatsTotal()).toBe(4);
+    expect(window.getTodoStatsTrend()).toEqual({ deltaCompletions: 2, direction: 'up' });
+    expect(window.getTodoStatsBestDay()).toEqual({ date: getToday(), count: 3 });
+    expect(window.getTodoStatsRollingAverage(7)).toBe(0.6);
+  });
+});
+
+describe('Todo stats CSV export (issue #1225)', () => {
+  it('exportTodoStatsCsv returns a header plus 30 day rows', () => {
+    saveTodoStats({
+      days: { [getToday()]: 2, [getDateDaysAgo(1)]: 1 },
+      currentStreak: 0,
+      longestStreak: 0
+    });
+    const lines = window.exportTodoStatsCsv().split('\n');
+    expect(lines[0]).toBe('date,count');
+    expect(lines).toHaveLength(31);
+    expect(lines[lines.length - 1]).toBe(`${getToday()},2`);
+    expect(lines[lines.length - 2]).toBe(`${getDateDaysAgo(1)},1`);
+  });
+
+  it('the export button downloads the CSV with a dated filename', async () => {
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    let capturedCsv = null;
+    let capturedName = null;
+    let capturedType = null;
+    URL.createObjectURL = (blob) => {
+      capturedType = blob.type;
+      const reader = new FileReader();
+      reader.onload = () => { capturedCsv = reader.result; };
+      reader.readAsText(blob);
+      return 'blob:mock-url';
+    };
+    URL.revokeObjectURL = () => {};
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      capturedName = this.download;
+    });
+    const toastSpy = vi.fn();
+    window.showToast = toastSpy;
+    // The export schedules URL.revokeObjectURL on a timer; fake only setTimeout
+    // so the timer can be cleared before the URL mocks are restored.
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+
+    try {
+      document.getElementById('todo-stats-export').click();
+      await vi.waitFor(() => expect(capturedCsv).not.toBeNull());
+      const lines = capturedCsv.split('\n');
+      expect(lines[0]).toBe('date,count');
+      expect(lines).toHaveLength(31);
+      expect(capturedName).toBe(`todo-stats-${getToday()}.csv`);
+      expect(capturedType).toBe('text/csv');
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(toastSpy).toHaveBeenCalledWith('Todo stats download started.', 'success');
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreateObjectURL;
+      URL.revokeObjectURL = origRevokeObjectURL;
+      delete window.showToast;
+      document.querySelectorAll('.toast-notification').forEach((el) => el.remove());
+    }
+  });
+});
+
 describe('Todo stats storage bridge write failures', () => {
   const SAVE_ERROR_MESSAGE = 'Failed to save todo changes. Your last action was not saved.';
   let restoreStorageSet = null;

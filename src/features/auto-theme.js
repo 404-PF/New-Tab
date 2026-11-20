@@ -24,22 +24,6 @@
     }
   }
 
-  // Guard the shared helper: toast.js may fail to load, and persistFeatureToggle
-  // checks the bridge's result: setItem returns false for a rejected write
-  // instead of throwing (#969, #1081).
-  function persistSetting(key, value) {
-    let persisted;
-    try {
-      persisted = typeof window.persistFeatureToggle === 'function'
-        ? window.persistFeatureToggle(key, value)
-        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (error) {
-      console.warn('Failed to save ' + key + ':', error);
-      persisted = false;
-    }
-    return persisted;
-  }
-
   function reportSaveError() {
     if (typeof window.showFeatureToggleSaveError === 'function') {
       window.showFeatureToggleSaveError();
@@ -64,8 +48,24 @@
     }
   }
 
+  function persistSettingLocal(key, value) {
+    if (typeof window.persistSetting === 'function') {
+      return window.persistSetting(key, value);
+    }
+    let persisted;
+    try {
+      persisted = typeof window.persistFeatureToggle === 'function'
+        ? window.persistFeatureToggle(key, value)
+        : localStorage.setItem(key, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      console.warn('Failed to save ' + key + ':', error);
+      persisted = false;
+    }
+    return persisted;
+  }
+
   function saveEnabled(enabled) {
-    return persistSetting(STORAGE_KEY_ENABLED, String(enabled));
+    return persistSettingLocal(STORAGE_KEY_ENABLED, String(enabled));
   }
 
   function loadLightTime() {
@@ -78,7 +78,7 @@
   }
 
   function saveLightTime(time) {
-    return persistSetting(STORAGE_KEY_LIGHT_TIME, time);
+    return persistSettingLocal(STORAGE_KEY_LIGHT_TIME, time);
   }
 
   function loadDarkTime() {
@@ -91,7 +91,7 @@
   }
 
   function saveDarkTime(time) {
-    return persistSetting(STORAGE_KEY_DARK_TIME, time);
+    return persistSettingLocal(STORAGE_KEY_DARK_TIME, time);
   }
 
   // Parse "HH:MM" string into minutes since midnight
@@ -123,15 +123,21 @@
     return 'dark';
   }
 
+  // Returns whether the storage bridge accepted the write the way
+  // persistSetting does, so checkAndApply only consumes the schedule
+  // boundary once the switch actually landed (#1242).
   function setTheme(theme) {
-    if (window.loadTheme && window.loadTheme() === theme) return;
+    if (window.loadTheme && window.loadTheme() === theme) return true;
+    let persisted;
     try {
-      localStorage.setItem('theme', theme);
+      persisted = localStorage.setItem('theme', theme) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch {
       // localStorage unavailable
+      persisted = false;
     }
     if (window.applyTheme) window.applyTheme();
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: theme } }));
+    return persisted;
   }
 
   function checkAndApply() {
@@ -140,17 +146,21 @@
     // Only apply if the scheduled theme has changed (boundary crossing)
     // This preserves manual overrides until the next scheduled switch
     if (theme !== lastScheduledTheme) {
-      lastScheduledTheme = theme;
       // A stored 'system' theme (issue #1011) takes precedence over the
       // schedule: track the boundary but let the OS preference decide the
       // effective theme instead of overwriting the stored value.
       const storedTheme = window.loadTheme?.();
       if (storedTheme === 'system') {
+        lastScheduledTheme = theme;
         syncRadioButtons();
         return;
       }
-      setTheme(theme);
+      // Consume the boundary only once the write lands: a rejected theme
+      // write leaves it pending so the next tick retries the switch (#1242).
+      const persisted = setTheme(theme);
+      lastScheduledTheme = persisted ? theme : null;
       syncRadioButtons();
+      if (!persisted) reportSaveError();
     }
   }
 
@@ -232,16 +242,24 @@
     // Apply the manually chosen theme and record it, but leave auto enabled.
     // The next scheduled check will overwrite it if the time has changed.
     const selectedTheme = e.target.value;
+    let committed;
     if (typeof window.commitTheme === 'function') {
-      window.commitTheme(selectedTheme);
+      committed = window.commitTheme(selectedTheme);
     } else {
       try {
-        localStorage.setItem('theme', selectedTheme);
+        committed = localStorage.setItem('theme', selectedTheme) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
       } catch {
         // localStorage unavailable
+        committed = false;
       }
       if (window.applyTheme) window.applyTheme();
       window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: selectedTheme } }));
+    }
+    // A rejected scheduled write leaves its boundary pending so the next tick
+    // retries the switch. A successful manual choice settles that pending
+    // retry so it cannot overwrite the user's theme 30 seconds later (#1242).
+    if (committed && lastScheduledTheme === null) {
+      lastScheduledTheme = getScheduledTheme();
     }
     // Prevent the settings.js change handler from double-applying
     e.stopImmediatePropagation();
@@ -347,6 +365,18 @@
   // already rolled back (mirrors toast.js's featureToggleControlDesynced for
   // the auto-theme keys).
   function controlDesynced(key) {
+    if (key === 'theme') {
+      // Mirror toast.js's theme case (#1242): the optimistic radio/body
+      // class still shows the rejected theme after the bridge rolled back.
+      if (typeof window.applyTheme !== 'function') return false;
+      const stored = typeof window.loadTheme === 'function'
+        ? window.loadTheme()
+        : (localStorage.getItem('theme') || 'dark');
+      const checked = document.querySelector('input[name="theme"]:checked');
+      if (checked && checked.value !== stored) return true;
+      const effective = typeof window.resolveTheme === 'function' ? window.resolveTheme(stored) : stored;
+      return document.body.classList.contains('light-theme') !== (effective === 'light');
+    }
     if (key === STORAGE_KEY_ENABLED) {
       const toggle = document.getElementById('auto-theme-toggle');
       return Boolean(toggle) && toggle.checked !== loadEnabled();
@@ -358,6 +388,48 @@
     }
     return Boolean(darkInput) && darkInput.value !== loadDarkTime();
   }
+
+  // #1242: setItem accepts the theme write optimistically, so the rollback
+  // event is the only signal that a scheduled switch never landed. Un-consume
+  // the boundary the failed write consumed — guarded to that exact value and
+  // to the still-optimistic stored value so a late failure cannot re-arm the
+  // scheduler after a newer manual override won the write — and, only when
+  // toast.js is absent, mirror its theme resync through controlDesynced.
+  // Registered unconditionally: the boundary reset is scheduler bookkeeping,
+  // not a resync, so it can never duplicate toast.js's centralized handler.
+  window.addEventListener('storageBridgeWriteError', function (event) {
+    const detail = event && event.detail ? event.detail : null;
+    if (!detail || detail.key !== 'theme') return;
+    let storedTheme = null;
+    try {
+      storedTheme = typeof window.loadTheme === 'function'
+        ? window.loadTheme()
+        : localStorage.getItem('theme');
+    } catch (e) {
+      console.warn('Failed to read theme from localStorage:', e);
+    }
+    // The bridge dispatches before rolling its cache back, so a still-matching
+    // value means the failed scheduled write still owns storage. A newer
+    // successful manual write has already replaced it and must be preserved.
+    if (detail.value === lastScheduledTheme && storedTheme === detail.value) {
+      lastScheduledTheme = null;
+    }
+    if (typeof window.persistFeatureToggle === 'function') return;
+    // Wait a macrotask for the bridge to roll its cache back, then skip
+    // when the synchronous failure path already reapplied the controls.
+    setTimeout(function () {
+      if (!controlDesynced('theme')) return;
+      if (window.applyTheme) window.applyTheme();
+      // Mirror toast.js's theme resync so listeners (e.g. AI chat) learn the
+      // restored effective theme instead of the rejected optimistic one.
+      if (typeof window.loadTheme === 'function' && typeof window.resolveTheme === 'function') {
+        window.dispatchEvent(new CustomEvent('themeChanged', {
+          detail: { theme: window.resolveTheme(window.loadTheme()) }
+        }));
+      }
+      reportSaveError();
+    });
+  });
 
   // Fallback half of #1081: when toast.js failed to load, its centralized
   // storageBridgeWriteError listener does not exist, so an async rejection

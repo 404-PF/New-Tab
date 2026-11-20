@@ -175,8 +175,9 @@
 
     const newName = prompt(window.i18n ? window.i18n.t('renameFolderPrompt') : 'Enter new folder name:', folder.name);
     if (newName && newName.trim()) {
-      window.AppGridState.renameFolder(folderId, newName.trim());
-      refreshFolderUI(folderId);
+      if (window.AppGridState.renameFolder(folderId, newName.trim())) {
+        refreshFolderUI(folderId);
+      }
     }
   }
 

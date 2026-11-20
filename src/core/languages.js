@@ -132,6 +132,8 @@ const translations = {
     todoEditTooltip: 'Edit Todo',
     todoEditTitle: 'Edit Todo',
     todoEditText: 'Text',
+    todoEditDetails: 'Details',
+    todoDetailsToggle: 'Details',
     todoEditPriority: 'Priority',
     todoSubtasks: 'Subtasks',
     todoAddSubtask: 'Add subtask...',
@@ -264,6 +266,7 @@ const translations = {
     reminderLeadTime1day: '1 day before',
     enableNotes: 'Enable notes scratchpad',
     enableMotto: 'Enable daily motto',
+    enableSearchBox: 'Show search box',
     enableFocusMode: 'Enable focus mode',
     focusModeExit: 'Exit Focus Mode',
 
@@ -315,6 +318,11 @@ const translations = {
     bgRotationHourly: 'Every hour on the hour',
     bgRotationDaily: 'Daily',
     bgRotationNewtab: 'Every new tab',
+    bgRotationTod: 'Time of day',
+    bgRotationDayTime: 'Day starts at',
+    bgRotationNightTime: 'Night starts at',
+    bgRotationDayPicker: 'Day backgrounds',
+    bgRotationNightPicker: 'Night backgrounds',
     bgRotationPicker: 'Select backgrounds to rotate',
     bgRotationUploads: 'Your uploads',
     bgRotationNext: 'Next Background',
@@ -395,6 +403,8 @@ const translations = {
     weatherHumidity: 'Humidity',
     weatherHourly: 'Hourly Forecast',
     weatherNow: 'Now',
+    weatherHigh: 'High',
+    weatherLow: 'Low',
 
     // Themes settings
     themeSettings: 'Theme',
@@ -463,6 +473,14 @@ const translations = {
     releaseNotes057EnglishMottos: 'Daily mottos are shown in English for languages without translated mottos',
     releaseNotes057SettingsFixes: 'Fixes: Pomodoro settings and todo focus stats now save reliably',
     releaseNotes057Accessibility: 'Icon-only buttons now have screen reader labels',
+    releaseNotes058LiquidGlass: 'Liquid Glass: modals, panels, and hero widgets get a refractive glass look (toggle in Settings)',
+    releaseNotes058Pomodoro: 'Pomodoro: a standalone focus session that does not need a todo',
+    releaseNotes058TodoDates: 'Todo: type due dates in plain language and they are parsed automatically',
+    releaseNotes058TodoFilters: 'Todo: new Upcoming and Medium priority filters',
+    releaseNotes058Weather: 'Weather: today\'s high and low temperatures are shown',
+    releaseNotes058TimezoneClocks: 'Timezone clocks: add any IANA time zone, not just preset cities',
+    releaseNotes058NotesExport: 'Notes: dedicated export and import controls',
+    releaseNotes058TodoStats: 'Todo Stats: summary metrics and CSV export',
     releaseNotes055SystemTheme: 'Added a System theme that follows your device\'s light or dark mode',
     releaseNotes055TodoSortOrder: 'The Todo list now has selectable sort orders: manual, due date, priority, created, and A-Z',
     releaseNotes055BuiltInAppsFolders: 'Built-in apps can now be moved into folders',
@@ -778,6 +796,12 @@ const translations = {
     statsToggle: 'Stats',
     statsToggleAriaLabel: 'Toggle statistics panel',
     heatmapCellTitle: '$1$: $2$ completed',
+    todoStatsTotal: '30-Day Total',
+    todoStatsTrend: 'Trend vs Yesterday',
+    todoStatsBestDay: 'Best Day',
+    todoStatsRollingAvg: '7-Day Avg (completions/day)',
+    todoStatsExport: 'Export CSV',
+    todoStatsExportSuccess: 'Todo stats download started.',
 
     // Pomodoro stats
     enablePomodoroStats: 'Enable focus stats',
@@ -796,6 +820,7 @@ const translations = {
     pomodoroStatsByTodo: 'Minutes by Task This Week',
     pomodoroStatsExport: 'Export CSV',
     pomodoroStatsExportSuccess: 'Focus stats exported.',
+    pomodoroStatsSaveError: 'Failed to save focus stats. Your last action was not saved.',
 
 
     // Web grounding
@@ -929,13 +954,6 @@ const gamesReadyTranslations = {
   ru: { gamesReady: 'Готовы?', gamesReadyStart: 'Нажмите пробел или коснитесь, чтобы начать', gamesStart: 'Старт' }
 };
 
-function applyGamesReadyMerges(code) {
-  const target = translations[code];
-  const values = gamesReadyTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // On-screen D-pad labels for touch play (#1019). Same per-language map
 // pattern as gamesReadyTranslations so the strings stay out of the positional
 // createGamesTranslations arrays. Every locale in SUPPORTED_LANGUAGES needs
@@ -952,13 +970,6 @@ const gamesDpadTranslations = {
   ru: { gamesDpad: 'Крестовина', gamesDpadUp: 'Вверх', gamesDpadDown: 'Вниз', gamesDpadLeft: 'Влево', gamesDpadRight: 'Вправо' }
 };
 
-function applyGamesDpadMerges(code) {
-  const target = translations[code];
-  const values = gamesDpadTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // Configurable steering-key labels for the Games settings select (#1023).
 // Same per-language map pattern as gamesDpadTranslations so the strings stay
 // out of the positional createGamesTranslations arrays.
@@ -973,13 +984,6 @@ const gamesKeymapTranslations = {
   pt: { gamesKeymap: 'Teclas de direção', gamesKeymapWasd: 'Setas + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Teclado numérico' },
   ru: { gamesKeymap: 'Клавиши управления', gamesKeymapWasd: 'Стрелки + WASD', gamesKeymapIjkl: 'IJKL', gamesKeymapNumpad: 'Цифровой блок' }
 };
-
-function applyGamesKeymapMerges(code) {
-  const target = translations[code];
-  const values = gamesKeymapTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 // Label for the Games FPS-readout checkbox (#1036). Same per-language map
 // pattern as gamesKeymapTranslations so the string stays out of the
@@ -996,13 +1000,6 @@ const gamesFpsTranslations = {
   ru: { gamesFps: 'Показывать FPS в играх' }
 };
 
-function applyGamesFpsMerges(code) {
-  const target = translations[code];
-  const values = gamesFpsTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 // Liquid Glass setting label (#1109).
 const liquidGlassTranslations = {
   en: { liquidGlass: 'Liquid Glass' },
@@ -1015,13 +1012,6 @@ const liquidGlassTranslations = {
   pt: { liquidGlass: 'Vidro líquido' },
   ru: { liquidGlass: 'Жидкое стекло' }
 };
-
-function applyLiquidGlassMerges(code) {
-  const target = translations[code];
-  const values = liquidGlassTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const flappyBirdTranslations = {
   en: {
@@ -1070,13 +1060,6 @@ const flappyBirdTranslations = {
     gamesFlappyBirdControls: 'Нажимайте ↑ / W или касайтесь/кликайте для взмаха; Пробел ставит на паузу/продолжает'
   }
 };
-
-function applyFlappyBirdMerges(code) {
-  const target = translations[code];
-  const values = flappyBirdTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const pacmanTranslations = {
   en: {
@@ -1134,13 +1117,6 @@ const pacmanTranslations = {
     gamesLives: 'Жизни'
   }
 };
-
-function applyPacmanMerges(code) {
-  const target = translations[code];
-  const values = pacmanTranslations[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
 
 const pomodoroTranslations = {
   en: {
@@ -1327,13 +1303,6 @@ const ACCESSIBILITY_TRANSLATIONS = {
   }
 };
 
-function applyAccessibilityMerges(code) {
-  const target = translations[code];
-  const values = ACCESSIBILITY_TRANSLATIONS[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
-}
-
 const MIGRATE_LEGACY_TRANSLATIONS = {
   en: {
     migrateLegacyTitle: 'New Tab has moved',
@@ -1418,11 +1387,98 @@ const MIGRATE_LEGACY_TRANSLATIONS = {
   }
 };
 
-function applyMigrateLegacyMerges(code) {
+// Todo stats summary labels (issue #1225). en lives in the inline table
+// above; the remaining runtime locales arrive from src/core/locales/<code>.js
+// and receive these keys through applyLocaleMerges() the same way the focus
+// stats labels do.
+const todoStatsSummaryTranslations = {
+  zh: {
+    todoStatsTotal: '30 天总计',
+    todoStatsTrend: '较昨日趋势',
+    todoStatsBestDay: '最佳一天',
+    todoStatsRollingAvg: '7 日平均（完成/天）',
+    todoStatsExport: '导出 CSV',
+    todoStatsExportSuccess: '待办统计已开始下载。'
+  },
+  ja: {
+    todoStatsTotal: '30 日間の合計',
+    todoStatsTrend: '昨日比のトレンド',
+    todoStatsBestDay: 'ベストデー',
+    todoStatsRollingAvg: '7 日平均（完了/日）',
+    todoStatsExport: 'CSV をエクスポート',
+    todoStatsExportSuccess: 'ToDo 統計のダウンロードを開始しました。'
+  },
+  ko: {
+    todoStatsTotal: '30일 합계',
+    todoStatsTrend: '어제 대비 추세',
+    todoStatsBestDay: '최고의 날',
+    todoStatsRollingAvg: '7일 평균 (완료/일)',
+    todoStatsExport: 'CSV 내보내기',
+    todoStatsExportSuccess: '할 일 통계 다운로드를 시작했습니다.'
+  },
+  es: {
+    todoStatsTotal: 'Total (30 días)',
+    todoStatsTrend: 'Tendencia vs ayer',
+    todoStatsBestDay: 'Mejor día',
+    todoStatsRollingAvg: 'Promedio 7 días (tareas/día)',
+    todoStatsExport: 'Exportar CSV',
+    todoStatsExportSuccess: 'Descarga de estadísticas de tareas iniciada.'
+  },
+  fr: {
+    todoStatsTotal: 'Total (30 jours)',
+    todoStatsTrend: 'Tendance vs hier',
+    todoStatsBestDay: 'Meilleur jour',
+    todoStatsRollingAvg: 'Moyenne 7 jours (tâches/jour)',
+    todoStatsExport: 'Exporter CSV',
+    todoStatsExportSuccess: 'Téléchargement des statistiques de tâches lancé.'
+  },
+  de: {
+    todoStatsTotal: '30-Tage-Gesamt',
+    todoStatsTrend: 'Trend gegenüber gestern',
+    todoStatsBestDay: 'Bester Tag',
+    todoStatsRollingAvg: '7-Tage-Ø (Abschlüsse/Tag)',
+    todoStatsExport: 'CSV exportieren',
+    todoStatsExportSuccess: 'Download der Aufgaben-Statistiken gestartet.'
+  },
+  pt: {
+    todoStatsTotal: 'Total (30 dias)',
+    todoStatsTrend: 'Tendência vs ontem',
+    todoStatsBestDay: 'Melhor dia',
+    todoStatsRollingAvg: 'Média 7 dias (concluídos/dia)',
+    todoStatsExport: 'Exportar CSV',
+    todoStatsExportSuccess: 'Download das estatísticas de tarefas iniciado.'
+  },
+  ru: {
+    todoStatsTotal: 'Итого за 30 дней',
+    todoStatsTrend: 'Тренд к вчерашнему дню',
+    todoStatsBestDay: 'Лучший день',
+    todoStatsRollingAvg: 'Среднее за 7 дней (задач/день)',
+    todoStatsExport: 'Экспорт CSV',
+    todoStatsExportSuccess: 'Загрузка статистики задач начата.'
+  }
+};
+
+const WHOLE_TABLE_MERGE_TABLES = [
+  gamesReadyTranslations,
+  gamesDpadTranslations,
+  gamesKeymapTranslations,
+  gamesFpsTranslations,
+  liquidGlassTranslations,
+  flappyBirdTranslations,
+  pacmanTranslations,
+  todoStatsSummaryTranslations,
+  ACCESSIBILITY_TRANSLATIONS,
+  MIGRATE_LEGACY_TRANSLATIONS
+];
+
+function applyWholeTableMerges(code) {
   const target = translations[code];
-  const values = MIGRATE_LEGACY_TRANSLATIONS[code];
-  if (!target || !values) return;
-  Object.assign(target, values);
+  if (!target) return;
+  WHOLE_TABLE_MERGE_TABLES.forEach(function (table) {
+    const values = table[code];
+    if (!values) return;
+    Object.assign(target, values);
+  });
 }
 
 // Runs every feature-string merge pass for a single locale. en runs it at
@@ -1436,16 +1492,8 @@ function applyLocaleMerges(code) {
   applyAiExportMerges(code);
   applyAiRenameMerges(code);
   applyGamesLevelMerges(code);
-  applyGamesReadyMerges(code);
-  applyGamesDpadMerges(code);
-  applyGamesKeymapMerges(code);
-  applyGamesFpsMerges(code);
-  applyLiquidGlassMerges(code);
-  applyFlappyBirdMerges(code);
-  applyPacmanMerges(code);
+  applyWholeTableMerges(code);
   applyPomodoroMerges(code);
-  applyAccessibilityMerges(code);
-  applyMigrateLegacyMerges(code);
 }
 
 applyLocaleMerges('en');

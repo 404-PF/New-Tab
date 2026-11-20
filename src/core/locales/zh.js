@@ -63,6 +63,8 @@ window.i18n.__registerLocale('zh', {
   todoEditTooltip: '编辑待办',
   todoEditTitle: '编辑待办',
   todoEditText: '内容',
+  todoEditDetails: '详情',
+  todoDetailsToggle: '详情',
   todoEditPriority: '优先级',
   todoSubtasks: '子任务',
   todoAddSubtask: '添加子任务...',
@@ -195,6 +197,7 @@ window.i18n.__registerLocale('zh', {
   reminderLeadTime1day: '1天前',
   enableNotes: '启用便签本',
   enableMotto: '启用每日格言',
+  enableSearchBox: '显示搜索框',
   enableFocusMode: '启用专注模式',
   focusModeExit: '退出专注模式',
 
@@ -237,6 +240,11 @@ window.i18n.__registerLocale('zh', {
   bgRotationHourly: '每小时整点',
   bgRotationDaily: '每日',
   bgRotationNewtab: '每个新标签页',
+  bgRotationTod: '昼夜',
+  bgRotationDayTime: '白天开始于',
+  bgRotationNightTime: '夜晚开始于',
+  bgRotationDayPicker: '白天背景',
+  bgRotationNightPicker: '夜晚背景',
   bgRotationPicker: '选择要轮播的背景',
   bgRotationUploads: '上传的背景',
   bgRotationNext: '下一个背景',
@@ -310,6 +318,8 @@ window.i18n.__registerLocale('zh', {
   weatherHumidity: '湿度',
   weatherHourly: '逐时预报',
   weatherNow: '现在',
+  weatherHigh: '最高',
+  weatherLow: '最低',
 
   // Themes settings
   themeSettings: '主题',
@@ -378,6 +388,14 @@ window.i18n.__registerLocale('zh', {
   releaseNotes057EnglishMottos: '没有翻译版每日格言的语言将显示英文格言',
   releaseNotes057SettingsFixes: '修复：番茄钟设置和待办专注统计现在可以可靠保存',
   releaseNotes057Accessibility: '仅图标的按钮现在带有屏幕阅读器标签',
+  releaseNotes058LiquidGlass: 'Liquid Glass：弹窗、面板和主要小组件新增折射玻璃效果（可在设置中开关）',
+  releaseNotes058Pomodoro: '番茄钟：新增独立的专注会话，无需关联待办',
+  releaseNotes058TodoDates: '待办：可以用英文日期表达（如 tomorrow、next friday）输入截止日期，会自动识别',
+  releaseNotes058TodoFilters: '待办列表：新增「即将到期」和「中优先级」筛选',
+  releaseNotes058Weather: '天气：现在会显示今日最高和最低气温',
+  releaseNotes058TimezoneClocks: '时区时钟：可添加任何 IANA 时区，不再局限于预设城市',
+  releaseNotes058NotesExport: '笔记：新增专门的导出和导入控件',
+  releaseNotes058TodoStats: '待办统计：新增汇总指标和 CSV 导出',
   releaseNotes055SystemTheme: '新增系统主题，自动跟随设备的浅色或深色模式',
   releaseNotes055TodoSortOrder: '待办清单支持选择排序方式：手动、截止日期、优先级、创建时间和 A-Z',
   releaseNotes055BuiltInAppsFolders: '内置应用现在也可以移动到文件夹中',
@@ -703,6 +721,7 @@ window.i18n.__registerLocale('zh', {
   pomodoroHeatmapCellTitle: '$1$：$2$ 次专注',
   pomodoroStatsToggle: '专注统计',
   pomodoroStatsToggleAriaLabel: '切换专注统计面板',
+  pomodoroStatsSaveError: '无法保存专注统计。您上次的操作未被保存。',
 
 
   // Web grounding
