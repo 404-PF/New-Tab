@@ -222,11 +222,21 @@ async function tavilySearch(query, maxResults) {
   }
 }
 
+// Entity-escape angle brackets so page text cannot close the <web_search_results> block.
+function sanitizeGroundingText(value) {
+  return String(value)
+    .replace(/\s+/g, ' ')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function groundingMessage(results, searchPrompt) {
   const today = new Date().toISOString().slice(0, 10);
   const lines = results.map((r, i) => {
-    const snippet = String(r.content || '').replace(/\s+/g, ' ').slice(0, MAX_SNIPPET_CHARS);
-    return `[${i + 1}] ${r.title || r.url}\nURL: ${r.url}\n${snippet}`;
+    const title = sanitizeGroundingText(r.title || r.url);
+    const url = sanitizeGroundingText(r.url);
+    const snippet = sanitizeGroundingText(r.content || '').slice(0, MAX_SNIPPET_CHARS);
+    return `[${i + 1}] ${title}\nURL: ${url}\n${snippet}`;
   });
   return {
     role: 'user',
