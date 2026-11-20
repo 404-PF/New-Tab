@@ -180,7 +180,9 @@
       const persisted = loadTodos();
       if (JSON.stringify(persisted) === JSON.stringify(todos)) return;
       todos = persisted;
-      migrateTodos();
+      // Migrate in memory only: a rejected write would otherwise re-dispatch
+      // storageBridgeWriteError and loop. The next normal save persists it.
+      migrateTodos({ persist: false });
       applyFilters();
       // Resync reminders so the service worker drops the rolled-back todos.
       scheduleTodoReminderCheck();
@@ -1341,11 +1343,13 @@
     return needsMigration;
   }
 
-  function migrateTodos() {
+  // persist: false sanitizes in memory only; used by the storage-error resync
+  // so a rejected write cannot re-trigger another migration write.
+  function migrateTodos({ persist = true } = {}) {
     const previousTodos = cloneTodos(todos);
     const needsMigration = normalizeTodosInPlace();
 
-    if (needsMigration) {
+    if (needsMigration && persist) {
       if (!saveTodos(todos)) {
         todos = previousTodos;
         applyFilters();
