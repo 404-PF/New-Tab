@@ -1072,20 +1072,12 @@
     document.addEventListener('click', handleWidgetClick);
   }
 
-  function loadPomodoroEnabled() {
-    return loadSettings().enabled;
-  }
-
   function applyPomodoroEnabled() {
     if (!loadSettings().enabled && state.active) {
       stopTimer();
     }
     createStandaloneStartControl();
     updateStandaloneStartControl();
-  }
-
-  function loadPomodoroDurations() {
-    return loadSettings();
   }
 
   function savePomodoroDurations(durations) {
@@ -1140,9 +1132,8 @@
   window.startPomodoro = startTimer;
   window.stopPomodoro = stopTimer;
   window.togglePomodoroPause = togglePause;
-  window.loadPomodoroEnabled = loadPomodoroEnabled;
+  window.loadPomodoroSettings = loadSettings;
   window.applyPomodoroEnabled = applyPomodoroEnabled;
-  window.loadPomodoroDurations = loadPomodoroDurations;
   window.savePomodoroDurations = savePomodoroDurations;
   window.resyncPomodoroTimer = resyncPomodoroTimer;
   window.addFocusButtonToTodoActions = addFocusButtonToTodoActions;

@@ -45,7 +45,7 @@ beforeAll(() => {
   injectScript('src/core/utils.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
-  // pomodoro.js must register loadPomodoroEnabled before settings.js binds
+  // pomodoro.js must register loadPomodoroSettings before settings.js binds
   // the Focus Timer handlers (same order as bootstrap.js scriptSources).
   injectScript('src/features/pomodoro.js');
   injectScript('src/ui/settings.js');

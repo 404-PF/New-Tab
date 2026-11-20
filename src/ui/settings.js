@@ -1980,12 +1980,12 @@ function applyPomodoroEnabledAfterSettled() {
 }
 
 function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
-  if (!enabledCheckbox || typeof loadPomodoroEnabled !== 'function') return;
+  if (!enabledCheckbox) return;
 
-  enabledCheckbox.checked = loadPomodoroEnabled();
+  enabledCheckbox.checked = loadPomodoroSettings().enabled;
   updatePomodoroDurationSettingsVisibility(durationSettings, enabledCheckbox.checked);
   enabledCheckbox.addEventListener('change', function () {
-    const settings = typeof loadPomodoroDurations === 'function' ? loadPomodoroDurations() : {};
+    const settings = loadPomodoroSettings();
     settings.enabled = this.checked;
     const persisted = typeof savePomodoroDurations === 'function'
       ? savePomodoroDurations(settings) !== false
@@ -2004,9 +2004,7 @@ function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
 function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
   if (!input) return;
 
-  input.value = typeof loadPomodoroDurations === 'function'
-    ? loadPomodoroDurations()[setting]
-    : defaultValue;
+  input.value = loadPomodoroSettings()[setting];
   input.addEventListener('change', function () {
     const value = Math.max(min, Math.min(max, Number.parseInt(this.value, 10) || defaultValue));
     this.value = value;
@@ -2024,8 +2022,7 @@ function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
 // settings after a rejected write (#1129), mirroring the other
 // FEATURE_TOGGLE_RESYNC controls.
 function resyncPomodoroSettings() {
-  if (typeof loadPomodoroDurations !== 'function') return;
-  const settings = loadPomodoroDurations();
+  const settings = loadPomodoroSettings();
   const enabledCheckbox = document.getElementById('pomodoro-enabled-setting');
   const durationSettings = document.getElementById('pomodoro-duration-settings');
   if (enabledCheckbox) enabledCheckbox.checked = settings.enabled;

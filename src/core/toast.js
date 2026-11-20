@@ -731,8 +731,7 @@ function featureToggleControlDesynced(key) {
       return document.body.classList.contains('light-theme') !== (effective === 'light');
     }
     case 'pomodoro': {
-      if (typeof window.loadPomodoroDurations !== 'function') return false;
-      const stored = window.loadPomodoroDurations();
+      const stored = window.loadPomodoroSettings();
       const enabled = document.getElementById('pomodoro-enabled-setting');
       const work = document.getElementById('pomodoro-work-duration');
       const shortBreak = document.getElementById('pomodoro-short-break-duration');
