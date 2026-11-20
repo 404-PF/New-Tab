@@ -631,28 +631,10 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
   });
 
   it('keeps partialContent as the finalized assistant message when a stream fails mid-answer (#843)', async () => {
-    const conversation = {
-      id: 'conv_partial_fail',
-      title: 'PartialFail',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    AIStore.state.conversations = [conversation];
-    AIStore.state.currentConversationId = conversation.id;
+    const { conversation, sendPromise, getOnChunk, resolveRequest } = startStreamingSend();
 
-    let onChunkCallback = null;
-    let resolveRequest = null;
-    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk) => {
-      onChunkCallback = onChunk;
-      return new Promise(resolve => {
-        resolveRequest = resolve;
-      });
-    };
-
-    const sendPromise = AIService.sendMessage('hello');
     await new Promise(resolve => setTimeout(resolve, 0));
-    onChunkCallback('Partial answer');
+    getOnChunk()('Partial answer');
 
     // A mid-stream timeout surfaces the already-streamed text via
     // partialContent instead of aborting the caller's signal
@@ -673,6 +655,19 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     // The partial content must survive a reload from storage
     const saved = JSON.parse(localStorage.getItem('ai_conversations'));
     expect(saved[0].messages[1].content).toBe('Partial answer');
+  });
+
+  it('removes the assistant message when the stream reports an explicit error (#1308)', async () => {
+    const { conversation, sendPromise, getOnChunk, resolveRequest } = startStreamingSend();
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+    getOnChunk()('Partial answer');
+
+    resolveRequest({ success: false, error: 'Network error occurred', streamError: true });
+    await sendPromise;
+
+    expect(conversation.messages).toHaveLength(1);
+    expect(conversation.messages[0].role).toBe('user');
   });
 
   it('keeps the user prompt and drops only the empty assistant bubble when a failure delivers no partial content', async () => {

@@ -600,6 +600,35 @@ describe('OpenRouter contentless stream (#1278)', () => {
   });
 });
 
+describe('OpenRouter mid-stream errors (#1308)', () => {
+  it('returns a failure with partial content when an error event follows streamed text', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Partial"}}]}\n',
+      'data: {"error":{"code":500,"message":"Model crashed"}}\n',
+      'data: [DONE]\n\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi');
+
+    expect(result).toMatchObject({ success: false, error: 'Network error occurred', streamError: true });
+    expect(result.partialContent).toBeUndefined();
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a failure when a choice reports finish_reason "error"', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Part"}}]}\n',
+      'data: {"choices":[{"delta":{},"finish_reason":"error","error":{"code":502,"message":"Upstream"}}]}\n',
+      'data: [DONE]\n\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi');
+
+    expect(result).toMatchObject({ success: false, error: 'Network error occurred', streamError: true });
+    expect(result.partialContent).toBeUndefined();
+  });
+});
+
 describe('OpenRouter non-JSON error bodies (#866)', () => {
   it('classifies a 401 with an HTML body as AUTH_ERROR', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(

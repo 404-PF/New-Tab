@@ -896,7 +896,10 @@ const AIService = (function() {
         // streaming class.
         renderConversationUI();
       } else {
-        const failedPartialContent = result.partialContent || accumulatedContent || '';
+        // Explicit OpenRouter stream errors are not recoverable partial answers.
+        const failedPartialContent = result.streamError
+          ? ''
+          : (result.partialContent || accumulatedContent || '');
 
         if (failedPartialContent) {
           // The stream failed after content was already delivered: keep the
