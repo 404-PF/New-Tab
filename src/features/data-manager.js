@@ -48,6 +48,7 @@
     'pomodoroStatsEnabled',
     'notes',
     'notesEnabled',
+    'notesSemanticEnabled',
     'mottoEnabled',
     'searchBoxEnabled',
     'appOrder',
@@ -289,6 +290,16 @@
     }
     if (typeof window.renderAllApps === 'function') {
       window.renderAllApps();
+    }
+
+    // A backup carries the semantic-search opt-in flag but never the model
+    // bytes (Cache Storage + vectors are device-local). Prime the transient
+    // download marker BEFORE the initSettings() below so an enabled import
+    // on this device defers to the first query (no silent ~300MB download)
+    // and Settings shows the 'Model not downloaded yet' hint until an
+    // explicit re-toggle warms it.
+    if (typeof window.primeNotesSemanticImport === 'function') {
+      window.primeNotesSemanticImport();
     }
 
     // Refresh the UI
@@ -765,6 +776,7 @@
     pomodoroStatsEnabled: function (v) { return typeof v === 'boolean'; },
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },
+    notesSemanticEnabled: function (v) { return typeof v === 'boolean'; },
     mottoEnabled: function (v) { return typeof v === 'boolean'; },
     searchBoxEnabled: function (v) { return typeof v === 'boolean'; },
     appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },

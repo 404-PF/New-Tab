@@ -1726,6 +1726,7 @@ describe('DataManager app-launch toggle backup (issue #1136)', () => {
       'focusMode',
       'simpleMode',
       'notesEnabled',
+      'notesSemanticEnabled',
       'mottoEnabled',
       'eyeCareReminder',
       'games_enabled',

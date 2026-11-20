@@ -5,3 +5,10 @@ coverage/
 # Generated extension packages
 *.crx
 new-tab.zip
+
+# On-device embedding runtime (issue #1186): built at release time from pinned
+# devDependencies via backgrounds/tools/vendor-embeddings.js, never committed.
+# Only vendor/embedding-loader.mjs + vendor/README.md are tracked.
+vendor/transformers/
+vendor/onnxruntime-web/
+vendor/onnxruntime-common/
