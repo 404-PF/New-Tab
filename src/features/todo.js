@@ -327,7 +327,7 @@
 
   // Format date as local ISO string (YYYY-MM-DD)
   function formatDateISO(date) {
-    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    return window.formatLocalDateISO(date);
   }
 
   // Parse a YYYY-MM-DD date string as a local-time Date (avoids UTC shift).
