@@ -320,39 +320,11 @@
   }
 
   function resetCustomBackgroundVideo(videoEl, unloadSource) {
-    if (!videoEl) return;
-
-    clearCustomBackgroundTransitionTimeout();
-
-    videoEl.oncanplaythrough = null;
-    videoEl.onloadeddata = null;
-    videoEl.onplaying = null;
-    videoEl.onloadedmetadata = null;
-    videoEl.onerror = null;
-    videoEl.onpause = null;
-
-    videoEl.classList.remove('active', 'ready', 'loading');
-    videoEl.classList.add('hidden');
-    if (typeof safePause === 'function') safePause(videoEl);
-
-    delete videoEl.dataset.currentBg;
-    delete videoEl.dataset.wasPlaying;
-    delete videoEl.dataset.reducedMotionPaused;
-    delete videoEl.dataset.crossfadeTriggered;
-    delete videoEl.dataset.lastPauseTime;
-    delete videoEl.dataset.resumeAttempts;
-
-    videoEl.autoplay = false;
-    videoEl.muted = true;
-
-    if (!unloadSource) return;
-
-    const sourceEl = videoEl.querySelector('source');
-    if (!sourceEl) return;
-
-    sourceEl.removeAttribute('src');
-    sourceEl.type = 'video/mp4';
-    if (typeof safeLoad === 'function') safeLoad(videoEl);
+    window.resetBackgroundVideoEl(videoEl, unloadSource, {
+      clearTransitionTimeout: clearCustomBackgroundTransitionTimeout,
+      pause: (el) => { if (typeof safePause === 'function') safePause(el); },
+      load: (el) => { if (typeof safeLoad === 'function') safeLoad(el); }
+    });
   }
 
   // --- Upload handling ---
@@ -711,25 +683,10 @@
             });
           };
           videoEl.onpause = function () {
-            if (!isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
-              return;
-            }
-
-            // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
-            const now = Date.now();
-            const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
-            if (now - lastPause < 2000) return;
-            videoEl.dataset.lastPauseTime = now;
-
-            // Track consecutive auto-resume attempts to prevent infinite play/pause cycles
-            // that cause high CPU usage when the video cannot sustain playback
-            const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
-
-            if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
-              if (resumeAttempts >= 3) return;
-              videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
-              videoEl.play().catch(function () {});
-            }
+            window.handleBackgroundVideoPause(videoEl, {
+              isCurrent: () => isActiveCustomBackgroundRequest(id, loadVersion) && videoEl.dataset.currentBg === id,
+              autoplayEnabled: loadVideoAutoplay()
+            });
           };
 
         }
