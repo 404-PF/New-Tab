@@ -74,10 +74,6 @@
     return !!window.prefersReducedMotion?.();
   }
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
   function randomInRange(min, max) {
     return min + window.GameRegistry.secureRandom() * (max - min);
   }
@@ -266,7 +262,7 @@
     let shakeX = 0;
     let shakeY = 0;
     if (!reducedMotion() && timestamp < shakeUntil) {
-      const strength = 4 * clamp((shakeUntil - timestamp) / DEATH_ANIMATION_MS, 0, 1);
+      const strength = 4 * window.clamp((shakeUntil - timestamp) / DEATH_ANIMATION_MS, 0, 1);
       shakeX = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
       shakeY = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
     }
@@ -330,7 +326,7 @@
 
     const elapsed = Math.max(0, timestamp - lastFrameAt);
     lastFrameAt = timestamp;
-    const dt = clamp(elapsed / 1000, 0, 0.05);
+    const dt = window.clamp(elapsed / 1000, 0, 0.05);
     update(dt);
 
     if (!gameOver) {
@@ -366,8 +362,8 @@
   }
 
   function circleIntersectsRect(cx, cy, radius, rx, ry, rw, rh) {
-    const closestX = clamp(cx, rx, rx + rw);
-    const closestY = clamp(cy, ry, ry + rh);
+    const closestX = window.clamp(cx, rx, rx + rw);
+    const closestY = window.clamp(cy, ry, ry + rh);
     const dx = cx - closestX;
     const dy = cy - closestY;
     return dx * dx + dy * dy <= radius * radius;
@@ -410,7 +406,7 @@
   }
 
   function update(dt) {
-    bird.vy = clamp(bird.vy + GRAVITY * dt, -MAX_VELOCITY, MAX_VELOCITY);
+    bird.vy = window.clamp(bird.vy + GRAVITY * dt, -MAX_VELOCITY, MAX_VELOCITY);
     bird.y += bird.vy * dt;
 
     pipes.forEach(function (pipe) {

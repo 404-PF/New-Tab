@@ -32,10 +32,6 @@
   let mediaQueryHandler = null;
   let lifecycleListenersBound = false;
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
   function randomFloat() {
     const randomBytes = new Uint32Array(1);
     crypto.getRandomValues(randomBytes);
@@ -164,8 +160,8 @@
       return;
     }
 
-    pointer.targetX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    pointer.targetY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    pointer.targetX = window.clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    pointer.targetY = window.clamp((event.clientY - rect.top) / rect.height, 0, 1);
   }
 
   function resetPointer() {

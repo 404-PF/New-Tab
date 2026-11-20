@@ -72,10 +72,6 @@
     return !!window.prefersReducedMotion?.();
   }
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
   function lerp(a, b, t) {
     return a + (b - a) * t;
   }
@@ -466,7 +462,7 @@
     let gx = target.x;
     let gy = target.y;
     if (interpolate) {
-      const p = clamp((now - lastTickAt) / tickMs, 0, 1);
+      const p = window.clamp((now - lastTickAt) / tickMs, 0, 1);
       gx = lerp(prevSnake[idx].x, target.x, p);
       gy = lerp(prevSnake[idx].y, target.y, p);
     }
@@ -645,7 +641,7 @@
     let shakeX = 0;
     let shakeY = 0;
     if (!reducedMotion() && now < shakeUntil) {
-      const strength = clamp((shakeUntil - now) / SHAKE_MS, 0, 1) * 2.5;
+      const strength = window.clamp((shakeUntil - now) / SHAKE_MS, 0, 1) * 2.5;
       shakeX = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
       shakeY = (window.GameRegistry.secureRandom() * 2 - 1) * strength;
     }

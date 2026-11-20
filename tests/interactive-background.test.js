@@ -1,5 +1,7 @@
 import { injectScript } from './helpers/inject-script.js';
 
+injectScript('src/core/utils.js');
+
 describe('interactive background', () => {
   it('uses crypto randomness when creating particles', () => {
     const context = {

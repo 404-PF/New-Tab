@@ -597,6 +597,10 @@
   }
 
   // Escape HTML entities to prevent XSS
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
@@ -807,6 +811,7 @@
   window.iconCache = iconCache;
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;
+  window.clamp = clamp;
   window.translateValidationMessage = translateValidationMessage;
   window.persistSetting = persistSetting;
 
