@@ -349,8 +349,7 @@
   // rejected) values. Reads overlay queued updaters for an optimistic view;
   // the write in flight is already reflected in the bridge's cache.
   let pendingStatsUpdates = [];
-  let statsWriteChain = Promise.resolve();
-  let statsWritesInFlight = 0;
+  const statsWriteQueue = createSerialWriteQueue();
 
   function toUpdater(updates) {
     if (typeof updates === 'function') return updates;
@@ -417,13 +416,7 @@
       return statsStore.save(all).then(settle);
     };
 
-    const write = statsWritesInFlight === 0 ? run() : statsWriteChain.then(run);
-    statsWritesInFlight += 1;
-    statsWriteChain = write.then(
-      () => { statsWritesInFlight -= 1; },
-      () => { statsWritesInFlight -= 1; }
-    );
-    return write;
+    return statsWriteQueue.enqueue(run);
   }
 
   // ===================== Lifecycle =====================
@@ -610,12 +603,11 @@
     launchOrder = [];
     statsStore.invalidate();
     pendingStatsUpdates = [];
-    statsWriteChain = Promise.resolve();
-    statsWritesInFlight = 0;
     statsStore.resetToast();
     savesStore.resetToast();
     // Invalidate writes enqueued (but not yet run) before this reset, then
     // start fresh queues for the next test.
+    statsWriteQueue.reset();
     savesWriteQueue.reset();
     mruWriteQueue.reset();
     mruCache = null;
