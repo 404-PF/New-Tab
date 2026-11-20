@@ -955,7 +955,42 @@ describe('Todo clear completed', () => {
   });
 });
 
+describe('Todo labels', () => {
+  it('stores a trimmed label on add and null for blank labels', () => {
+    addTodo('Call bank', null, 'medium', null, null, null, '  work  ');
+    addTodo('Water plants', null, 'medium', null, null, null, '   ');
+    const todosNow = loadTodos();
+    expect(todosNow.find(t => t.text === 'Call bank').label).toBe('work');
+    expect(todosNow.find(t => t.text === 'Water plants').label).toBeNull();
+  });
+
+  it('sets and clears the label through editTodo, leaving it alone when undefined', () => {
+    addTodo('Pay rent', null, 'medium', null, null, null, 'errands');
+    const id = loadTodos()[0].id;
+    editTodo(id, 'Pay rent', 'medium', null, undefined, undefined, undefined, 'home');
+    expect(loadTodos()[0].label).toBe('home');
+    editTodo(id, 'Pay rent', 'medium', null, undefined, undefined, undefined, undefined);
+    expect(loadTodos()[0].label).toBe('home');
+    editTodo(id, 'Pay rent', 'medium', null, undefined, undefined, undefined, '');
+    expect(loadTodos()[0].label).toBeNull();
+  });
+
+  it('keeps labels through a reload-style re-init', () => {
+    saveTodos([{ id: '1', text: 'Email', completed: false, createdAt: '2026-01-01' }]);
+    initTodo();
+    addTodo('Shop', null, 'medium', null, null, null, 'errands');
+    initTodo();
+    expect(loadTodos().find(t => t.text === 'Shop').label).toBe('errands');
+  });
+});
+
 describe('Todo validateTodoData', () => {
+  it('accepts labels up to 30 characters and rejects longer or non-string labels', () => {
+    expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 'work' }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 'x'.repeat(31) }] })).toBe(false);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 42 }] })).toBe(false);
+  });
+
   it('rejects null', () => {
     expect(validateTodoData(null)).toBe(false);
   });

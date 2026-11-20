@@ -8,8 +8,12 @@
   let filteredTodos = [];
   const currentFilters = {
     status: 'all',
-    priority: 'all'
+    priority: 'all',
+    label: 'all'
   };
+
+  // Free-text grouping label on a task (e.g. "work", "errands").
+  const TODO_LABEL_MAX_LENGTH = 30;
 
   // User-selectable sort order (issue #1013). `due` preserves the historical
   // hard-coded ordering; `manual` is the only mode where drag-and-drop
@@ -846,10 +850,15 @@
       });
     }
 
+    // Label filter (exact match on the grouping label)
+    if (currentFilters.label !== 'all') {
+      filtered = filtered.filter(todo => todo.label === currentFilters.label);
+    }
+
     // Text search (issue #1060). AND with the pill filters: match the todo
-    // text, any subtask text, or the free-form details (issue #1228),
-    // case-insensitively. The sort below still runs on whatever survives, so
-    // all five sort modes compose unchanged.
+    // text, any subtask text, the free-form details (issue #1228), or the
+    // label, case-insensitively. The sort below still runs on whatever
+    // survives, so all five sort modes compose unchanged.
     if (todoSearchQuery) {
       const query = todoSearchQuery.toLowerCase();
       filtered = filtered.filter(todo => {
@@ -857,7 +866,8 @@
         const subtaskMatch = Array.isArray(todo.subtasks) &&
           todo.subtasks.some(subtask => typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(query));
         const detailsMatch = typeof todo.details === 'string' && todo.details.toLowerCase().includes(query);
-        return textMatch || subtaskMatch || detailsMatch;
+        const labelMatch = typeof todo.label === 'string' && todo.label.toLowerCase().includes(query);
+        return textMatch || subtaskMatch || detailsMatch || labelMatch;
       });
     }
 
@@ -981,6 +991,14 @@
         const priorityKey = priorityLabelKeys[todoPriority];
         priorityBadge.textContent = priorityKey && window.i18n ? window.i18n.t(priorityKey) : String(todoPriority).charAt(0).toUpperCase() + String(todoPriority).slice(1);
         todoContent.appendChild(priorityBadge);
+      }
+
+      // Grouping label chip
+      if (typeof todo.label === 'string' && todo.label) {
+        const labelChip = document.createElement('span');
+        labelChip.className = 'todo-label-chip';
+        labelChip.textContent = todo.label;
+        todoContent.appendChild(labelChip);
       }
 
       const dueDate = document.createElement('div');
@@ -1231,8 +1249,16 @@
     return trimmed ? trimmed : null;
   }
 
+  // Blank or non-string labels collapse to null; long labels are trimmed to
+  // the same cap the inputs enforce.
+  function normalizeTodoLabel(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim().slice(0, TODO_LABEL_MAX_LENGTH).trim();
+    return trimmed ? trimmed : null;
+  }
+
   // Add a new todo
-  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null, details = null) {
+  function addTodo(text, dueDate = null, priority = 'medium', recurrence = null, dueTime = null, details = null, label = null) {
     if (!text.trim()) return;
 
     // Seed the next order from the same scale getManualOrderValue compares on
@@ -1255,6 +1281,7 @@
       recurrence: normalizedRecurrence,
       recurrenceAnchorDay: normalizedRecurrence ? deriveRecurrenceAnchorDay(dueDate) : null,
       details: normalizeTodoDetails(details),
+      label: normalizeTodoLabel(label),
       createdAt: new Date().toISOString(),
       order: maxOrder + 1 // Add order property to track position (always at the end)
     };
@@ -1329,6 +1356,12 @@
         todo.details = normalizedDetails;
         needsMigration = true;
       }
+      // Labels follow the same pattern: legacy rows gain `label: null`.
+      const normalizedLabel = normalizeTodoLabel(todo.label);
+      if (todo.label !== normalizedLabel) {
+        todo.label = normalizedLabel;
+        needsMigration = true;
+      }
     });
 
     return needsMigration;
@@ -1368,7 +1401,8 @@
   // Edit a todo. `newDetails` is a trailing optional argument so every
   // existing positional call site keeps its meaning (issue #1228): pass
   // undefined to leave details untouched, a string to set/clear them.
-  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime, newDetails) {
+  // `newLabel` follows the same trailing-optional convention (undefined keeps it).
+  function editTodo(id, newText, newPriority, newDueDate, newRecurrence, newDueTime, newDetails, newLabel) {
     const todo = todos.find(t => t.id === id);
     if (!todo) {
       return false;
@@ -1388,6 +1422,9 @@
     refreshRecurrenceAnchor(todo, previousDueDate, previousRecurrence, newDueDate !== undefined && newDueDate !== null);
     if (newDetails !== undefined) {
       todo.details = normalizeTodoDetails(newDetails);
+    }
+    if (newLabel !== undefined) {
+      todo.label = normalizeTodoLabel(newLabel);
     }
     if (!saveTodos(todos)) {
       Object.assign(todo, previousTodo);
@@ -1654,6 +1691,7 @@ function applyFilters() {
   // Snapshot taken before filtering: a due instant crossed while the rows
   // render must not be dropped by the re-arm below (review thread).
   const renderStartedAt = Date.now();
+  updateLabelControls();
   filterTodos();
   pruneTodoSelection();
   renderTodos();
@@ -1735,6 +1773,50 @@ function scheduleTodoOverdueRefresh(renderStartedAt = Date.now()) {
     // to its fresh anchor (or close it when the row left the view).
     refreshInlineDatePickers(false);
   }, delay);
+}
+
+// Keep the label suggestions (shared by the add row and edit modal) and the
+// label filter dropdown in step with the labels currently stored. A filter
+// on a label that no longer exists falls back to "all labels".
+function updateLabelControls() {
+  const labels = [...new Set(todos
+    .map(todo => todo.label)
+    .filter(label => typeof label === 'string' && label))].sort((a, b) => a.localeCompare(b));
+
+  const datalist = document.getElementById('todo-label-options');
+  if (datalist) {
+    datalist.replaceChildren(...labels.map(label => {
+      const option = document.createElement('option');
+      option.value = label;
+      return option;
+    }));
+  }
+
+  if (currentFilters.label !== 'all' && !labels.includes(currentFilters.label)) {
+    currentFilters.label = 'all';
+  }
+
+  const filterSelect = document.getElementById('todo-label-filter');
+  if (filterSelect) {
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = window.i18n ? window.i18n.t('todoLabelFilterAll') : 'All labels';
+    const options = [allOption, ...labels.map(label => {
+      const option = document.createElement('option');
+      option.value = label;
+      option.textContent = label;
+      return option;
+    })];
+    filterSelect.replaceChildren(...options);
+    filterSelect.value = currentFilters.label;
+  }
+}
+
+// Handle label filter dropdown changes
+function handleTodoLabelFilterChange(event) {
+  currentFilters.label = event.target.value || 'all';
+  clearTodoSelection();
+  applyFilters();
 }
 
 // Update filter pill UI
@@ -2088,6 +2170,8 @@ function clearInputs() {
   if (elements.todoInput) elements.todoInput.value = '';
   if (elements.todoDueDate) elements.todoDueDate.value = '';
   if (elements.todoDueTime) elements.todoDueTime.value = '';
+  const labelInput = document.getElementById('todo-label-input');
+  if (labelInput) labelInput.value = '';
   // Clear custom date picker
   if (customDatePicker) {
     customDatePicker.clearDate();
@@ -2246,7 +2330,8 @@ function submitTodoFromInput() {
   const dueDate = parsed.dueDate || elements.todoDueDate?.value || null;
   const dueTime = elements.todoDueTime?.value || null;
   const priority = getSelectedPriority();
-  addTodo(parsed.text, dueDate, priority, null, dueTime);
+  const label = document.getElementById('todo-label-input')?.value || null;
+  addTodo(parsed.text, dueDate, priority, null, dueTime, null, label);
 }
 
 // Preview the resolved phrase date in the picker while the user types, so the
@@ -2972,6 +3057,8 @@ function openEditModal(id) {
   if (detailsInput) detailsInput.value = todo.details || '';
   const recurrenceSelect = document.getElementById('todo-edit-recurrence');
   if (recurrenceSelect) recurrenceSelect.value = todo.recurrence || '';
+  const labelInput = document.getElementById('todo-edit-label');
+  if (labelInput) labelInput.value = todo.label || '';
 
   // Render subtasks in edit modal
   renderEditModalSubtasks(todo);
@@ -3027,6 +3114,9 @@ function saveEdit() {
   // Undefined (no textarea in the DOM) leaves stored details untouched; an
   // empty value deliberately clears them (issue #1228).
   const newDetails = detailsInput ? detailsInput.value : undefined;
+  // Same convention for the label: undefined when the field is absent.
+  const labelInput = document.getElementById('todo-edit-label');
+  const newLabel = labelInput ? labelInput.value : undefined;
 
   if (!newText) {
     // Show error or focus on text input
@@ -3054,7 +3144,7 @@ function saveEdit() {
     }
   }
 
-  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence, undefined, newDetails)) {
+  if (editTodo(editModalState.currentTodoId, newText, newPriority, preservedDueDate, newRecurrence, undefined, newDetails, newLabel)) {
     // Clear pending IDs before closing so closeEditModal doesn't roll back persisted subtasks
     editModalState.pendingSubtaskIds.clear();
     closeEditModal(false);
@@ -3123,6 +3213,12 @@ function initTodo() {
   // on every init, which the DOM de-duplicates.
   if (elements.todoSort) {
     elements.todoSort.addEventListener('change', handleTodoSortChange);
+  }
+
+  // Label filter dropdown (grouping labels).
+  const todoLabelFilter = document.getElementById('todo-label-filter');
+  if (todoLabelFilter) {
+    todoLabelFilter.addEventListener('change', handleTodoLabelFilterChange);
   }
 
   // Toolbar search box (issue #1060). Re-registration de-duplicates the same
@@ -3339,6 +3435,8 @@ function validateTodoData(data) {
     // present and within the edit modal's 2000-character maxlength so a
     // hostile export can't store objects/arrays or oversized text here.
     if (item.details !== undefined && item.details !== null && (typeof item.details !== 'string' || item.details.length > 2000)) return false;
+    // Grouping label: optional string, capped at the input's maxlength.
+    if (item.label !== undefined && item.label !== null && (typeof item.label !== 'string' || item.label.length > TODO_LABEL_MAX_LENGTH)) return false;
     if (item.subtasks !== undefined && item.subtasks !== null) {
       if (!Array.isArray(item.subtasks)) return false;
       const subtaskIds = new Set();
@@ -3445,6 +3543,7 @@ function showImportDialog(importedTodos) {
     // Always materialize details so imported rows share the same shape as
     // addTodo output (null when absent or blank).
     todo.details = normalizeTodoDetails(item.details);
+    todo.label = normalizeTodoLabel(item.label);
     return todo;
   }
 
