@@ -3,6 +3,7 @@ import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storag
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
+  injectScript('src/core/utils.js');
   injectScript('src/features/pomodoro-stats.js');
 });
 

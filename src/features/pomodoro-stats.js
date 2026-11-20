@@ -12,8 +12,7 @@
   // Retention must cover both the 30-day heatmap and getPomodoroWeeklyBreakdown,
   // which Sunday-aligns five weeks and can read as far back as today - 33.
   const RETENTION_DAYS = 34;
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function toISO(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); }
+  function toISO(date) { return window.formatLocalDateISO(date); }
   function coerceEntry(raw) {
     if (typeof raw === 'number' && Number.isFinite(raw)) return { sessions: Math.max(0, raw), minutes: 0 };
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
