@@ -470,6 +470,7 @@ const OpenRouterAPI = (function() {
           const decoder = new TextDecoder();
           const MAX_SSE_LINE_SIZE = 1024 * 1024;
           let buffer = ''; // Buffer for incomplete SSE data
+          let streamError = null;
 
           const processSseLine = (line) => {
             if (!line.startsWith('data: ')) {
@@ -489,6 +490,11 @@ const OpenRouterAPI = (function() {
 
             try {
               const parsed = JSON.parse(data);
+              // Mid-stream failures arrive as HTTP 200 events carrying an error payload.
+              if (parsed.error || parsed.choices?.[0]?.error || parsed.choices?.[0]?.finish_reason === 'error') {
+                streamError = parsed.error || parsed.choices?.[0]?.error || { message: 'finish_reason: error' };
+                return;
+              }
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
                 fullContent += content;
@@ -539,6 +545,15 @@ const OpenRouterAPI = (function() {
           // Process any remaining data in buffer
           if (buffer) {
             processSseLine(buffer);
+          }
+
+          if (streamError) {
+            console.error('OpenRouter stream reported an error:', streamError);
+            return {
+              success: false,
+              error: getTranslation('aiNetworkError'),
+              partialContent: fullContent
+            };
           }
 
           if (!fullContent.trim()) {
