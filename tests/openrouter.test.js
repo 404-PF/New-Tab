@@ -610,7 +610,8 @@ describe('OpenRouter mid-stream errors (#1308)', () => {
 
     const result = await OpenRouterAPI.sendMessageStreaming('Hi');
 
-    expect(result).toMatchObject({ success: false, partialContent: 'Partial' });
+    expect(result).toMatchObject({ success: false, error: 'Network error occurred', streamError: true });
+    expect(result.partialContent).toBeUndefined();
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -623,7 +624,8 @@ describe('OpenRouter mid-stream errors (#1308)', () => {
 
     const result = await OpenRouterAPI.sendMessageStreaming('Hi');
 
-    expect(result).toMatchObject({ success: false, partialContent: 'Part' });
+    expect(result).toMatchObject({ success: false, error: 'Network error occurred', streamError: true });
+    expect(result.partialContent).toBeUndefined();
   });
 });
 

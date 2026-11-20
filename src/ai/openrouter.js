@@ -540,6 +540,13 @@ const OpenRouterAPI = (function() {
             for (const line of lines) {
               processSseLine(line);
             }
+
+            // Stop consuming once the server reports a terminal error so the
+            // connection is not held open until timeout.
+            if (streamError) {
+              await reader.cancel().catch(() => {});
+              break;
+            }
           }
 
           // Process any remaining data in buffer
@@ -549,10 +556,12 @@ const OpenRouterAPI = (function() {
 
           if (streamError) {
             console.error('OpenRouter stream reported an error:', streamError);
+            // Explicit stream errors discard the partial answer; the caller
+            // removes the failed assistant message instead of finalizing it.
             return {
               success: false,
               error: getTranslation('aiNetworkError'),
-              partialContent: fullContent
+              streamError: true
             };
           }
 

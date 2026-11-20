@@ -675,7 +675,38 @@ describe('AIService stop streaming preserves partial content (#600)', () => {
     expect(saved[0].messages[1].content).toBe('Partial answer');
   });
 
-  it('keeps the user prompt and drops only the empty assistant bubble when a failure delivers no partial content', async () => {
+  it('removes the assistant message when the stream reports an explicit error (#1308)', async () => {
+    const conversation = {
+      id: 'conv_stream_error',
+      title: 'StreamError',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+
+    let onChunkCallback = null;
+    let resolveRequest = null;
+    OpenRouterAPI.sendMessageStreaming = async (userMessage, history, onChunk) => {
+      onChunkCallback = onChunk;
+      return new Promise(resolve => {
+        resolveRequest = resolve;
+      });
+    };
+
+    const sendPromise = AIService.sendMessage('hello');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    onChunkCallback('Partial answer');
+
+    resolveRequest({ success: false, error: 'Network error occurred', streamError: true });
+    await sendPromise;
+
+    expect(conversation.messages).toHaveLength(1);
+    expect(conversation.messages[0].role).toBe('user');
+  });
+
+ it('keeps the user prompt and drops only the empty assistant bubble when a failure delivers no partial content', async () => {
     // Run with web grounding off so the failure does not take the
     // ungrounded retry path (#739): this test checks only the
     // no-partial-content cleanup (#997).
