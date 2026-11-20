@@ -386,6 +386,7 @@
   }
 
   function focusSearchBar() {
+    if (localStorage.getItem('searchBoxEnabled') === 'false') return;
     const input = document.querySelector('.search-bar input');
     if (input) input.focus();
   }

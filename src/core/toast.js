@@ -290,6 +290,11 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyMottoEnabled();
     }
   },
+  searchBoxEnabled: function () {
+    if (typeof window.applySearchBoxEnabled === 'function') {
+      window.applySearchBoxEnabled();
+    }
+  },
   eyeCareReminder: function () {
     if (typeof window.applyEyeCareReminderSettings === 'function') {
       window.applyEyeCareReminderSettings();
@@ -638,6 +643,7 @@ function featureToggleControlDesynced(key) {
       return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
     }
     case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
+    case 'searchBoxEnabled': return desyncCheckboxControl('search-box-enabled-setting', key, false);
     case 'eyeCareReminder': {
       try {
         const state = JSON.parse(localStorage.getItem(key) || '{}');
