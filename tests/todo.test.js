@@ -5089,9 +5089,16 @@ describe('Clear completed dialog Escape cleanup (issue #1252)', () => {
     const setItemSpy = vi.spyOn(localStorage, 'setItem');
 
     clearCompleted();
+    const dialog = document.getElementById('clear-completed-dialog');
+    const removeSpies = [
+      document.getElementById('clear-completed-confirm'),
+      dialog.querySelector('.ai-confirm-cancel'),
+      dialog.querySelector('.ai-confirm-overlay'),
+    ].map(el => vi.spyOn(el, 'removeEventListener'));
     document.activeElement?.blur();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(document.getElementById('clear-completed-dialog').classList.contains('ai-confirm-open')).toBe(false);
+    expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+    removeSpies.forEach(spy => expect(spy).toHaveBeenCalledWith('click', expect.any(Function)));
 
     clearCompleted();
     setItemSpy.mockClear();
