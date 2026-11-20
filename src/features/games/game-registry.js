@@ -191,40 +191,56 @@
     }, failMRUWrite);
   }
 
+  // Serializes writes so each one runs after the previous settles. `run` is
+  // only invoked if no reset() happened since enqueue(); a write enqueued
+  // before a reset is treated as resolved (true) and never runs, and its
+  // settle does not decrement the fresh in-flight counter.
+  function createSerialWriteQueue() {
+    let chain = Promise.resolve();
+    let inFlight = 0;
+    let generation = 0;
+
+    function enqueue(run) {
+      const gen = generation;
+      const guarded = () => {
+        if (gen !== generation) return Promise.resolve(true);
+        return run();
+      };
+      const settle = () => {
+        if (gen === generation) inFlight -= 1;
+      };
+      const write = inFlight === 0 ? guarded() : chain.then(guarded);
+      inFlight += 1;
+      chain = write.then(settle, settle);
+      return write;
+    }
+
+    function reset() {
+      generation += 1;
+      chain = Promise.resolve();
+      inFlight = 0;
+    }
+
+    return { enqueue: enqueue, reset: reset };
+  }
+
   // MRU touches are serialized so each write is confirmed (or rolled back by
   // the storage bridge) before the next touch derives from stored state:
   // overlapping writes would let a later rejection roll the bridge cache back
   // to an earlier, also-rejected list. Each queued touch applies to the
   // *stored* MRU when it runs, so a touch never derives from another touch's
   // unconfirmed values.
-  let mruWriteChain = Promise.resolve();
-  let mruWritesInFlight = 0;
-  // Bumped by _reset(): a touch enqueued before the reset must neither run
-  // (it would write a stale MRU list into post-reset storage) nor decrement
-  // the fresh in-flight counter when it settles, so pre-reset touches are
-  // invalidated instead of leaking across the reset boundary.
-  let mruWriteGeneration = 0;
+  const mruWriteQueue = createSerialWriteQueue();
 
   function touchMRU(gameId) {
-    const generation = mruWriteGeneration;
-    const run = () => {
-      if (generation !== mruWriteGeneration) return Promise.resolve(true);
+    return mruWriteQueue.enqueue(() => {
       const mru = loadMRU();
       const idx = mru.indexOf(gameId);
       if (idx !== -1) mru.splice(idx, 1);
       mru.unshift(gameId);
       if (mru.length > MAX_MRU) mru.length = MAX_MRU;
       return saveMRU(mru);
-    };
-
-    const settle = () => {
-      if (generation === mruWriteGeneration) mruWritesInFlight -= 1;
-    };
-
-    const write = mruWritesInFlight === 0 ? run() : mruWriteChain.then(run);
-    mruWritesInFlight += 1;
-    mruWriteChain = write.then(settle, settle);
-    return write;
+    });
   }
 
   // Saves writes are serialized so each one is confirmed (or rolled back by
@@ -234,21 +250,13 @@
   // bridge cache. Each queued write carries an updater that is applied to the
   // *stored* saves when that write runs, so a write is never derived from
   // another write's unconfirmed values.
-  let savesWriteChain = Promise.resolve();
-  let savesWritesInFlight = 0;
-  // Bumped by _reset(): a write enqueued before the reset must neither run
-  // (its updater would write stale saves into post-reset storage) nor
-  // decrement the fresh in-flight counter when it settles, so pre-reset
-  // writes are invalidated instead of leaking across the reset boundary.
-  let savesWriteGeneration = 0;
+  const savesWriteQueue = createSerialWriteQueue();
 
   // `apply(saves)` mutates a copy of the stored saves and returns false to
   // skip the write entirely (nothing to persist). Resolves to whether a write
   // was persisted.
   function enqueueSavesWrite(apply) {
-    const generation = savesWriteGeneration;
-    const run = () => {
-      if (generation !== savesWriteGeneration) return Promise.resolve(true);
+    return savesWriteQueue.enqueue(() => {
       let saves;
       try {
         saves = { ...savesStore.load() };
@@ -257,16 +265,7 @@
         return Promise.resolve(savesStore.fail(e));
       }
       return savesStore.save(saves);
-    };
-
-    const settle = () => {
-      if (generation === savesWriteGeneration) savesWritesInFlight -= 1;
-    };
-
-    const write = savesWritesInFlight === 0 ? run() : savesWriteChain.then(run);
-    savesWritesInFlight += 1;
-    savesWriteChain = write.then(settle, settle);
-    return write;
+    });
   }
 
   // Persist a snapshot for a game that opted in via serialize(). Callers must
@@ -617,12 +616,8 @@
     savesStore.resetToast();
     // Invalidate writes enqueued (but not yet run) before this reset, then
     // start fresh queues for the next test.
-    savesWriteGeneration += 1;
-    savesWriteChain = Promise.resolve();
-    savesWritesInFlight = 0;
-    mruWriteGeneration += 1;
-    mruWriteChain = Promise.resolve();
-    mruWritesInFlight = 0;
+    savesWriteQueue.reset();
+    mruWriteQueue.reset();
     mruCache = null;
     mruCacheRaw = undefined;
     savesStore.invalidate();
