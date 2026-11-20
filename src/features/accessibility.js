@@ -9,7 +9,7 @@
     { id: 'rename-app-modal', openClass: 'modal-open' },
     { id: 'thumbnail-app-modal', openClass: 'modal-open' },
     { id: 'delete-app-modal', openClass: 'modal-open' },
-    { id: 'clear-completed-dialog', openClass: 'ai-confirm-open' },
+    { id: 'clear-completed-dialog', openClass: 'ai-confirm-open', close: () => window.hideClearCompletedDialog?.() },
     { id: 'import-todos-dialog', openClass: 'ai-confirm-open' },
     { id: 'data-import-dialog', openClass: 'ai-confirm-open' },
     { id: 'ai-chat-modal', openClass: 'ai-modal-open', close: () => window.AIService?.close?.() },
