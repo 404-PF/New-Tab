@@ -9,6 +9,18 @@ import { failStorageWritesFor } from './helpers/storage-write-failures.js';
 
 const HTML = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');
 
+const toggleCheckbox = (checked) => {
+  const checkbox = document.getElementById('search-box-enabled-setting');
+  checkbox.checked = checked;
+  checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const storeEnabledWithFailingWrites = (mode) => {
+  localStorage.setItem('searchBoxEnabled', 'true');
+  window.applySearchBoxEnabled();
+  return failStorageWritesFor('searchBoxEnabled', mode);
+};
+
 beforeAll(() => {
   document.body.insertAdjacentHTML('beforeend',
     '<div class="search-bar-wrapper"><div class="search-bar"><input type="text"></div></div>');
@@ -78,37 +90,31 @@ describe('applySearchBoxEnabled (issue #1243)', () => {
     const checkbox = document.getElementById('search-box-enabled-setting');
     const wrapper = document.querySelector('.search-bar-wrapper');
 
-    checkbox.checked = false;
-    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    toggleCheckbox(false);
     expect(localStorage.getItem('searchBoxEnabled')).toBe('false');
     expect(wrapper.style.display).toBe('none');
 
     window.applySearchBoxEnabled();
     expect(wrapper.style.display).toBe('none');
 
-    checkbox.checked = true;
-    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    toggleCheckbox(true);
     expect(localStorage.getItem('searchBoxEnabled')).toBe('true');
     expect(wrapper.style.display).toBe('');
     expect(checkbox.checked).toBe(true);
   });
 
   it('resyncs the wrapper and control after an async write rollback', async () => {
-    localStorage.setItem('searchBoxEnabled', 'true');
-    window.applySearchBoxEnabled();
-    const restore = failStorageWritesFor('searchBoxEnabled', 'async');
-    const checkbox = document.getElementById('search-box-enabled-setting');
+    const restore = storeEnabledWithFailingWrites('async');
 
     try {
-      checkbox.checked = false;
-      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      toggleCheckbox(false);
       expect(localStorage.getItem('searchBoxEnabled')).toBe('false');
 
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(localStorage.getItem('searchBoxEnabled')).toBe('true');
-      expect(checkbox.checked).toBe(true);
+      expect(document.getElementById('search-box-enabled-setting').checked).toBe(true);
       expect(document.querySelector('.search-bar-wrapper').style.display).toBe('');
     } finally {
       restore();
@@ -116,17 +122,13 @@ describe('applySearchBoxEnabled (issue #1243)', () => {
   });
 
   it('keeps the wrapper and control on the saved value after a synchronous write rejection', () => {
-    localStorage.setItem('searchBoxEnabled', 'true');
-    window.applySearchBoxEnabled();
-    const restore = failStorageWritesFor('searchBoxEnabled', 'sync');
-    const checkbox = document.getElementById('search-box-enabled-setting');
+    const restore = storeEnabledWithFailingWrites('sync');
 
     try {
-      checkbox.checked = false;
-      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      toggleCheckbox(false);
 
       expect(localStorage.getItem('searchBoxEnabled')).toBe('true');
-      expect(checkbox.checked).toBe(true);
+      expect(document.getElementById('search-box-enabled-setting').checked).toBe(true);
       expect(document.querySelector('.search-bar-wrapper').style.display).toBe('');
     } finally {
       restore();
