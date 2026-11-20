@@ -1126,11 +1126,17 @@ const AIStore = (function() {
     // object identities for in-flight requests and UI references.
     if (state.conversations.length > MAX_CONVERSATIONS) {
       const kept = state.conversations.slice(0, MAX_CONVERSATIONS);
-      const active = state.conversations.find(
-        conversation => conversation.id === state.currentConversationId
-      );
-      if (active && !kept.some(conversation => conversation.id === active.id)) {
-        kept[kept.length - 1] = active;
+      const protectedIds = [state.currentConversationId, state.inFlightConversationId];
+      for (const protectedId of protectedIds) {
+        if (!protectedId || kept.some(conversation => conversation.id === protectedId)) continue;
+        const protectedConversation = state.conversations.find(
+          conversation => conversation.id === protectedId
+        );
+        if (!protectedConversation) continue;
+        let index = kept.length - 1;
+        while (index >= 0 && protectedIds.includes(kept[index].id)) index -= 1;
+        if (index < 0) break;
+        kept[index] = protectedConversation;
       }
       state.conversations.splice(0, state.conversations.length, ...kept);
     }
