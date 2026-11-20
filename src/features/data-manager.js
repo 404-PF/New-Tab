@@ -1053,6 +1053,25 @@
     // When that restore failed (`mediaRestored` false) the custom
     // `homepageBg` is skipped so the current value survives instead of
     // pointing at a blob that was never written.
+    // Appends incoming items whose id is not already present. Items without
+    // an id are skipped, as are duplicates within either list.
+    const mergeItemsById = function (current, incoming) {
+      const merged = Array.isArray(current) ? current.slice() : [];
+      const ids = {};
+      merged.forEach(function (item) {
+        if (item && item.id) ids[item.id] = true;
+      });
+      let added = 0;
+      incoming.forEach(function (item) {
+        if (item && item.id && !ids[item.id]) {
+          merged.push(item);
+          ids[item.id] = true;
+          added++;
+        }
+      });
+      return { merged: merged, added: added };
+    };
+
     const applySettingsKeys = function (mode, mediaRestored) {
       const keys = Object.keys(importedData);
       let count = 0;
@@ -1094,23 +1113,11 @@
             }
             const incoming = importedValue;
             if (Array.isArray(incoming)) {
-              if (key === 'todos' || key === 'notes') {
-                // Merge by id
-                const existing = Array.isArray(current) ? current.slice() : [];
-                const existingIds = {};
-                existing.forEach(function (item) {
-                  if (item && item.id) existingIds[item.id] = true;
-                });
-                let added = 0;
-                incoming.forEach(function (item) {
-                  if (item && item.id && !existingIds[item.id]) {
-                    existing.push(item);
-                    existingIds[item.id] = true;
-                    added++;
-                  }
-                });
-                if (added > 0) {
-                  writeStorage(key, existing, pendingWrites);
+              if (key === 'todos' || key === 'notes' || key === 'customApps' ||
+                  key === 'appFolders' || key === 'ai_conversations') {
+                const result = mergeItemsById(current, incoming);
+                if (result.added > 0) {
+                  writeStorage(key, result.merged, pendingWrites);
                   count++;
                 }
               } else if (key === 'appOrder') {
@@ -1128,63 +1135,6 @@
                 });
                 if (addedOrder > 0) {
                   writeStorage(key, currentOrder, pendingWrites);
-                  count++;
-                }
-              } else if (key === 'customApps') {
-                // Merge customApps by id
-                const currentApps = Array.isArray(current) ? current.slice() : [];
-                const appIds = {};
-                currentApps.forEach(function (app) {
-                  if (app && app.id) appIds[app.id] = true;
-                });
-                let addedApps = 0;
-                incoming.forEach(function (app) {
-                  if (app && app.id && !appIds[app.id]) {
-                    currentApps.push(app);
-                    appIds[app.id] = true;
-                    addedApps++;
-                  }
-                });
-                if (addedApps > 0) {
-                  writeStorage(key, currentApps, pendingWrites);
-                  count++;
-                }
-              } else if (key === 'appFolders') {
-                // Merge folders by id
-                const currentFolders = Array.isArray(current) ? current.slice() : [];
-                const folderIds = {};
-                currentFolders.forEach(function (f) {
-                  if (f && f.id) folderIds[f.id] = true;
-                });
-                let addedFolders = 0;
-                incoming.forEach(function (f) {
-                  if (f && f.id && !folderIds[f.id]) {
-                    currentFolders.push(f);
-                    folderIds[f.id] = true;
-                    addedFolders++;
-                  }
-                });
-                if (addedFolders > 0) {
-                  writeStorage(key, currentFolders, pendingWrites);
-                  count++;
-                }
-              } else if (key === 'ai_conversations') {
-                // Merge conversations by id
-                const currentConvs = Array.isArray(current) ? current.slice() : [];
-                const convIds = {};
-                currentConvs.forEach(function (c) {
-                  if (c && c.id) convIds[c.id] = true;
-                });
-                let addedConvs = 0;
-                incoming.forEach(function (c) {
-                  if (c && c.id && !convIds[c.id]) {
-                    currentConvs.push(c);
-                    convIds[c.id] = true;
-                    addedConvs++;
-                  }
-                });
-                if (addedConvs > 0) {
-                  writeStorage(key, currentConvs, pendingWrites);
                   count++;
                 }
               } else if (key === 'extraTimeZones') {
