@@ -986,7 +986,7 @@ describe('Todo labels', () => {
 
 describe('Todo validateTodoData', () => {
   it('accepts labels up to 30 characters and rejects longer or non-string labels', () => {
-    expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 'work' }] })).toBe(true);
+    expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 'x'.repeat(30) }] })).toBe(true);
     expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 'x'.repeat(31) }] })).toBe(false);
     expect(validateTodoData({ todos: [{ id: '1', text: 'a', completed: false, label: 42 }] })).toBe(false);
   });

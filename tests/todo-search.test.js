@@ -54,7 +54,7 @@ beforeEach(() => {
   }
   currentFilters.status = 'all';
   currentFilters.priority = 'all';
-  currentFilters.label = 'all';
+  currentFilters.label = '';
   selectedIds.clear();
   setTodoSort('due');
 });
@@ -64,7 +64,8 @@ describe('Todo label filter and search', () => {
     setTodos([
       { id: '1', text: 'Pay rent', completed: false, createdAt: '2026-01-01', label: 'home' },
       { id: '2', text: 'Send report', completed: false, createdAt: '2026-01-02', label: 'work' },
-      { id: '3', text: 'Buy stamps', completed: false, createdAt: '2026-01-03', label: 'errands' }
+      { id: '3', text: 'Buy stamps', completed: false, createdAt: '2026-01-03', label: 'errands' },
+      { id: '4', text: 'Attend workshop', completed: false, createdAt: '2026-01-04', label: 'workshop' }
     ]);
     initTodo();
     const labelSelect = document.getElementById('todo-label-filter');
@@ -72,7 +73,7 @@ describe('Todo label filter and search', () => {
     labelSelect.dispatchEvent(new Event('change', { bubbles: true }));
     expect(visibleTexts()).toEqual(['Send report']);
 
-    labelSelect.value = 'all';
+    labelSelect.value = '';
     labelSelect.dispatchEvent(new Event('change', { bubbles: true }));
     typeQuery('ERRAND');
     expect(visibleTexts()).toEqual(['Buy stamps']);

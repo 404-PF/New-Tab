@@ -906,6 +906,22 @@
     "message": "Details",
     "description": "Button that expands or collapses the details block on a todo row"
   },
+  "todoEditLabel": {
+    "message": "Label",
+    "description": "Label for the grouping label field in the todo edit modal"
+  },
+  "todoLabelPlaceholder": {
+    "message": "Label",
+    "description": "Placeholder and accessible name for the todo grouping label input"
+  },
+  "todoLabelFilterAll": {
+    "message": "All labels",
+    "description": "Label filter option that shows todos with any label"
+  },
+  "todoLabelFilterAria": {
+    "message": "Filter by label",
+    "description": "Accessible name for the todo label filter dropdown"
+  },
   "todoEditPriority": {
     "message": "Priority",
     "description": "Label for the priority selector in the edit dialog"

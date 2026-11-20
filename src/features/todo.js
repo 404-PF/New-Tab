@@ -9,7 +9,7 @@
   const currentFilters = {
     status: 'all',
     priority: 'all',
-    label: 'all'
+    label: ''
   };
 
   // Free-text grouping label on a task (e.g. "work", "errands").
@@ -851,7 +851,7 @@
     }
 
     // Label filter (exact match on the grouping label)
-    if (currentFilters.label !== 'all') {
+    if (currentFilters.label) {
       filtered = filtered.filter(todo => todo.label === currentFilters.label);
     }
 
@@ -1792,14 +1792,15 @@ function updateLabelControls() {
     }));
   }
 
-  if (currentFilters.label !== 'all' && !labels.includes(currentFilters.label)) {
-    currentFilters.label = 'all';
+  if (currentFilters.label && !labels.includes(currentFilters.label)) {
+    currentFilters.label = '';
   }
 
   const filterSelect = document.getElementById('todo-label-filter');
   if (filterSelect) {
     const allOption = document.createElement('option');
-    allOption.value = 'all';
+    allOption.value = '';
+    allOption.dataset.i18n = 'todoLabelFilterAll';
     allOption.textContent = window.i18n ? window.i18n.t('todoLabelFilterAll') : 'All labels';
     const options = [allOption, ...labels.map(label => {
       const option = document.createElement('option');
@@ -1814,7 +1815,7 @@ function updateLabelControls() {
 
 // Handle label filter dropdown changes
 function handleTodoLabelFilterChange(event) {
-  currentFilters.label = event.target.value || 'all';
+  currentFilters.label = event.target.value || '';
   clearTodoSelection();
   applyFilters();
 }
@@ -3193,6 +3194,10 @@ function initTodo() {
   // Event listeners
   elements.addTodoBtn.addEventListener('click', handleAddTodo);
   elements.todoInput.addEventListener('keypress', handleKeyPress);
+  const todoLabelInput = document.getElementById('todo-label-input');
+  if (todoLabelInput) {
+    todoLabelInput.addEventListener('keypress', handleKeyPress);
+  }
   // Preview a recognized phrase date in the picker as it is typed (issue #1192).
   elements.todoInput.addEventListener('input', handleTodoInputChange);
   if (elements.todoDueTime) {
