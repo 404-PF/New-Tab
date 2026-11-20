@@ -303,6 +303,15 @@ export default {
     if (messages.length > MAX_MESSAGES) {
       return json(400, { error: { message: `messages exceeds limit of ${MAX_MESSAGES}`, code: 400 } });
     }
+    if (!messages.every(m =>
+      m
+      && typeof m === 'object'
+      && !Array.isArray(m)
+      && ['user', 'assistant', 'system'].includes(m.role)
+      && typeof m.content === 'string'
+    )) {
+      return json(400, { error: { message: 'each message must have a supported role and string content', code: 400 } });
+    }
 
     const model = ALLOWED_MODELS.has(body.model) ? body.model : 'openrouter/free';
     const plugins = Array.isArray(body.plugins) ? body.plugins : [];
@@ -343,16 +352,21 @@ export default {
       stream: body.stream === true
     };
 
-    const upstream = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': request.headers.get('HTTP-Referer') || 'https://github.com/404-PF/New-Tab',
-        'X-Title': request.headers.get('X-Title') || 'New Tab AI Assistant'
-      },
-      body: JSON.stringify(upstreamBody)
-    });
+    let upstream;
+    try {
+      upstream = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': request.headers.get('HTTP-Referer') || 'https://github.com/404-PF/New-Tab',
+          'X-Title': request.headers.get('X-Title') || 'New Tab AI Assistant'
+        },
+        body: JSON.stringify(upstreamBody)
+      });
+    } catch {
+      return json(502, { error: { message: 'Upstream request failed', code: 502 } });
+    }
 
     const headers = new Headers(CORS_HEADERS);
     headers.set('Content-Type', upstream.headers.get('Content-Type') || 'application/json');
