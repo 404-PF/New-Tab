@@ -601,6 +601,23 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function getClosestSizeOption(size, options) {
+    return options.reduce((closest, option) => {
+      return Math.abs(option - size) < Math.abs(closest - size) ? option : closest;
+    }, options[0]);
+  }
+
+  function syncSizeChoiceButtons(groupName, size, options) {
+    const activeSize = getClosestSizeOption(size, options);
+    const buttons = document.querySelectorAll(`[data-size-group="${groupName}"] .size-choice-button`);
+    buttons.forEach((button) => {
+      const buttonSize = parseInt(button.dataset.size, 10);
+      const isActive = buttonSize === activeSize;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
@@ -833,6 +850,8 @@
   window.validateIconUrl = validateIconUrl;
   window.escapeHtml = escapeHtml;
   window.clamp = clamp;
+  window.getClosestSizeOption = getClosestSizeOption;
+  window.syncSizeChoiceButtons = syncSizeChoiceButtons;
   window.translateValidationMessage = translateValidationMessage;
   window.persistSetting = persistSetting;
 

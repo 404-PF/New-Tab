@@ -750,6 +750,7 @@ describe('initSettings background startup', () => {
       videoEl.play = () => Promise.resolve();
 
       injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/core/utils.js', dom.getInternalVMContext());
       injectScript('src/ui/settings.js', dom.getInternalVMContext());
       if (!isolatedWindow.__unsubscribeVideoMotion) {
         isolatedWindow.initSettings();
