@@ -30,6 +30,9 @@
   let todoSemanticGeneration = 0;
   let todoSemanticDebounceId = null;
   let todoSemanticRankedView = false;
+  // Set when a finished rerank was dropped because a row was focused or
+  // dragged; applied once the gesture ends (see flushDeferredTodoSemanticRerank).
+  let todoSemanticDeferred = false;
 
   function getTodoSearchQuery() {
     return todoSearchQuery;
@@ -1048,6 +1051,9 @@
     if (base.length === 0) return Promise.resolve([]);
     const modelId = getTodoSemanticModelId();
     const inputs = base.map(todoToEmbeddingText);
+    // The shared ranker breaks score ties on `order`, so copy the display
+    // position in: ties keep the active sort instead of the stored order.
+    const ordered = base.map((todo, i) => ({ ...todo, order: i }));
 
     return Promise.all(base.map((todo, i) => cache.getCachedVector(todo.id, inputs[i], modelId).catch(() => null)))
       .then(cached => {
@@ -1080,7 +1086,7 @@
       })
       .then(vectors => {
         const byId = new Map(base.map((todo, i) => [todo.id, vectors[i]]));
-        return ranker.rankNotesForQuery(base, query, {
+        return ranker.rankNotesForQuery(ordered, query, {
           embedQuery: q => service.embedQuery(q),
           getNoteVector: todo => Promise.resolve(byId.get(todo.id) || null)
         }, { keywordScore: todoKeywordScore, keywordFilter: todoKeywordFilter });
@@ -1102,12 +1108,28 @@
       // Re-rendering removes the focused or dragged node mid-gesture, so wait
       // for the next rerank (the list keeps its keyword order until then).
       const active = document.activeElement;
-      if (draggedElement || (active && typeof active.closest === 'function' && active.closest('#todo-list'))) return;
+      if (draggedElement || (active && typeof active.closest === 'function' && active.closest('#todo-list'))) {
+        todoSemanticDeferred = true;
+        return;
+      }
+      todoSemanticDeferred = false;
       const liveById = new Map(todos.map(t => [t.id, t]));
       filteredTodos = ranked.map(t => liveById.get(t.id)).filter(Boolean);
       todoSemanticRankedView = true;
       renderTodos();
     }).catch(() => { /* keep the keyword order */ });
+  }
+
+  // Returns to keyword order without starting a model load.
+  function dropTodoSemanticRankedView() {
+    todoSemanticGeneration += 1;
+    clearTodoSemanticDebounce();
+    todoSemanticDeferred = false;
+    if (todoSemanticRankedView) {
+      todoSemanticRankedView = false;
+      filterTodos();
+      renderTodos();
+    }
   }
 
   // Every call bumps the generation and drops any pending debounce, so
@@ -1116,11 +1138,7 @@
     todoSemanticGeneration += 1;
     clearTodoSemanticDebounce();
     if (!todoSearchQuery || !isTodoSemanticEnabled()) {
-      if (todoSemanticRankedView) {
-        todoSemanticRankedView = false;
-        filterTodos();
-        renderTodos();
-      }
+      dropTodoSemanticRankedView();
       return;
     }
     if (!isTodoSemanticReady()) {
@@ -1144,8 +1162,26 @@
   function handleTodoEmbeddingStatus(event) {
     const status = event && event.detail ? event.detail.status : null;
     // Download progress ticks change no ranking; only state transitions do.
-    if (status === 'loading' || !todoSearchQuery) return;
-    scheduleTodoSemanticRerank();
+    if (status === 'loading') return;
+    if (status === 'ready') {
+      if (todoSearchQuery) scheduleTodoSemanticRerank();
+      return;
+    }
+    // Leaving ready (Delete, error) drops the relevance view. Going through
+    // scheduleTodoSemanticRerank here would re-trigger the passive model load.
+    if (todoSemanticRankedView) dropTodoSemanticRankedView();
+  }
+
+  // Applies a rerank that was deferred while a row was focused or dragged.
+  function flushDeferredTodoSemanticRerank() {
+    if (!todoSemanticDeferred) return;
+    todoSemanticDeferred = false;
+    if (todoSearchQuery) scheduleTodoSemanticRerank();
+  }
+
+  function handleTodoListFocusOut() {
+    // Focus moves after focusout, so check the gesture on the next tick.
+    setTimeout(flushDeferredTodoSemanticRerank, 0);
   }
 
   // Settings calls this when the shared semantic flag changes so the list
@@ -2495,6 +2531,7 @@ function handleDragStart(event) {
 function handleDragEnd(event) {
   event.target.style.opacity = '1';
   draggedElement = null;
+  flushDeferredTodoSemanticRerank();
 }
 
 function handleDragOver(event) {
@@ -3596,6 +3633,7 @@ function initTodo() {
   // Drag and drop
   elements.todoList.addEventListener('dragstart', handleDragStart);
   elements.todoList.addEventListener('dragend', handleDragEnd);
+  elements.todoList.addEventListener('focusout', handleTodoListFocusOut);
   elements.todoList.addEventListener('dragover', handleDragOver);
   elements.todoList.addEventListener('drop', handleDrop);
 
