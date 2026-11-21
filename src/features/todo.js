@@ -213,6 +213,12 @@
   }
 
   window.addEventListener('storageBridgeWriteError', (event) => {
+    // A rejected corrupt-payload backup rolls back the backup key, so keep the raw
+    // payload pending; the next saveTodos() retries the backup before overwriting.
+    if (event?.detail?.key === 'todos_corrupt_backup' && typeof event.detail.value === 'string') {
+      pendingCorruptRaw = event.detail.value;
+      return;
+    }
     if (event?.detail?.key !== 'todos') return;
 
     setTimeout(() => {

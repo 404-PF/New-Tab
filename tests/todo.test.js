@@ -102,7 +102,22 @@ describe('Todo persistence', () => {
       expect(localStorage.getItem('todos')).toBe('not-json');
     } finally {
       setItemSpy.mockRestore();
-      expect(saveTodos([])).toBe(true);
+      saveTodos([]); // clears pendingCorruptRaw left by the rejected backup write
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('retries the corrupt todos backup when its rejected write is reported asynchronously', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      localStorage.removeItem('todos_corrupt_backup');
+      window.dispatchEvent(new CustomEvent('storageBridgeWriteError', {
+        detail: { key: 'todos_corrupt_backup', value: 'not-json' }
+      }));
+
+      expect(saveTodos([{ id: '1', text: 'Fresh', completed: false }])).toBe(true);
+      expect(localStorage.getItem('todos_corrupt_backup')).toBe('not-json');
+    } finally {
       warnSpy.mockRestore();
     }
   });
