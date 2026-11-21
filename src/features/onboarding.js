@@ -141,11 +141,13 @@ class OnboardingTour {
 
   // Define all onboarding steps
   defineSteps() {
-    return [
+    const steps = [
       {
         id: 'language',
-        title: window.translate('onboardingLanguageTitle', 'Choose Your Language 🌐'),
-        content: window.translate('onboardingLanguageContent', 'Select your preferred language for the interface. You can change this later in Settings.'),
+        titleKey: 'onboardingLanguageTitle',
+        title: 'Choose Your Language 🌐',
+        contentKey: 'onboardingLanguageContent',
+        content: 'Select your preferred language for the interface. You can change this later in Settings.',
         target: null,
         position: 'center',
         action: 'select-language',
@@ -153,8 +155,10 @@ class OnboardingTour {
       },
       {
         id: 'theme',
-        title: window.translate('onboardingThemeTitle', 'Choose Your Theme 🌙'),
-        content: window.translate('onboardingThemeContent', 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.'),
+        titleKey: 'onboardingThemeTitle',
+        title: 'Choose Your Theme 🌙',
+        contentKey: 'onboardingThemeContent',
+        content: 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.',
         target: null,
         position: 'center',
         action: 'select-theme',
@@ -162,8 +166,10 @@ class OnboardingTour {
       },
       {
         id: 'welcome',
-        title: window.translate('onboardingWelcomeTitle', 'Welcome to New-Tab! 🎉'),
-        content: window.translate('onboardingWelcomeContent', 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.'),
+        titleKey: 'onboardingWelcomeTitle',
+        title: 'Welcome to New-Tab! 🎉',
+        contentKey: 'onboardingWelcomeContent',
+        content: 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.',
         target: null,
         position: 'center',
         action: null,
@@ -171,8 +177,10 @@ class OnboardingTour {
       },
       {
         id: 'clock',
-        title: window.translate('onboardingClockTitle', 'Clock & Date Display'),
-        content: window.translate('onboardingClockContent', 'Your current time and date are displayed here. You can customize the appearance in Settings.'),
+        titleKey: 'onboardingClockTitle',
+        title: 'Clock & Date Display',
+        contentKey: 'onboardingClockContent',
+        content: 'Your current time and date are displayed here. You can customize the appearance in Settings.',
         target: '#clock',
         position: 'bottom',
         action: null,
@@ -180,8 +188,10 @@ class OnboardingTour {
       },
       {
         id: 'search',
-        title: window.translate('onboardingSearchTitle', 'Web Search'),
-        content: window.translate('onboardingSearchContent', 'Search the web from your new tab using your browser\'s default search provider.'),
+        titleKey: 'onboardingSearchTitle',
+        title: 'Web Search',
+        contentKey: 'onboardingSearchContent',
+        content: 'Search the web from your new tab using your browser\'s default search provider.',
         target: '.search-bar',
         position: 'bottom',
         action: null,
@@ -189,8 +199,10 @@ class OnboardingTour {
       },
       {
         id: 'apps',
-        title: window.translate('onboardingAppsTitle', 'App Shortcuts'),
-        content: window.translate('onboardingAppsContent', 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.'),
+        titleKey: 'onboardingAppsTitle',
+        title: 'App Shortcuts',
+        contentKey: 'onboardingAppsContent',
+        content: 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.',
         target: '#app-grid',
         position: 'top',
         action: 'add-app',
@@ -198,8 +210,10 @@ class OnboardingTour {
       },
       {
         id: 'background',
-        title: window.translate('onboardingBackgroundTitle', 'Beautiful Backgrounds'),
-        content: window.translate('onboardingBackgroundContent', 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.'),
+        titleKey: 'onboardingBackgroundTitle',
+        title: 'Beautiful Backgrounds',
+        contentKey: 'onboardingBackgroundContent',
+        content: 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.',
         target: 'body',
         position: 'center',
         action: null,
@@ -207,8 +221,10 @@ class OnboardingTour {
       },
       {
         id: 'motto',
-        title: window.translate('onboardingMottoTitle', 'Daily Inspiration'),
-        content: window.translate('onboardingMottoContent', 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.'),
+        titleKey: 'onboardingMottoTitle',
+        title: 'Daily Inspiration',
+        contentKey: 'onboardingMottoContent',
+        content: 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.',
         target: '#motto-container',
         position: 'top',
         action: null,
@@ -216,8 +232,10 @@ class OnboardingTour {
       },
       {
         id: 'settings',
-        title: window.translate('onboardingSettingsTitle', 'Customization Center'),
-        content: window.translate('onboardingSettingsContent', 'Click the gear icon to access extensive customization options for themes, styling, and more.'),
+        titleKey: 'onboardingSettingsTitle',
+        title: 'Customization Center',
+        contentKey: 'onboardingSettingsContent',
+        content: 'Click the gear icon to access extensive customization options for themes, styling, and more.',
         target: '#settings-modal',
         position: 'left',
         action: 'open-settings',
@@ -225,14 +243,21 @@ class OnboardingTour {
       },
       {
         id: 'complete',
-        title: window.translate('onboardingCompleteTitle', 'You\'re All Set! ✨'),
-        content: window.translate('onboardingCompleteContent', 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.'),
+        titleKey: 'onboardingCompleteTitle',
+        title: 'You\'re All Set! ✨',
+        contentKey: 'onboardingCompleteContent',
+        content: 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.',
         target: null,
         position: 'center',
         action: null,
         waitForAction: false
       }
     ];
+    return steps.map(({ titleKey, contentKey, ...step }) => ({
+      ...step,
+      title: window.translate(titleKey, step.title),
+      content: window.translate(contentKey, step.content)
+    }));
   }
 
   // Initialize and start the tour (optionally from a saved step)
