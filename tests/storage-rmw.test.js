@@ -382,6 +382,39 @@ describe('null merge base for keys absent at session start', () => {
     expect(merged).toEqual([{ id: 't1', title: 'buy milk', completed: true }]);
   });
 
+  it('does not duplicate a legacy AI message when two tabs assign it different IDs', () => {
+    const legacyMessage = { role: 'user', content: 'Hello', timestamp: 100 };
+    const baseConversation = { id: 'conversation-legacy', title: 'Chat', messages: [legacyMessage], createdAt: 1, updatedAt: 1 };
+    const { context: tabA, persisted } = createStorageContext({ ai_conversations: JSON.stringify([baseConversation]) });
+    const tabB = vm.createContext({
+      localStorage: {
+        getItem: key => (persisted.has(key) ? persisted.get(key) : null),
+        setItem: (key, value) => {
+          persisted.set(key, String(value));
+          return true;
+        }
+      },
+      console
+    });
+    injectScript('src/core/storage-rmw.js', tabB);
+
+    tabA.localStorage.getItem('ai_conversations');
+    tabB.localStorage.getItem('ai_conversations');
+    tabA.localStorage.setItem('ai_conversations', JSON.stringify([{
+      ...baseConversation,
+      messages: [{ ...legacyMessage, id: 'generated-by-tab-a' }],
+      updatedAt: 2
+    }]));
+    tabB.localStorage.setItem('ai_conversations', JSON.stringify([{
+      ...baseConversation,
+      messages: [{ ...legacyMessage, id: 'generated-by-tab-b' }],
+      updatedAt: 3
+    }]));
+
+    const merged = JSON.parse(persisted.get('ai_conversations'))[0];
+    expect(merged.messages.filter(message => message.content === 'Hello')).toHaveLength(1);
+  });
+
   // Regression for the CI failure left by #917 on main: the null-base path now
   // unions concurrent items, which is right for a concurrent *add* but makes a
   // deletion inexpressible. After this tab removes a target key the wrapper

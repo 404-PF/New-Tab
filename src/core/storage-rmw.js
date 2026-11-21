@@ -109,23 +109,29 @@
   }
 
   /** Resolve an array entry key using its ID or deterministic legacy identity. */
-  function getArrayKey(value) {
+  function getArrayKey(value, baseKeys) {
     const id = getId(value);
-    if (id) return 'id:' + id;
-
     const deterministicIdentity = getDeterministicIdentity(value);
-    if (!deterministicIdentity) return null;
+    const legacyKey = deterministicIdentity ? 'legacy:' + deterministicIdentity : null;
 
-    return 'legacy:' + deterministicIdentity;
+    if (id) {
+      const idKey = 'id:' + id;
+      if (!baseKeys || baseKeys.has(idKey)) return idKey;
+      // The base holds this entry without an ID (legacy), and this tab assigned one since; keep the legacy key so the entry isn't duplicated.
+      if (legacyKey && baseKeys.has(legacyKey)) return legacyKey;
+      return idKey;
+    }
+
+    return legacyKey;
   }
 
   /** Index array entries by stable IDs or deterministic legacy identities. */
-  function createArrayMap(values) {
+  function createArrayMap(values, baseKeys = null) {
     const map = new Map();
     const order = [];
 
     for (const value of values) {
-      const key = getArrayKey(value);
+      const key = getArrayKey(value, baseKeys);
       if (!key || map.has(key)) return null;
       map.set(key, value);
       order.push(key);
@@ -191,8 +197,9 @@
     const baseArray = createArrayMap(base);
     if (!baseArray) return clone(candidate);
 
-    const currentArray = createArrayMap(current);
-    const candidateArray = createArrayMap(candidate);
+    const baseKeys = new Set(baseArray.map.keys());
+    const currentArray = createArrayMap(current, baseKeys);
+    const candidateArray = createArrayMap(candidate, baseKeys);
     if (!currentArray || !candidateArray) return clone(candidate);
 
     const result = new Map();
