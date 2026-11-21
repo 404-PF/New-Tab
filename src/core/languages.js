@@ -1576,18 +1576,32 @@ function isSupportedLocaleCode(code) {
 
 // Appends the locale script with the same pattern bootstrap.js uses for
 // scriptSources (extension-page CSP allows same-origin 'self' scripts).
+function getValidatedLocaleScriptSource(source) {
+  if (typeof source !== 'string') return null;
+  if (!source.startsWith(LOCALE_SCRIPT_DIR) || !source.endsWith('.js')) return null;
+  const code = source.slice(LOCALE_SCRIPT_DIR.length, -3);
+  // Rebuild the path from the trusted SUPPORTED_LANGUAGES entry rather than
+  // reusing the input string, so only allowlisted values reach script.src.
+  const supported = SUPPORTED_LANGUAGES.find(function (language) {
+    return language.code === code;
+  });
+  if (!supported) return null;
+  return LOCALE_SCRIPT_DIR + supported.code + '.js';
+}
+
 function loadLocaleScript(source) {
   return new Promise(function (resolve, reject) {
-    if (!/^src\/core\/locales\/[a-z]{2,3}\.js$/.test(source)) {
-      reject(new Error('Refusing to load unexpected locale source ' + source));
+    const safeSource = getValidatedLocaleScriptSource(source);
+    if (!safeSource) {
+      reject(new Error('Failed to load invalid locale script source'));
       return;
     }
     const script = document.createElement('script');
-    script.src = source;
+    script.src = safeSource;
     script.async = false;
     script.onload = resolve;
     script.onerror = function () {
-      reject(new Error('Failed to load ' + source));
+      reject(new Error('Failed to load ' + safeSource));
     };
     document.body.appendChild(script);
   });
