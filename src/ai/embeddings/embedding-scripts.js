@@ -20,7 +20,8 @@
     'src/ai/embeddings/harrier-provider.js',
     'src/ai/embeddings/notes-vector-cache.js',
     'src/ai/embeddings/embedding-service.js',
-    'src/ai/embeddings/notes-semantic-search.js'
+    'src/ai/embeddings/notes-semantic-search.js',
+    'src/ai/embeddings/app-semantic-search.js'
   ];
 
   let scriptsPromise = null;
