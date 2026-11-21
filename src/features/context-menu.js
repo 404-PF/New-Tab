@@ -60,7 +60,9 @@ function setContextMenuPreviewIcon(previewIcon, iconUrl) {
 
   previewIcon.textContent = '';
 
-  const normalizedIconUrl = typeof iconUrl === 'string' ? iconUrl.trim() : '';
+  const normalizedIconUrl = typeof iconUrl === 'string' && typeof window.validateIconUrl === 'function'
+    ? window.validateIconUrl(iconUrl)
+    : (typeof iconUrl === 'string' ? iconUrl.trim() : '');
   if (!normalizedIconUrl) {
     previewIcon.appendChild(createFallbackIconSvg());
     return;
