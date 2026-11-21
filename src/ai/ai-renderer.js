@@ -29,12 +29,12 @@ const AIRenderer = (function() {
     tooltipTimeout: null
   };
 
-  function getTranslation(key) {
+  function getTranslation(key, fallbacks = TRANSLATION_FALLBACKS) {
     if (window.i18n && window.i18n.t) {
       const translated = window.i18n.t(key);
       if (translated && translated !== key) return translated;
     }
-    return TRANSLATION_FALLBACKS[key] || key;
+    return fallbacks[key] || key;
   }
 
   function cacheElements() {
@@ -1132,6 +1132,7 @@ const AIRenderer = (function() {
   return {
     cacheElements,
     getElements,
+    getTranslation,
     resizeChatInput,
     hasModal,
     initWebGroundingControl,
