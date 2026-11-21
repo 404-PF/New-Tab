@@ -478,18 +478,24 @@ async function showTodoNotification(todo, dueDisplay) {
   }
 }
 
+function isValidRecurrenceAnchorDay(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 31;
+}
+
 // Advance a YYYY-MM-DD due date by one recurrence step until it lands strictly
 // after the current local day (mirror of getNextDueDate in src/features/todo.js,
 // including the month-safe monthly anchor clamp — SYNC), so completing a
 // recurring todo from a notification reschedules it instead of closing it out.
-function advanceDueDate(dueDate, recurrence) {
+function advanceDueDate(dueDate, recurrence, recurrenceAnchorDay) {
   if (!RECURRENCE_VALUES.includes(recurrence)) return dueDate;
   const parsed = parseDueDate(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const base = parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : new Date(today);
   base.setHours(0, 0, 0, 0);
-  const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
+  const monthlyAnchorDay = recurrence === 'monthly'
+    ? (isValidRecurrenceAnchorDay(recurrenceAnchorDay) ? recurrenceAnchorDay : base.getDate())
+    : null;
   do {
     if (recurrence === 'daily') {
       base.setDate(base.getDate() + 1);
@@ -539,6 +545,10 @@ async function markTodoDoneFromNotification(todoId) {
   // the uninitialized sentinel and skip its first advance.
   let advancedDueDate = null;
   let hasAdvanced = false;
+  // Monthly anchor derived from the still-unclamped due date. Reused on retries
+  // so a page snapshot that already holds the advanced (clamped) date is never
+  // re-anchored from it (mirror of ensureMonthlyRecurrenceAnchor in todo.js).
+  let seededAnchorDay = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const todos = parseTodosPayload(todosJson, null);
     let todosChanged = false;
@@ -546,8 +556,15 @@ async function markTodoDoneFromNotification(todoId) {
       const todo = todos.find((t) => t && t.id === todoId && !t.completed);
       if (todo) {
         if (RECURRENCE_VALUES.includes(todo.recurrence)) {
+          if (todo.recurrence === 'monthly' && !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+            if (seededAnchorDay === null) {
+              const parsedDue = parseDueDate(todo.dueDate);
+              seededAnchorDay = parsedDue ? parsedDue.getDate() : new Date().getDate();
+            }
+            todo.recurrenceAnchorDay = seededAnchorDay;
+          }
           if (!hasAdvanced || todo.dueDate !== advancedDueDate) {
-            advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+            advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
             hasAdvanced = true;
             todo.dueDate = advancedDueDate;
           }

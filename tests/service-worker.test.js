@@ -845,6 +845,45 @@ describe('todo reminder notification actions (issue #1233)', () => {
     expect(chrome.notifications._notifications['todo_reminder_weekly']).toBeUndefined();
   });
 
+  it('keeps a persisted monthly anchor across clamped months on Mark done (issue #1383)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 1, 28, 23, 50, 0));
+    await seedReminder([
+      {
+        id: 'monthly',
+        text: 'Pay rent',
+        completed: false,
+        dueDate: '2026-02-28',
+        recurrence: 'monthly',
+        recurrenceAnchorDay: 31
+      }
+    ]);
+    await checkReminders();
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_monthly', 0);
+    await flushAction();
+
+    const todos = JSON.parse((await chrome.storage.local.get('todos')).todos);
+    expect(todos[0].dueDate).toBe('2026-03-31');
+    expect(todos[0].recurrenceAnchorDay).toBe(31);
+  });
+
+  it('seeds a missing monthly anchor from the unclamped due date on Mark done (issue #1383)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 31, 23, 50, 0));
+    await seedReminder([
+      { id: 'legacy', text: 'Pay rent', completed: false, dueDate: '2026-01-31', recurrence: 'monthly' }
+    ]);
+    await checkReminders();
+
+    chrome.notifications.onButtonClicked._listeners[0]('todo_reminder_legacy', 0);
+    await flushAction();
+
+    const todos = JSON.parse((await chrome.storage.local.get('todos')).todos);
+    expect(todos[0].dueDate).toBe('2026-02-28');
+    expect(todos[0].recurrenceAnchorDay).toBe(31);
+  });
+
   it('does not skip the next occurrence when a page save already advanced a recurring todo', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 7, 11, 23, 50, 0));
