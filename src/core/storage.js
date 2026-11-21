@@ -1,4 +1,12 @@
 (function () {
+  // Installed first so shared call sites keep working even if the rest of this
+  // file fails during setup. The storage bridge's setItem returns false when it
+  // rejects a write; the native Storage API returns undefined. Treat only an
+  // explicit false as failure.
+  window.isStorageWriteAccepted = function (result) {
+    return result !== false;
+  };
+
   const nativeLocalStorage = globalThis.localStorage;
   const cache = new Map();
   let hydrationStarted = false;
@@ -1196,13 +1204,6 @@
   if (!getStorageArea()) {
     resolveStorageReady();
   }
-
-  // The storage bridge's setItem returns false when it rejects a write; the
-  // native Storage API returns undefined. Treat only an explicit false as
-  // failure.
-  window.isStorageWriteAccepted = function (result) {
-    return result !== false;
-  };
 
   try {
     Object.defineProperty(globalThis, 'localStorage', {
