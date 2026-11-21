@@ -212,12 +212,6 @@ const AIRenderer = (function() {
     updateWebGroundingControl(isOffline);
   }
 
-  function escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
-
   function formatTopicTime(timestamp) {
     const now = Date.now();
     const diff = now - timestamp;
@@ -679,12 +673,12 @@ const AIRenderer = (function() {
     const sources = extractSourceLinks(message.content);
     if (sources.length === 0) return '';
     const items = sources.map(source => {
-      const safeUrl = escapeHTML(source.url).replaceAll('"', '&quot;');
-      const safeLabel = escapeHTML(source.label);
+      const safeUrl = window.escapeHtml(source.url);
+      const safeLabel = window.escapeHtml(source.label);
       return '<li><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeLabel + '</a></li>';
     }).join('');
     return '<div class="ai-message-sources"><div class="ai-message-sources-title">'
-      + escapeHTML(getTranslation('aiSources')) + '</div><ul>' + items + '</ul></div>';
+      + window.escapeHtml(getTranslation('aiSources')) + '</div><ul>' + items + '</ul></div>';
   }
 
   function updateMessageSources(element, message) {
@@ -708,9 +702,9 @@ const AIRenderer = (function() {
   function renderContextNotesHTML(message) {
     const titles = Array.isArray(message?.contextSources) ? message.contextSources : [];
     if (titles.length === 0) return '';
-    const items = titles.map(title => '<li>' + escapeHTML(String(title)) + '</li>').join('');
+    const items = titles.map(title => '<li>' + window.escapeHtml(String(title)) + '</li>').join('');
     return '<div class="ai-message-context"><div class="ai-message-context-title">'
-      + escapeHTML(getTranslation('aiContextNotesUsed')) + '</div><ul>' + items + '</ul></div>';
+      + window.escapeHtml(getTranslation('aiContextNotesUsed')) + '</div><ul>' + items + '</ul></div>';
   }
 
   function getMessageHTML(message) {
@@ -720,8 +714,8 @@ const AIRenderer = (function() {
     const content = isStreaming ? (message.content || '') : message.content;
 
     const renderedContent = isUser
-      ? escapeHTML(content)
-      : window.MarkdownParser ? window.MarkdownParser.parse(content) : escapeHTML(content);
+      ? window.escapeHtml(content)
+      : window.MarkdownParser ? window.MarkdownParser.parse(content) : window.escapeHtml(content);
 
     const wrapper = document.createElement('div');
     wrapper.className = `ai-message ${isUser ? 'ai-message-user' : 'ai-message-assistant'}`;
@@ -818,8 +812,8 @@ const AIRenderer = (function() {
 
       const isStreaming = message.isStreaming;
       const renderedContent = message.role === 'user'
-        ? escapeHTML(message.content || '')
-        : (window.MarkdownParser ? window.MarkdownParser.parse(message.content || '') : escapeHTML(message.content || ''));
+        ? window.escapeHtml(message.content || '')
+        : (window.MarkdownParser ? window.MarkdownParser.parse(message.content || '') : window.escapeHtml(message.content || ''));
 
       let el = id ? existing.get(id) : null;
 
@@ -1221,8 +1215,7 @@ const AIRenderer = (function() {
     updateStreamingContent,
     clearMarkdownCache,
     getMarkdownCacheStats,
-    formatTopicTime,
-    escapeHTML
+    formatTopicTime
   };
 })();
 

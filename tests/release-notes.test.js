@@ -2,6 +2,7 @@ import { injectScript } from './helpers/inject-script.js';
 
 describe('ReleaseNotes', () => {
   beforeAll(() => {
+    injectScript('src/core/utils.js');
     injectScript('src/features/release-notes.js');
   });
 
