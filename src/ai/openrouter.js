@@ -352,6 +352,57 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Build the result returned when the caller cancels a request.
+   * @returns {Object} Cancelled result object
+   */
+  function cancelledResult() {
+    return {
+      success: false,
+      error: 'Request cancelled',
+      aborted: true
+    };
+  }
+
+  /**
+   * Classify a single SSE line without side effects.
+   * @param {string} line - One line from the SSE stream
+   * @returns {{kind: 'skip'|'done'|'error'|'content'|'parse-error', error?:*, content?: string}}
+   */
+  function parseSseDataLine(line) {
+    if (!line.startsWith('data: ')) {
+      return { kind: 'skip' };
+    }
+
+    const data = line.slice(6).trim();
+
+    if (data === '[DONE]') {
+      return { kind: 'done' };
+    }
+
+    if (!data) {
+      return { kind: 'skip' };
+    }
+
+    try {
+      const parsed = JSON.parse(data);
+      // Mid-stream failures arrive as HTTP 200 events carrying an error payload.
+      if (parsed.error || parsed.choices?.[0]?.error || parsed.choices?.[0]?.finish_reason === 'error') {
+        return {
+          kind: 'error',
+          error: parsed.error || parsed.choices?.[0]?.error || { message: 'finish_reason: error' }
+        };
+      }
+      const content = parsed.choices?.[0]?.delta?.content;
+      if (content) {
+        return { kind: 'content', content };
+      }
+      return { kind: 'skip' };
+    } catch (parseError) {
+      return { kind: 'parse-error', error: parseError };
+    }
+  }
+
+  /**
    * Send streaming chat completion request
    * @param {string} userMessage - User's message
    * @param {Array} conversationHistory - Previous messages
@@ -404,11 +455,7 @@ const OpenRouterAPI = (function() {
 
     for (let attempt = 0; attempt <= CONFIG.maxRetries; attempt++) {
       if (signal?.aborted) {
-        return {
-          success: false,
-          error: 'Request cancelled',
-          aborted: true
-        };
+        return cancelledResult();
       }
 
       let fullContent = '';
@@ -473,41 +520,21 @@ const OpenRouterAPI = (function() {
           let streamError = null;
 
           const processSseLine = (line) => {
-            if (!line.startsWith('data: ')) {
-              return;
-            }
+            const event = parseSseDataLine(line);
 
-            const data = line.slice(6).trim();
-
-            // Check for [DONE] signal
-            if (data === '[DONE]') {
-              return;
-            }
-
-            if (!data) {
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              // Mid-stream failures arrive as HTTP 200 events carrying an error payload.
-              if (parsed.error || parsed.choices?.[0]?.error || parsed.choices?.[0]?.finish_reason === 'error') {
-                streamError = parsed.error || parsed.choices?.[0]?.error || { message: 'finish_reason: error' };
-                return;
-              }
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                fullContent += content;
-                if (onChunk) {
-                  try {
-                    onChunk(content);
-                  } catch (chunkError) {
-                    console.error('Error in streaming callback:', chunkError);
-                  }
+            if (event.kind === 'error') {
+              streamError = event.error;
+            } else if (event.kind === 'content') {
+              fullContent += event.content;
+              if (onChunk) {
+                try {
+                  onChunk(event.content);
+                } catch (chunkError) {
+                  console.error('Error in streaming callback:', chunkError);
                 }
               }
-            } catch (parseError) {
-              console.debug('Failed to parse OpenRouter SSE data:', parseError);
+            } else if (event.kind === 'parse-error') {
+              console.debug('Failed to parse OpenRouter SSE data:', event.error);
             }
           };
 
@@ -583,11 +610,7 @@ const OpenRouterAPI = (function() {
       } catch (e) {
         // A caller-triggered abort should never be retried.
         if (signal?.aborted) {
-          return {
-            success: false,
-            error: 'Request cancelled',
-            aborted: true
-          };
+          return cancelledResult();
         }
 
         // Internal timeout and other transport errors are retryable when no
@@ -632,11 +655,7 @@ const OpenRouterAPI = (function() {
         const shouldRetry = await waitForRetryDelay(delay, signal);
 
         if (!shouldRetry && signal?.aborted) {
-          return {
-            success: false,
-            error: 'Request cancelled',
-            aborted: true
-          };
+          return cancelledResult();
         }
       }
     }
