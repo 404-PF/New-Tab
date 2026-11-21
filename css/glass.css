@@ -160,6 +160,12 @@ body.light-theme :is(
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
+/* The elevated group above carries an id-level :is() argument, so the menu's
+   light-theme shadow needs an id too to drop its white inset ring. */
+body.light-theme #app-context-menu.app-context-menu {
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+}
+
 /* #875: the settings overlay owns the only live blur; a second
    backdrop-filter on the dialog would stack on top of it while the modal
    animates. */
