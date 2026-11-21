@@ -11,6 +11,7 @@ const createElement = (tag, id) => {
 
 describe('AppGridState folder methods', () => {
   beforeAll(() => {
+    injectScript('src/core/utils.js');
     injectScript('src/core/app-grid-storage.js');
     injectScript('src/core/app-grid-state.js');
   });

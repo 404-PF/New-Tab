@@ -799,7 +799,22 @@
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
 
+  // RFC 4122 v4 UUID, preferring crypto.randomUUID when available.
+  function generateUuidV4() {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    randomBytes[6] = (randomBytes[6] & 0x0f) | 0x40;
+    randomBytes[8] = (randomBytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
   // Make utilities available globally
+  window.generateUuidV4 = generateUuidV4;
   window.formatLocalDateISO = formatLocalDateISO;
   window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
