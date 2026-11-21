@@ -109,28 +109,23 @@
   }
 
   /** Resolve an array entry key using its ID or deterministic legacy identity. */
-  function getArrayKey(value, baseKeys) {
+  function getArrayKey(value) {
     const id = getId(value);
-    if (id) {
-      const idKey = 'id:' + id;
-      if (!baseKeys || baseKeys.has(idKey)) return idKey;
-    }
+    if (id) return 'id:' + id;
 
     const deterministicIdentity = getDeterministicIdentity(value);
     if (!deterministicIdentity) return null;
 
-    const legacyKey = 'legacy:' + deterministicIdentity;
-    if (baseKeys?.has(legacyKey)) return legacyKey;
-    return legacyKey;
+    return 'legacy:' + deterministicIdentity;
   }
 
   /** Index array entries by stable IDs or deterministic legacy identities. */
-  function createArrayMap(values, baseKeys = null) {
+  function createArrayMap(values) {
     const map = new Map();
     const order = [];
 
     for (const value of values) {
-      const key = getArrayKey(value, baseKeys);
+      const key = getArrayKey(value);
       if (!key || map.has(key)) return null;
       map.set(key, value);
       order.push(key);
@@ -196,9 +191,8 @@
     const baseArray = createArrayMap(base);
     if (!baseArray) return clone(candidate);
 
-    const baseKeys = new Set(baseArray.map.keys());
-    const currentArray = createArrayMap(current, baseKeys);
-    const candidateArray = createArrayMap(candidate, baseKeys);
+    const currentArray = createArrayMap(current);
+    const candidateArray = createArrayMap(candidate);
     if (!currentArray || !candidateArray) return clone(candidate);
 
     const result = new Map();
@@ -244,10 +238,10 @@
 
   /** Merge concurrent arrays that share no merge base, keying entries by ID. */
   function mergeConcurrentArrays(current, candidate) {
-    const currentArray = createArrayMap(current, null);
+    const currentArray = createArrayMap(current);
     if (!currentArray) return clone(candidate);
 
-    const candidateArray = createArrayMap(candidate, null);
+    const candidateArray = createArrayMap(candidate);
     if (!candidateArray) return clone(candidate);
 
     // An empty candidate is a deletion, not an "unmentioned" write. Without a
