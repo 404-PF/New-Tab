@@ -1325,7 +1325,7 @@ function launchSemanticAppMatch(app) {
 // dropdown behaves exactly as before. Stale responses are dropped by sequence.
 function refreshSemanticAppMatches() {
   const sequence = ++semanticAppRequestSequence;
-  const query = searchInputElement ? searchInputElement.value.trim() : '';
+  const query = searchInputElement ? resolveSearchQuery(searchInputElement.value.trim()).query : '';
   semanticAppMatches = [];
 
   let enabled;
@@ -1341,11 +1341,8 @@ function refreshSemanticAppMatches() {
   }
 
   window.EmbeddingScripts.ensureScripts()
+    .catch(() => {})
     .then(() => {
-      const service = window.EmbeddingService;
-      if (!service || typeof service.isReady !== 'function' || !service.isReady()) {
-        return [];
-      }
       const apps = typeof window.getAllAppData === 'function' ? window.getAllAppData() : [];
       const folders = window.AppFolders && typeof window.AppFolders.getFolders === 'function'
         ? window.AppFolders.getFolders()
@@ -1574,6 +1571,7 @@ function initSearchEngine() {
 
   searchInputElement.addEventListener('focus', function () {
     isSearchInputFocused = true;
+    refreshSemanticAppMatches();
     renderSearchHistorySuggestions();
   });
 
