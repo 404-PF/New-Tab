@@ -71,6 +71,7 @@ describe('context menu previews', () => {
     const appIcon = createElement('a', 'app-1');
     appIcon.className = 'app-icon custom-app';
 
+    injectScript('src/core/utils.js');
     injectScript('src/features/context-menu.js');
   });
 
