@@ -28,6 +28,7 @@ const stubElements = () => {
 
 beforeAll(() => {
   stubElements();
+  injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
