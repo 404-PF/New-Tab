@@ -116,10 +116,26 @@ describe('Background readability overlay (#709)', () => {
     expect(css).not.toMatch(/\.background-video\.active:not\(\[data-reduced-motion-paused="true"\]\)\s*\{/);
     expect(css).not.toMatch(/\.background-overlay\s*\{[^}]*transition:/);
 
-    const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
-    expect(reduced).toBeTruthy();
-    expect(reduced[0]).toMatch(/\.background-transition-overlay\s*\{[^}]*transition:\s*none;/);
-    expect(reduced[0]).not.toMatch(/\.background-overlay/);
+    const reducedStart = css.indexOf('@media (prefers-reduced-motion: reduce)');
+    let reducedBlock = null;
+    if (reducedStart !== -1) {
+      const openBrace = css.indexOf('{', reducedStart);
+      if (openBrace !== -1) {
+        let depth = 0;
+        for (let i = openBrace; i < css.length; i += 1) {
+          if (css[i] === '{') depth += 1;
+          else if (css[i] === '}') depth -= 1;
+
+          if (depth === 0) {
+            reducedBlock = css.slice(reducedStart, i + 1);
+            break;
+          }
+        }
+      }
+    }
+    expect(reducedBlock).toBeTruthy();
+    expect(reducedBlock).toMatch(/\.background-transition-overlay\s*\{[^}]*transition:\s*none;/);
+    expect(reducedBlock).not.toMatch(/\.background-overlay/);
     expect(css).toMatch(/body\.light-theme #bg-overlay-section input\[type="range"\]/);
     expect(css).not.toMatch(/body\.simple-mode[^{]*\.background-overlay/);
     expect(css).not.toMatch(/data-focus-mode[^{]*\.background-overlay/);
