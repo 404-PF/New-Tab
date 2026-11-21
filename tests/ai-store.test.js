@@ -1764,6 +1764,9 @@ describe('AIStore semantic conversation search (#1328)', () => {
 
     window.EmbeddingService.isReady = () => false;
     expect(AIStore.getFilteredConversations()).toHaveLength(0);
+
+    AIStore.setSearchQuery('pipeline');
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-ci']);
   });
 
   it('ignores a semantic match once the conversation list changes', async () => {
