@@ -1736,12 +1736,41 @@ describe('AIStore semantic conversation search (#1328)', () => {
   });
 
   it('drops a stale semantic result once the query changes', async () => {
+    let resolveQuery;
+    let queryStarted;
+    const embedStarted = new Promise(resolve => { queryStarted = resolve; });
+    window.EmbeddingService.embedQuery = () => new Promise(resolve => {
+      resolveQuery = resolve;
+      queryStarted();
+    });
+
     AIStore.setSearchQuery('deployment bug');
-    await AIStore.rankConversationsSemantically();
+    const pending = AIStore.rankConversationsSemantically();
+    await embedStarted;
     AIStore.setSearchQuery('deployment');
+    resolveQuery(vectorFor('deployment bug'));
+
+    await expect(pending).resolves.toBe(false);
     expect(AIStore.state.semanticMatch).toBeNull();
     expect(AIStore.getFilteredConversations()).toHaveLength(0);
     AIStore.setSearchQuery('sourdough');
     expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-bread']);
+  });
+
+  it('falls back to keyword results when the model becomes unavailable', async () => {
+    AIStore.setSearchQuery('deployment bug');
+    await AIStore.rankConversationsSemantically();
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-ci']);
+
+    window.EmbeddingService.isReady = () => false;
+    expect(AIStore.getFilteredConversations()).toHaveLength(0);
+  });
+
+  it('ignores a semantic match once the conversation list changes', async () => {
+    AIStore.setSearchQuery('deployment bug');
+    await AIStore.rankConversationsSemantically();
+
+    AIStore.state.conversations.push({ id: 'conv-deploy', title: 'Deployment bug', messages: [], updatedAt: 3 });
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-deploy']);
   });
 });
