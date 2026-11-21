@@ -1122,6 +1122,9 @@ const AIService = (function() {
       elements.topicsSearch.addEventListener('input', event => {
         AIStore.setSearchQuery(event.target.value);
         renderConversationUI({ renderMessages: false });
+        void AIStore.rankConversationsSemantically().then(applied => {
+          if (applied) renderConversationUI({ renderMessages: false });
+        });
       });
 
       elements.topicsSearch.addEventListener('keydown', event => {
