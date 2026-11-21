@@ -183,13 +183,13 @@
   function rankSimilarItems(targetVector, candidates, options) {
     const opts = options || {};
     const minScore = Number.isFinite(opts.minScore) ? opts.minScore : DEFAULT_RELATED_MIN_SCORE;
-    const maxResults = Number.isFinite(opts.maxResults) ? opts.maxResults : DEFAULT_RELATED_MAX_RESULTS;
+    const maxResults = Number.isFinite(opts.maxResults) ? Math.max(0, Math.floor(opts.maxResults)) : DEFAULT_RELATED_MAX_RESULTS;
     if (!Array.isArray(targetVector) || targetVector.length === 0) return [];
     const list = Array.isArray(candidates) ? candidates : [];
     const scored = [];
     for (let i = 0; i < list.length; i += 1) {
       const c = list[i];
-      if (!c || c.id === opts.excludeId || !Array.isArray(c.vector)) continue;
+      if (!c || c.id === opts.excludeId || !Array.isArray(c.vector) || c.vector.length !== targetVector.length) continue;
       const score = cosineSimilarity(targetVector, c.vector);
       if (score >= minScore) scored.push({ id: c.id, score });
     }

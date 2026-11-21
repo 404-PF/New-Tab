@@ -237,7 +237,7 @@ describe('NotesSemanticSearch.rankSimilarItems (issue #1331)', () => {
   });
 
   it('applies a stricter duplicate threshold and caps results', () => {
-    expect(S.rankSimilarItems(target, candidates, { minScore: S.DEFAULT_DUPLICATE_MIN_SCORE, maxResults: 1 }).map((r) => r.id))
+    expect(S.rankSimilarItems(target, candidates, { minScore: S.DEFAULT_DUPLICATE_MIN_SCORE, maxResults: 5 }).map((r) => r.id))
       .toEqual(['same']);
     expect(S.rankSimilarItems(target, candidates, { minScore: 0, maxResults: 2 })).toHaveLength(2);
   });

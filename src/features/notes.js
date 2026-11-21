@@ -640,7 +640,9 @@
           minScore: window.NotesSemanticSearch.DEFAULT_DUPLICATE_MIN_SCORE,
           maxResults: 1
         })[0];
-        if (best) renderDuplicateHint(noteId, best.id);
+        // Revalidate after the async cache read: the note may have been edited or deleted meanwhile.
+        const live = notes.find(function (n) { return n.id === noteId; });
+        if (best && live && live.text === textAtStart && isSemanticAvailableForSuggestions()) renderDuplicateHint(noteId, best.id);
       });
     }).catch(function () { /* suggestions are best-effort */ });
   }
@@ -657,6 +659,11 @@
   function handleRelatedFocusIn(e) {
     const ta = e.target && e.target.closest ? e.target.closest('.note-textarea') : null;
     if (ta) showRelatedFor(ta.dataset.id);
+  }
+
+  // Typing changes the subject note, so drop the stale panel and any in-flight results.
+  function handleRelatedInput(e) {
+    if (e.target && e.target.closest && e.target.closest('.note-textarea')) hideRelatedPanel();
   }
 
   // The embedding modules stay out of the bootstrap scriptSources path
@@ -1148,7 +1155,6 @@
       delete debounceTimers[id];
     }
     delete notePreviewModes[id];
-    _newNoteIds.delete(id);
     hideRelatedPanel();
     if (_duplicateHint && (_duplicateHint.noteId === id || _duplicateHint.matchId === id)) hideDuplicateHint();
     const previousNotes = notes.map(n => ({ ...n }));
@@ -1158,6 +1164,7 @@
       renderNotes();
       return;
     }
+    _newNoteIds.delete(id);
     invalidateNoteVector(id);
     bumpSemanticGeneration();
     renderNotes();
@@ -1179,7 +1186,7 @@
       return;
     }
     invalidateNoteVector(id);
-    if (_duplicateHint && _duplicateHint.noteId === id) hideDuplicateHint();
+    if (_duplicateHint && (_duplicateHint.noteId === id || _duplicateHint.matchId === id)) hideDuplicateHint();
     // Drop in-flight reranks (their base predates this edit) but do NOT
     // re-render here: the textarea is focused and typing must never churn
     // the list. Blur re-ranks via handleNotesBlur so stale membership
@@ -1996,6 +2003,7 @@
     document.removeEventListener('focusout', handleGripFocusOut);
     document.addEventListener('focusout', handleGripFocusOut);
     document.addEventListener('focusin', handleRelatedFocusIn);
+    document.addEventListener('input', handleRelatedInput);
     document.addEventListener('click', handleRelatedClick);
     // 'embedding-status' is subscribed once at file scope below; DOM
     // dedupes identical listeners, so initNotes must not re-add it here.

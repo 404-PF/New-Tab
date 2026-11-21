@@ -846,6 +846,18 @@
     "message": "온디바이스 모델 로드 중…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "관련 메모",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "중복일 수 있음:",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "닫기",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "다운로드 시작 중…",
     "description": "Status when the model download starts"
