@@ -68,6 +68,10 @@ body.light-theme {
   --glass-text-muted: #475569;
   --glass-text-placeholder: #64748b;
   --settings-text-color: #1f2937;
+  /* Todo text colour; base todo rules read it with their dark-theme fallback. */
+  --todo-text: #1f2937;
+  --todo-placeholder: var(--glass-text-placeholder);
+  --todo-title-shadow: none;
   --glass-displacement: 60;
   --glass-aberration: 0.15;
   --glass-elasticity: 0.35;
