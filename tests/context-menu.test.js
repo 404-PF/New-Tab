@@ -71,6 +71,7 @@ describe('context menu previews', () => {
     const appIcon = createElement('a', 'app-1');
     appIcon.className = 'app-icon custom-app';
 
+    injectScript('src/core/utils.js');
     injectScript('src/features/context-menu.js');
   });
 
@@ -97,6 +98,50 @@ describe('context menu previews', () => {
     expect(deletePreview.querySelector('img')).not.toBeNull();
     expect(deletePreview.querySelector('svg')).toBeNull();
     expect(deletePreview.querySelector('[data-test="evil"]')).toBeNull();
+  });
+
+  it('renders the fallback icon when the URL is rejected or the validator is missing', () => {
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    const thumbnailPreview = document.getElementById('thumbnail-preview-icon');
+    const previewFor = (value) => {
+      thumbnailInput.value = value;
+      thumbnailInput.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    withWindowOverride('validateIconUrl', () => null, () => {
+      previewFor('javascript:alert(1)');
+      expect(thumbnailPreview.querySelector('img')).toBeNull();
+      expect(thumbnailPreview.querySelector('svg')).not.toBeNull();
+    });
+
+    withWindowOverride('validateIconUrl', undefined, () => {
+      previewFor('https://example.com/icon.png');
+      expect(thumbnailPreview.querySelector('img')).toBeNull();
+      expect(thumbnailPreview.querySelector('svg')).not.toBeNull();
+    });
+  });
+
+  it('warns and keeps the current icon when an uploaded thumbnail is rejected', async () => {
+    const thumbnailInput = document.getElementById('thumbnail-app-input');
+    const fileInput = document.getElementById('thumbnail-app-file-input');
+    thumbnailInput.value = 'https://example.com/current.png';
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const file = new File(['x'], 'icon.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+
+    try {
+      // The override must outlive the async FileReader callback that validates the data URL.
+      await withWindowOverride('validateIconUrl', () => null, async () => {
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        await vi.waitFor(() => {
+          expect(warnSpy).toHaveBeenCalledWith('Rejected uploaded thumbnail icon:', expect.any(String));
+        });
+      });
+      expect(thumbnailInput.value).toBe('https://example.com/current.png');
+    } finally {
+      delete fileInput.files;
+      warnSpy.mockRestore();
+    }
   });
 
   it('keeps the delayed modal focus on a fake timer that does not outlive the test', () => {

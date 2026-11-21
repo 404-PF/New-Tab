@@ -55,12 +55,18 @@ function createFallbackIconSvg() {
   return svg;
 }
 
+// Fails closed: without the shared validator, no icon URL is rendered.
+function getSafeContextMenuIconUrl(iconUrl) {
+  if (typeof iconUrl !== 'string' || typeof window.validateIconUrl !== 'function') return '';
+  return window.validateIconUrl(iconUrl) || '';
+}
+
 function setContextMenuPreviewIcon(previewIcon, iconUrl) {
   if (!previewIcon) return;
 
   previewIcon.textContent = '';
 
-  const normalizedIconUrl = typeof iconUrl === 'string' ? iconUrl.trim() : '';
+  const normalizedIconUrl = getSafeContextMenuIconUrl(iconUrl);
   if (!normalizedIconUrl) {
     previewIcon.appendChild(createFallbackIconSvg());
     return;
