@@ -1578,6 +1578,10 @@ function isSupportedLocaleCode(code) {
 // scriptSources (extension-page CSP allows same-origin 'self' scripts).
 function loadLocaleScript(source) {
   return new Promise(function (resolve, reject) {
+    if (!/^src\/core\/locales\/[a-z]{2,3}\.js$/.test(source)) {
+      reject(new Error('Refusing to load unexpected locale source ' + source));
+      return;
+    }
     const script = document.createElement('script');
     script.src = source;
     script.async = false;
