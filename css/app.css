@@ -1580,7 +1580,7 @@ body.light-theme .todo-subtask-item:hover {
 }
 
 body.light-theme .todo-subtask-checkbox .subtask-unchecked {
-  color: rgba(31, 41, 55, 0.3);
+  color: var(--glass-text-muted);
 }
 
 body.light-theme .todo-subtask-checkbox .subtask-checked {
