@@ -86,6 +86,44 @@ describe('Todo persistence', () => {
     }
   });
 
+  it('does not overwrite a corrupt todos payload when its backup write is rejected', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    localStorage.removeItem('todos_corrupt_backup');
+    const realSetItem = localStorage.setItem;
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(function (key, value) {
+      if (key === 'todos_corrupt_backup') return false;
+      return realSetItem.call(this, key, value);
+    });
+    try {
+      localStorage.setItem('todos', 'not-json');
+      loadTodos();
+
+      expect(saveTodos([{ id: '1', text: 'Fresh', completed: false }])).toBe(false);
+      expect(localStorage.getItem('todos')).toBe('not-json');
+    } finally {
+      setItemSpy.mockRestore();
+      expect(saveTodos([])).toBe(true);
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('keeps an earlier corrupt todos backup when a later payload is also corrupt', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    localStorage.removeItem('todos_corrupt_backup');
+    localStorage.removeItem('todos_corrupt_backup.1');
+    try {
+      localStorage.setItem('todos', 'first-bad');
+      loadTodos();
+      localStorage.setItem('todos', 'second-bad');
+      loadTodos();
+
+      expect(localStorage.getItem('todos_corrupt_backup')).toBe('first-bad');
+      expect(localStorage.getItem('todos_corrupt_backup.1')).toBe('second-bad');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('loadTodos migrates wrapped legacy todo payloads', () => {
     localStorage.setItem('todos', JSON.stringify({
       count: 2,

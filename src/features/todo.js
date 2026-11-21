@@ -87,13 +87,31 @@
     }
   }
 
-  // Copy an unrecoverable raw payload aside so the next saveTodos() cannot erase it.
+  // Raw corrupt payload that could not be copied aside; saveTodos() refuses to overwrite it.
+  let pendingCorruptRaw = null;
+
+  // Copy an unrecoverable raw payload to the first free backup key so earlier backups are never clobbered.
   function backupCorruptTodos(raw) {
-    if (!raw) return;
+    if (!raw) return true;
     try {
-      localStorage.setItem('todos_corrupt_backup', raw);
+      for (let i = 0; ; i++) {
+        const key = i === 0 ? 'todos_corrupt_backup' : `todos_corrupt_backup.${i}`;
+        const existing = localStorage.getItem(key);
+        if (existing === raw) return true;
+        if (existing === null) {
+          return localStorage.setItem(key, raw) !== false; // NOSONAR - the storage bridge returns false on a rejected write.
+        }
+      }
     } catch (e) {
       console.warn('Failed to back up corrupt todos data:', e);
+      return false;
+    }
+  }
+
+  function preserveCorruptTodos(raw) {
+    if (!raw) return;
+    if (!backupCorruptTodos(raw)) {
+      pendingCorruptRaw = raw;
     }
   }
 
@@ -117,13 +135,13 @@
       parsed = parseCandidate(parsed);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
-        backupCorruptTodos(raw);
+        preserveCorruptTodos(raw);
         return [];
       }
       return parsed;
     } catch (e) {
       console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
-      backupCorruptTodos(raw);
+      preserveCorruptTodos(raw);
       return [];
     }
   }
@@ -131,6 +149,10 @@
   // Save todos to localStorage
   function saveTodos(todos) {
     try {
+      if (pendingCorruptRaw !== null) {
+        if (!backupCorruptTodos(pendingCorruptRaw)) return false;
+        pendingCorruptRaw = null;
+      }
       const result = localStorage.setItem('todos', JSON.stringify(todos));
       return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
