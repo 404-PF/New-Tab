@@ -4786,6 +4786,52 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       });
     });
 
+    it('parses due times with and without "at" and 24-hour forms', () => {
+      expect(parseTodoDatePhrase('Standup tomorrow 9am')).toEqual({
+        text: 'Standup',
+        dueDate: '2026-11-12',
+        dueTime: '09:00'
+      });
+      expect(parseTodoDatePhrase('Call mom at 5:30 PM today')).toEqual({
+        text: 'Call mom',
+        dueDate: '2026-11-11',
+        dueTime: '17:30'
+      });
+      expect(parseTodoDatePhrase('Lunch 17:00 tomorrow')).toEqual({
+        text: 'Lunch',
+        dueDate: '2026-11-12',
+        dueTime: '17:00'
+      });
+      expect(parseTodoDatePhrase('Standup 12am').dueTime).toBe('00:00');
+    });
+
+    it('treats a time without a date as due today and rejects invalid times', () => {
+      expect(parseTodoDatePhrase('Standup 9am')).toEqual({
+        text: 'Standup',
+        dueDate: '2026-11-11',
+        dueTime: '09:00'
+      });
+      expect(parseTodoDatePhrase('Run 13pm')).toEqual({
+        text: 'Run 13pm',
+        dueDate: null
+      });
+    });
+
+    it('parses every-day, every-week, every-month, and every-weekday recurrence', () => {
+      expect(parseTodoDatePhrase('Water plants every friday')).toEqual({
+        text: 'Water plants',
+        dueDate: '2026-11-13',
+        recurrence: 'weekly'
+      });
+      expect(parseTodoDatePhrase('Stretch every day')).toEqual({
+        text: 'Stretch',
+        dueDate: '2026-11-11',
+        recurrence: 'daily'
+      });
+      expect(parseTodoDatePhrase('Pay bills every month').recurrence).toBe('monthly');
+      expect(parseTodoDatePhrase('Review every week').recurrence).toBe('weekly');
+    });
+
     it('leaves unsupported trailing-year slash dates unchanged', () => {
       expect(parseTodoDatePhrase('Pay 11/15/27')).toEqual({
         text: 'Pay 11/15/27',
@@ -4857,6 +4903,17 @@ describe('Todo natural-language due dates (issue #1192)', () => {
       expect(stored[0].text).toBe('Pay rent');
       expect(stored[0].dueDate).toBe('2026-11-12');
       expect(document.getElementById('todo-input').value).toBe('');
+    });
+
+    it('stores due time and recurrence from phrases typed in the add bar', () => {
+      submitViaEnter('Standup every friday 9am');
+
+      const stored = loadTodos();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].text).toBe('Standup');
+      expect(stored[0].dueDate).toBe('2026-11-13');
+      expect(stored[0].dueTime).toBe('09:00');
+      expect(stored[0].recurrence).toBe('weekly');
     });
 
     it('the add button resolves phrases the same way as Enter', () => {
