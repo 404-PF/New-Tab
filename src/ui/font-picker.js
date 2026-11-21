@@ -84,13 +84,30 @@ class ModernFontPicker {
     // Create the font swatch button
     this.swatch = document.createElement('div');
     this.swatch.className = 'font-swatch';
-    this.swatch.innerHTML = `
-      <div class="font-swatch-preview" style="font-family: ${currentFont.value}">${currentFont.name}</div>
-      <svg class="font-swatch-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="6,9 12,15 18,9"></polyline>
-      </svg>
-      <input type="hidden" value="${currentFont.value}">
-    `;
+
+    const preview = document.createElement('div');
+    preview.className = 'font-swatch-preview';
+    preview.style.fontFamily = currentFont.value;
+    preview.textContent = currentFont.name;
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const arrow = document.createElementNS(svgNS, 'svg');
+    arrow.setAttribute('class', 'font-swatch-arrow');
+    arrow.setAttribute('viewBox', '0 0 24 24');
+    arrow.setAttribute('fill', 'none');
+    arrow.setAttribute('stroke', 'currentColor');
+    arrow.setAttribute('stroke-width', '2');
+    const polyline = document.createElementNS(svgNS, 'polyline');
+    polyline.setAttribute('points', '6,9 12,15 18,9');
+    arrow.appendChild(polyline);
+
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.value = currentFont.value;
+
+    this.swatch.appendChild(preview);
+    this.swatch.appendChild(arrow);
+    this.swatch.appendChild(hiddenInput);
 
     // Replace the original select with the swatch
     element.parentNode.insertBefore(this.swatch, element);
