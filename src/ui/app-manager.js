@@ -96,7 +96,7 @@ function createAppIconElement(app) {
   a.className = 'app-icon ' + app.className;
   a.id = app.id;
   a.draggable = true;
-  const openInNewTab = loadOpenNewTabSetting();
+  const openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
   if (openInNewTab && safeAppUrl !== '#') {
     a.setAttribute('target', '_blank');
     a.setAttribute('rel', 'noopener noreferrer');
@@ -190,7 +190,7 @@ function updateAppLink(id, url) {
     ? window.getSafeCustomAppUrl(url)
     : '#';
   element.setAttribute('href', safeAppUrl);
-  const openInNewTab = loadOpenNewTabSetting();
+  const openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
   if (openInNewTab && safeAppUrl !== '#') {
     element.setAttribute('target', '_blank');
     element.setAttribute('rel', 'noopener noreferrer');
@@ -489,11 +489,8 @@ function reportAppGridSaveError() {
 }
 
 // Load and apply open in new tab setting
-function loadOpenNewTabSetting() {
-  return localStorage.getItem('openAppsInNewTab') !== 'false';
-}
 function applyOpenNewTabSetting() {
-  const openInNewTab = loadOpenNewTabSetting();
+  const openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
   const appLinks = document.querySelectorAll('.app-grid .app-icon');
   appLinks.forEach((link) => {
     if (link.getAttribute('href') === '#') return;

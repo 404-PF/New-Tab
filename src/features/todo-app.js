@@ -11,7 +11,7 @@
   // ===================== Storage helpers =====================
 
   function loadTodoEnabled() {
-    return localStorage.getItem('todoEnabled') !== 'false';
+    return window.readDefaultOnFlag('todoEnabled');
   }
 
   function loadTodoReminderEnabled() {

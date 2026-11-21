@@ -34,7 +34,7 @@ class UpdateChecker {
 
   // Check if update checking is enabled
   isEnabled() {
-    return localStorage.getItem('updateCheckEnabled') !== 'false';
+    return window.readDefaultOnFlag('updateCheckEnabled');
   }
 
   // Enable/disable update checking. Returns whether the storage bridge

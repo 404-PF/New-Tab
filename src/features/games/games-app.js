@@ -78,7 +78,7 @@
     return window.gamesHelpers && typeof window.gamesHelpers.isEnabled === 'function'
       ? window.gamesHelpers.isEnabled()
       : (function () {
-          try { return localStorage.getItem('games_enabled') !== 'false'; } catch (_e) { return true; }
+          try { return window.readDefaultOnFlag('games_enabled'); } catch (_e) { return true; }
         })();
   }
 

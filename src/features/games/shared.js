@@ -17,7 +17,7 @@
   if (!window.gamesHelpers.isEnabled) {
     window.gamesHelpers.isEnabled = function () {
       try {
-        return localStorage.getItem('games_enabled') !== 'false';
+        return window.readDefaultOnFlag('games_enabled');
       } catch (_err) {
         return true;
       }

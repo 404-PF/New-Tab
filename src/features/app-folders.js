@@ -138,7 +138,7 @@
       return;
     }
 
-    const openInNewTab = localStorage.getItem('openAppsInNewTab') !== 'false';
+    const openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
 
     folder.apps.forEach(appId => {
       const app = appMap[appId];

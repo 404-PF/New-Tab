@@ -434,7 +434,7 @@ let semanticAppRequestSequence = 0;
 
 function isSearchHistoryEnabled() {
   try {
-    return localStorage.getItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY) !== 'false';
+    return window.readDefaultOnFlag(SEARCH_HISTORY_ENABLED_STORAGE_KEY);
   } catch (e) {
     console.warn('Failed to read search history enabled setting:', e);
     return true;
@@ -1313,7 +1313,7 @@ function launchSemanticAppMatch(app) {
   if (validation.status !== 'valid') {
     return;
   }
-  if (loadOpenNewTabSetting()) {
+  if (window.readDefaultOnFlag('openAppsInNewTab')) {
     window.open(validation.url.href, '_blank', 'noopener,noreferrer');
   } else {
     window.location.href = validation.url.href;
@@ -1453,13 +1453,9 @@ function renderSearchHistorySuggestions() {
   scheduleSearchSuggestionsFetch();
 }
 
-function loadOpenNewTabSetting() {
-  return localStorage.getItem('openAppsInNewTab') !== 'false';
-}
-
 function runDefaultSearch(query, onSuccess, providerId = activeProviderId) {
   const providerUrl = providerId ? getProviderUrl(providerId, query) : null;
-  const openInNewTab = loadOpenNewTabSetting();
+  const openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
 
   if (providerUrl) {
     if (onSuccess) {
