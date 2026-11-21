@@ -265,15 +265,25 @@
     }
 
     function deleteByIndex(store, match, done, errorMessage) {
+      // Index-assisted delete (issue #1332 review): IDBIndex.getAll(value)
+      // returns full records, so the existing id/model index narrows the
+      // read and the collection guard is enforced by filtering the rows
+      // instead of full-scanning the store. Falls back to the full scan
+      // below when the index is missing or the lookup fails.
       let keySource = null;
       try {
-        keySource = match.index ? store.index(match.index).getAllKeys(match.value) : null;
+        keySource = match.index ? store.index(match.index).getAll(match.value) : null;
       } catch {
         keySource = null;
       }
       if (!keySource) return false;
       keySource.onsuccess = function () {
-        removeKeysFromStore(store, keySource.result, errorMessage);
+        const rows = Array.isArray(keySource.result) ? keySource.result : [];
+        const keys = [];
+        for (let i = 0; i < rows.length; i += 1) {
+          if (rows[i] && match.test(rows[i])) keys.push(rows[i].key);
+        }
+        removeKeysFromStore(store, keys, errorMessage);
       };
       // A failed lookup must not report purged: tx.oncomplete would otherwise
       // resolve true with nothing deleted.
@@ -343,25 +353,40 @@
 
     function deleteCachedVectorsForItem(itemId) {
       const id = String(itemId);
-      // Full scan (not the id index): the index lookup alone cannot enforce
-      // the collection guard for shared stores, so filter by id + collection.
+      // Index-assisted (not a full scan): the id index narrows the read and
+      // the match test still enforces the collection guard for shared stores.
       return deleteInSingleTransaction({
-        index: null,
+        index: ID_INDEX,
         value: id,
         test: function (r) { return r && r[ID_FIELD] === id && belongsToCollection(r); }
       }, 'Failed to delete ' + LABEL + ' vectors from IndexedDB:');
     }
 
+    // Single-key delete for callers (e.g. app prune on rename) that already
+    // resolved the exact stale key: an id-scoped delete would also drop the
+    // fresh row written for the same id.
+    function deleteCachedVectorByKey(key) {
+      if (key === undefined || key === null) return Promise.resolve(false);
+      const expected = String(key);
+      return runStore('readwrite', function (store) {
+        return store.delete(expected);
+      }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function () { return true; })
+        .catch(function () { return false; });
+    }
+
     function clearCachedVectors(modelId) {
       if (typeof modelId === 'string' && modelId) {
         const expected = String(modelId);
-        // Full scan for the same collection-guard reason as above.
+        // Index-assisted for the same collection-guard reason as above.
         return deleteInSingleTransaction({
-          index: null,
+          index: 'byModel',
           value: expected,
           test: function (r) { return r && r.modelId === expected && belongsToCollection(r); }
         }, 'Failed to clear ' + LABEL + ' vectors from IndexedDB:');
       }
+      // No model scope: every row must be inspected, so a full scan is
+      // unavoidable; the collection guard still limits deletes to this
+      // cache's own rows.
       return deleteInSingleTransaction({
         index: null,
         value: null,
@@ -370,7 +395,17 @@
     }
 
     function getAllCachedVectors(modelId) {
+      // Model-scoped reads use the existing byModel index instead of
+      // full-scanning the store (vectors ride along on every row); the
+      // collection guard still filters the result for shared stores.
+      const useModelIndex = typeof modelId === 'string' && !!modelId;
       return runStore('readonly', function (store) {
+        if (useModelIndex) {
+          try {
+            const index = store.index('byModel');
+            if (index && typeof index.getAll === 'function') return index.getAll(modelId);
+          } catch { /* fall through to the full scan */ }
+        }
         return store.getAll();
       }, 'Failed to read ' + LABEL + ' vectors from IndexedDB:').then(function (all) {
         const records = Array.isArray(all) ? all : [];
@@ -394,6 +429,7 @@
       getCachedVector,
       putCachedVector,
       deleteCachedVectorsForItem,
+      deleteCachedVectorByKey,
       clearCachedVectors,
       getAllCachedVectors,
       _resetForTests

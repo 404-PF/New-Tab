@@ -49,6 +49,10 @@
     'notes',
     'notesEnabled',
     'notesSemanticEnabled',
+    // Issue #1332: the shared `semanticEnabled` master flag gates the model
+    // download; exported alongside the legacy key so imports and replace-mode
+    // cleanup cover it.
+    'semanticEnabled',
     'mottoEnabled',
     'searchBoxEnabled',
     'appOrder',
@@ -774,6 +778,7 @@
     notes: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     notesEnabled: function (v) { return typeof v === 'boolean'; },
     notesSemanticEnabled: function (v) { return typeof v === 'boolean'; },
+    semanticEnabled: function (v) { return typeof v === 'boolean'; },
     mottoEnabled: function (v) { return typeof v === 'boolean'; },
     searchBoxEnabled: function (v) { return typeof v === 'boolean'; },
     appOrder: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
@@ -1083,6 +1088,18 @@
     // `homepageBg` is skipped so the current value survives instead of
     // pointing at a blob that was never written.
     const applySettingsKeys = function (mode, mediaRestored) {
+      // Issue #1332: pre-#1332 backups carry only `notesSemanticEnabled`
+      // while reads prefer the new `semanticEnabled` master flag. Mirror
+      // whichever of the pair the backup carries onto the missing one before
+      // the key snapshot and replace-mode cleanup below, so an old backup's
+      // opt-in is honored instead of a stale local value (merge mode never
+      // clears local-only keys, so without this the stale `semanticEnabled`
+      // would win).
+      if (!('semanticEnabled' in importedData) && ('notesSemanticEnabled' in importedData)) {
+        importedData.semanticEnabled = importedData.notesSemanticEnabled;
+      } else if (!('notesSemanticEnabled' in importedData) && ('semanticEnabled' in importedData)) {
+        importedData.notesSemanticEnabled = importedData.semanticEnabled;
+      }
       const keys = Object.keys(importedData);
       let count = 0;
       const pendingWrites = [];

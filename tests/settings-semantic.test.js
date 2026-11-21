@@ -107,6 +107,7 @@ describe('Semantic search settings', () => {
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
     expect(localStorage.getItem('semanticEnabled')).toBe('true');
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
     // ensureModel resolves on a microtask; flush it.
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));

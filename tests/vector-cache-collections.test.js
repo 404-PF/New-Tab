@@ -97,4 +97,43 @@ describe('Vector cache collections (issue #1332)', () => {
     expect(await cacheA.clearCachedVectors()).toBe(true);
     expect(await cacheB.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
   });
+
+  it('deletes a single stale key without touching the fresh row for the same id', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    window.NotesVectorCache._resetForTests();
+    const cache = window.NotesVectorCache;
+    await cache.putCachedVector('n1', 'old text', 'm1', [1, 0]);
+    await cache.putCachedVector('n1', 'new text', 'm1', [0, 1]);
+    const staleKey = cache.makeCollectionVectorKey(
+      'notes', 'n1', cache.hashNoteText('old text'), 'm1');
+    expect(await cache.deleteCachedVectorByKey(staleKey)).toBe(true);
+    expect(await cache.getCachedVector('n1', 'old text', 'm1')).toBeNull();
+    const fresh = await cache.getCachedVector('n1', 'new text', 'm1');
+    expect(fresh).not.toBeNull();
+    expect(fresh.vector).toEqual([0, 1]);
+  });
+
+  it('aborts the transaction on a request failure instead of completing', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    const db = await new Promise((resolve, reject) => {
+      const request = globalThis.indexedDB.open('AbortDb');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    // 'missing' was never created: the facade throws on access, exercising
+    // the request.onerror path that guards like keySource.onerror rely on.
+    const tx = db.transaction(['missing'], 'readwrite');
+    let completed = false;
+    let requestErrored = false;
+    tx.oncomplete = () => { completed = true; };
+    const store = tx.objectStore('missing');
+    await new Promise((resolve) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve();
+      request.onerror = () => { requestErrored = true; resolve(); };
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(requestErrored).toBe(true);
+    expect(completed).toBe(false);
+  });
 });

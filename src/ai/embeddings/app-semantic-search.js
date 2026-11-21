@@ -127,7 +127,7 @@
     });
     const misses = Array.from(wanted).filter(function (text) { return !vectorCache.has(text); });
     if (misses.length === 0) {
-      if (appCache) pruneRemovedAppVectors(docs, modelId, appCache);
+      maybePruneRemovedAppVectors(docs, modelId, appCache);
       return Promise.resolve();
     }
     if (!appCache) {
@@ -158,7 +158,7 @@
         }
       });
       if (stillMissing.length === 0) {
-        pruneRemovedAppVectors(docs, modelId, appCache);
+        maybePruneRemovedAppVectors(docs, modelId, appCache);
         return null;
       }
       return service.embedTexts(stillMissing).then(function (vectors) {
@@ -173,7 +173,7 @@
             if (put && typeof put.catch === 'function') put.catch(function () { /* ignore */ });
           } catch { /* ignore */ }
         });
-        pruneRemovedAppVectors(docs, modelId, appCache);
+        maybePruneRemovedAppVectors(docs, modelId, appCache);
         return null;
       });
     });
@@ -181,22 +181,67 @@
 
   function pruneRemovedAppVectors(docs, modelId, appCache) {
     try {
-      const liveIds = new Set(docs.map(function (d) { return String(d.id); }));
+      const liveTextById = new Map();
+      (Array.isArray(docs) ? docs : []).forEach(function (d) {
+        if (d && d.id !== undefined) liveTextById.set(String(d.id), d.embedText);
+      });
       const all = appCache.getAllCachedVectors(modelId);
       if (!all || typeof all.then !== 'function') return;
       all.then(function (records) {
         (Array.isArray(records) ? records : []).forEach(function (r) {
           const id = r && (r.appId !== undefined ? r.appId : r.id);
           if (id === undefined) return;
-          if (!liveIds.has(String(id))) {
+          const sid = String(id);
+          if (!liveTextById.has(sid)) {
             try {
               const deleted = appCache.deleteCachedVectorsForItem(id);
               if (deleted && typeof deleted.catch === 'function') deleted.catch(function () { /* ignore */ });
             } catch { /* ignore */ }
+            return;
           }
+          // Live app whose embedding text changed (rename, URL or folder
+          // move): the row's text hash no longer matches, but an id-scoped
+          // delete would also drop the fresh row just written for the same
+          // id, so only the stale key is removed.
+          try {
+            if (typeof appCache.hashNoteText !== 'function'
+              || typeof appCache.deleteCachedVectorByKey !== 'function') return;
+            const liveHash = appCache.hashNoteText(liveTextById.get(sid));
+            if (r.textHash !== liveHash && r.key !== undefined && r.key !== null) {
+              const removed = appCache.deleteCachedVectorByKey(r.key);
+              if (removed && typeof removed.catch === 'function') removed.catch(function () { /* ignore */ });
+            }
+          } catch { /* ignore */ }
         });
       }).catch(function () { /* best-effort */ });
     } catch { /* best-effort */ }
+  }
+
+  // Prune runs inside every ranking pass, including cache-hit passes (one
+  // keystroke = one pass). The persistent read pulls the whole apps store
+  // with all vector arrays, so skip it while the app list is unchanged and
+  // only run after adds/removes/renames (the fingerprint binds ids to their
+  // current embedding text, so folder moves count as changes too).
+  let _lastPruneFingerprint = null;
+
+  function pruneFingerprint(docs, modelId) {
+    try {
+      const parts = (Array.isArray(docs) ? docs : []).map(function (d) {
+        return String(d && d.id) + '=' + String(d && d.embedText);
+      });
+      parts.sort();
+      return String(modelId) + '|' + parts.length + '|' + parts.join('|');
+    } catch {
+      return null;
+    }
+  }
+
+  function maybePruneRemovedAppVectors(docs, modelId, appCache) {
+    if (!appCache) return;
+    const fingerprint = pruneFingerprint(docs, modelId);
+    if (fingerprint !== null && fingerprint === _lastPruneFingerprint) return;
+    _lastPruneFingerprint = fingerprint;
+    pruneRemovedAppVectors(docs, modelId, appCache);
   }
 
   function toAppResults(ranked, appsById) {
@@ -255,6 +300,9 @@
   function clearCache() {
     vectorCache.clear();
     cacheModelId = null;
+    // A cleared store must be pruned again on the next pass even for an
+    // unchanged app list; also resets test state between ranking passes.
+    _lastPruneFingerprint = null;
     try {
       const appCache = getAppCache();
       if (appCache && typeof appCache.clearCachedVectors === 'function') {

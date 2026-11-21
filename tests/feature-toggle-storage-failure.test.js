@@ -13,6 +13,9 @@ const TOGGLE_STORAGE_KEYS = [
   'todoEnabled',
   'notesEnabled',
   'notesSemanticEnabled',
+  // Issue #1332: the shared master flag dual-writes with the legacy key, so
+  // async rollback coverage must clear both.
+  'semanticEnabled',
   'mottoEnabled',
   'eyeCareReminder',
   'customShortcuts',
