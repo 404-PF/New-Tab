@@ -3260,7 +3260,7 @@ body.light-theme .weather-city-inline input:focus {
 .todo-app-title {
   font-size: 18px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--todo-text, rgba(255, 255, 255, 0.95));
   margin: 0;
 }
 
@@ -3315,9 +3315,6 @@ body.light-theme .todo-app-modal-content {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
-body.light-theme .todo-app-title {
-  color: rgba(31, 41, 55, 0.95);
-}
 
 /* Weather app - loading state */
 .weather-app-loading {
