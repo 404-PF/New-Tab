@@ -225,7 +225,7 @@
     if (window.updateChecker && typeof window.updateChecker.formatMessage === 'function') {
       message = window.updateChecker.formatMessage(key, replacements || {});
     } else {
-      message = window.translate(key, key);
+      message = window.translate ? window.translate(key, key) : key;
       if (typeof message !== 'string') {
         message = key;
       }

@@ -319,9 +319,8 @@
 
     const isActive = state.active && !state.todoId;
     btn.classList.toggle('active', isActive);
-    const i18n = window.i18n;
-    const stopLabel = i18n ? i18n.t('pomodoroStopFocus') : 'Stop Focus';
-    const startLabel = i18n ? i18n.t('pomodoroStartFocus') : 'Start Focus';
+    const stopLabel = window.translate('pomodoroStopFocus', 'Stop Focus');
+    const startLabel = window.translate('pomodoroStartFocus', 'Start Focus');
     btn.title = isActive ? stopLabel : startLabel;
   }
 
@@ -408,8 +407,8 @@
     if (phaseEl) phaseEl.textContent = getPhaseLabel(state.phase);
     if (timeEl) timeEl.textContent = formatTime(state.timeRemaining);
     if (sessionsEl) {
-      const i18n = window.i18n;
-      sessionsEl.textContent = i18n ? i18n.t('pomodoroSessionLabel', { number: String(state.sessionsCompleted + 1) }) : 'Session ' + (state.sessionsCompleted + 1);
+      const sessionNumber = state.sessionsCompleted + 1;
+      sessionsEl.textContent = window.translate('pomodoroSessionLabel', 'Session ' + sessionNumber, { number: String(sessionNumber) });
     }
     if (pauseBtn) {
       updatePauseButton(pauseBtn);

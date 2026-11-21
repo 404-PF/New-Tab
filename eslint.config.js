@@ -156,6 +156,7 @@ const srcGlobals = {
   applyEyeCareReminderSettings: 'readonly',
   refreshEyeCareReminder: 'readonly',
   translateValidationMessage: 'readonly',
+  translate: 'readonly',
   showToast: 'readonly',
   persistSetting: 'readonly',
   showFeatureToggleSaveError: 'readonly',
