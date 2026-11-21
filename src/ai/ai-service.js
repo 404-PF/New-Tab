@@ -104,8 +104,7 @@ const AIService = (function() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
-  function exportConversation(conversationId) {
-    const exported = AIStore.exportConversation(conversationId);
+  function runMarkdownExport(exported, successKey, failureLogMessage) {
     if (!exported) {
       showToast(getTranslation('aiExportError'), 'error');
       return;
@@ -113,27 +112,27 @@ const AIService = (function() {
 
     try {
       downloadMarkdownFile(exported.filename, exported.content);
-      showToast(getTranslation('aiExportSuccess'), 'success');
+      showToast(getTranslation(successKey), 'success');
     } catch (error) {
-      console.error('Failed to export conversation:', error);
+      console.error(failureLogMessage, error);
       showToast(getTranslation('aiExportError'), 'error');
     }
   }
 
-  function exportAllConversations() {
-    const exported = AIStore.exportAllConversations();
-    if (!exported) {
-      showToast(getTranslation('aiExportError'), 'error');
-      return;
-    }
+  function exportConversation(conversationId) {
+    runMarkdownExport(
+      AIStore.exportConversation(conversationId),
+      'aiExportSuccess',
+      'Failed to export conversation:'
+    );
+  }
 
-    try {
-      downloadMarkdownFile(exported.filename, exported.content);
-      showToast(getTranslation('aiExportAllSuccess'), 'success');
-    } catch (error) {
-      console.error('Failed to export conversations:', error);
-      showToast(getTranslation('aiExportError'), 'error');
-    }
+  function exportAllConversations() {
+    runMarkdownExport(
+      AIStore.exportAllConversations(),
+      'aiExportAllSuccess',
+      'Failed to export conversations:'
+    );
   }
 
   /**
