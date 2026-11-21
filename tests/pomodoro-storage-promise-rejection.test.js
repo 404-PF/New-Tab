@@ -75,6 +75,7 @@ function createHarness({ mode }) {
     }
   };
 
+  injectScript('src/core/utils.js', dom.getInternalVMContext());
   injectScript('src/features/pomodoro.js', dom.getInternalVMContext());
 
   // The timer is disabled by default, so enable it before any start attempt.

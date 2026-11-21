@@ -144,8 +144,8 @@ class OnboardingTour {
     return [
       {
         id: 'language',
-        title: window.i18n ? window.i18n.t('onboardingLanguageTitle') : 'Choose Your Language 🌐',
-        content: window.i18n ? window.i18n.t('onboardingLanguageContent') : 'Select your preferred language for the interface. You can change this later in Settings.',
+        title: window.translate('onboardingLanguageTitle', 'Choose Your Language 🌐'),
+        content: window.translate('onboardingLanguageContent', 'Select your preferred language for the interface. You can change this later in Settings.'),
         target: null,
         position: 'center',
         action: 'select-language',
@@ -153,8 +153,8 @@ class OnboardingTour {
       },
       {
         id: 'theme',
-        title: window.i18n ? window.i18n.t('onboardingThemeTitle') : 'Choose Your Theme 🌙',
-        content: window.i18n ? window.i18n.t('onboardingThemeContent') : 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.',
+        title: window.translate('onboardingThemeTitle', 'Choose Your Theme 🌙'),
+        content: window.translate('onboardingThemeContent', 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.'),
         target: null,
         position: 'center',
         action: 'select-theme',
@@ -162,8 +162,8 @@ class OnboardingTour {
       },
       {
         id: 'welcome',
-        title: window.i18n ? window.i18n.t('onboardingWelcomeTitle') : 'Welcome to New-Tab! 🎉',
-        content: window.i18n ? window.i18n.t('onboardingWelcomeContent') : 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.',
+        title: window.translate('onboardingWelcomeTitle', 'Welcome to New-Tab! 🎉'),
+        content: window.translate('onboardingWelcomeContent', 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.'),
         target: null,
         position: 'center',
         action: null,
@@ -171,8 +171,8 @@ class OnboardingTour {
       },
       {
         id: 'clock',
-        title: window.i18n ? window.i18n.t('onboardingClockTitle') : 'Clock & Date Display',
-        content: window.i18n ? window.i18n.t('onboardingClockContent') : 'Your current time and date are displayed here. You can customize the appearance in Settings.',
+        title: window.translate('onboardingClockTitle', 'Clock & Date Display'),
+        content: window.translate('onboardingClockContent', 'Your current time and date are displayed here. You can customize the appearance in Settings.'),
         target: '#clock',
         position: 'bottom',
         action: null,
@@ -180,8 +180,8 @@ class OnboardingTour {
       },
       {
         id: 'search',
-        title: window.i18n ? window.i18n.t('onboardingSearchTitle') : 'Web Search',
-        content: window.i18n ? window.i18n.t('onboardingSearchContent') : 'Search the web from your new tab using your browser\'s default search provider.',
+        title: window.translate('onboardingSearchTitle', 'Web Search'),
+        content: window.translate('onboardingSearchContent', 'Search the web from your new tab using your browser\'s default search provider.'),
         target: '.search-bar',
         position: 'bottom',
         action: null,
@@ -189,8 +189,8 @@ class OnboardingTour {
       },
       {
         id: 'apps',
-        title: window.i18n ? window.i18n.t('onboardingAppsTitle') : 'App Shortcuts',
-        content: window.i18n ? window.i18n.t('onboardingAppsContent') : 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.',
+        title: window.translate('onboardingAppsTitle', 'App Shortcuts'),
+        content: window.translate('onboardingAppsContent', 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.'),
         target: '#app-grid',
         position: 'top',
         action: 'add-app',
@@ -198,8 +198,8 @@ class OnboardingTour {
       },
       {
         id: 'background',
-        title: window.i18n ? window.i18n.t('onboardingBackgroundTitle') : 'Beautiful Backgrounds',
-        content: window.i18n ? window.i18n.t('onboardingBackgroundContent') : 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.',
+        title: window.translate('onboardingBackgroundTitle', 'Beautiful Backgrounds'),
+        content: window.translate('onboardingBackgroundContent', 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.'),
         target: 'body',
         position: 'center',
         action: null,
@@ -207,8 +207,8 @@ class OnboardingTour {
       },
       {
         id: 'motto',
-        title: window.i18n ? window.i18n.t('onboardingMottoTitle') : 'Daily Inspiration',
-        content: window.i18n ? window.i18n.t('onboardingMottoContent') : 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.',
+        title: window.translate('onboardingMottoTitle', 'Daily Inspiration'),
+        content: window.translate('onboardingMottoContent', 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.'),
         target: '#motto-container',
         position: 'top',
         action: null,
@@ -216,8 +216,8 @@ class OnboardingTour {
       },
       {
         id: 'settings',
-        title: window.i18n ? window.i18n.t('onboardingSettingsTitle') : 'Customization Center',
-        content: window.i18n ? window.i18n.t('onboardingSettingsContent') : 'Click the gear icon to access extensive customization options for themes, styling, and more.',
+        title: window.translate('onboardingSettingsTitle', 'Customization Center'),
+        content: window.translate('onboardingSettingsContent', 'Click the gear icon to access extensive customization options for themes, styling, and more.'),
         target: '#settings-modal',
         position: 'left',
         action: 'open-settings',
@@ -225,8 +225,8 @@ class OnboardingTour {
       },
       {
         id: 'complete',
-        title: window.i18n ? window.i18n.t('onboardingCompleteTitle') : 'You\'re All Set! ✨',
-        content: window.i18n ? window.i18n.t('onboardingCompleteContent') : 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.',
+        title: window.translate('onboardingCompleteTitle', 'You\'re All Set! ✨'),
+        content: window.translate('onboardingCompleteContent', 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.'),
         target: null,
         position: 'center',
         action: null,
@@ -412,17 +412,17 @@ class OnboardingTour {
           <label class="theme-option modern">
             <div class="preview-icon dark"></div>
             <input type="radio" name="onboarding-theme" value="dark" ${!storedTheme || storedTheme === 'dark' ? 'checked' : ''} />
-            <span class="label">${window.i18n ? window.i18n.t('dark') : 'Dark'}</span>
+            <span class="label">${window.translate('dark', 'Dark')}</span>
           </label>
           <label class="theme-option modern">
             <div class="preview-icon light"></div>
             <input type="radio" name="onboarding-theme" value="light" ${storedTheme === 'light' ? 'checked' : ''} />
-            <span class="label">${window.i18n ? window.i18n.t('light') : 'Light'}</span>
+            <span class="label">${window.translate('light', 'Light')}</span>
           </label>
           <label class="theme-option modern">
             <div class="preview-icon system"></div>
             <input type="radio" name="onboarding-theme" value="system" ${storedTheme === 'system' ? 'checked' : ''} />
-            <span class="label">${window.i18n ? window.i18n.t('system') : 'System'}</span>
+            <span class="label">${window.translate('system', 'System')}</span>
           </label>
         </div>
       `;
@@ -486,9 +486,9 @@ class OnboardingTour {
     prevBtn.style.display = this.currentStep === 0 ? 'none' : 'block';
     
     // Update button labels with translated text
-    const prevText = window.i18n ? window.i18n.t('previous') : 'Previous';
-    const nextText = window.i18n ? window.i18n.t('next') : 'Next';
-    const finishText = window.i18n ? window.i18n.t('finish') : 'Finish';
+    const prevText = window.translate('previous', 'Previous');
+    const nextText = window.translate('next', 'Next');
+    const finishText = window.translate('finish', 'Finish');
     nextBtn.textContent = this.currentStep === this.steps.length - 1 ? finishText : nextText;
     prevBtn.textContent = prevText;
 

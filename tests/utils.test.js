@@ -166,6 +166,30 @@ describe('normalizeUrl', () => {
   });
 });
 
+describe('translate', () => {
+  it('delegates to window.i18n.t with args when i18n is loaded', () => {
+    const originalI18n = window.i18n;
+    window.i18n = { t: vi.fn((key, args) => `T:${key}:${args ? args.count : ''}`) };
+    try {
+      expect(translate('todoSaveError', 'Fallback')).toBe('T:todoSaveError:');
+      expect(window.i18n.t).toHaveBeenLastCalledWith('todoSaveError', undefined);
+      expect(translate('todosDeletedUndo', 'Fallback', { count: 2 })).toBe('T:todosDeletedUndo:2');
+    } finally {
+      window.i18n = originalI18n;
+    }
+  });
+
+  it('returns the fallback when window.i18n is absent', () => {
+    const originalI18n = window.i18n;
+    window.i18n = undefined;
+    try {
+      expect(translate('todoSaveError', 'Failed to save')).toBe('Failed to save');
+    } finally {
+      window.i18n = originalI18n;
+    }
+  });
+});
+
 describe('translateValidationMessage', () => {
   it('translates known messages', () => {
     expect(translateValidationMessage('Valid URL')).toBe('Valid URL');

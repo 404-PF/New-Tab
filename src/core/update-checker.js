@@ -19,7 +19,7 @@ class UpdateChecker {
   }
 
   t(key) {
-    return window.i18n ? window.i18n.t(key) : key;
+    return window.translate(key, key);
   }
 
   formatMessage(key, replacements = {}) {

@@ -304,6 +304,7 @@ const testGlobals = {
   hasHttpScheme: 'readonly',
   isCustomScheme: 'readonly',
   translateValidationMessage: 'readonly',
+  translate: 'readonly',
   formatClockTime: 'readonly',
   getClockFormat: 'readonly',
   formatDateDisplay: 'readonly',

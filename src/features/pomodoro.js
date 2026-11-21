@@ -354,17 +354,17 @@
 
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'pomodoro-btn pomodoro-pause-btn';
-    pauseBtn.title = window.i18n ? window.i18n.t('pomodoroPause') : 'Pause';
+    pauseBtn.title = window.translate('pomodoroPause', 'Pause');
     pauseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
 
     const skipBtn = document.createElement('button');
     skipBtn.className = 'pomodoro-btn pomodoro-skip-btn';
-    skipBtn.title = window.i18n ? window.i18n.t('pomodoroSkip') : 'Skip';
+    skipBtn.title = window.translate('pomodoroSkip', 'Skip');
     skipBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>';
 
     const resetBtn = document.createElement('button');
     resetBtn.className = 'pomodoro-btn pomodoro-reset-btn';
-    resetBtn.title = window.i18n ? window.i18n.t('pomodoroReset') : 'Reset';
+    resetBtn.title = window.translate('pomodoroReset', 'Reset');
     resetBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
 
     controls.appendChild(pauseBtn);
@@ -381,8 +381,8 @@
     pauseBtn.innerHTML = state.paused
       ? '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-    const resumeLabel = window.i18n ? window.i18n.t('pomodoroResume') : 'Resume';
-    const pauseLabel = window.i18n ? window.i18n.t('pomodoroPause') : 'Pause';
+    const resumeLabel = window.translate('pomodoroResume', 'Resume');
+    const pauseLabel = window.translate('pomodoroPause', 'Pause');
     pauseBtn.title = state.paused ? resumeLabel : pauseLabel;
   }
 
