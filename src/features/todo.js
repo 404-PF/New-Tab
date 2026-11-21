@@ -95,10 +95,39 @@
     }
   }
 
+  // Raw corrupt payload that could not be copied aside; saveTodos() refuses to overwrite it.
+  let pendingCorruptRaw = null;
+
+  // Copy an unrecoverable raw payload to the first free backup key so earlier backups are never clobbered.
+  function backupCorruptTodos(raw) {
+    if (!raw) return true;
+    try {
+      for (let i = 0; ; i++) {
+        const key = i === 0 ? 'todos_corrupt_backup' : `todos_corrupt_backup.${i}`;
+        const existing = localStorage.getItem(key);
+        if (existing === raw) return true;
+        if (existing === null) {
+          return localStorage.setItem(key, raw) !== false; // NOSONAR - the storage bridge returns false on a rejected write.
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to back up corrupt todos data:', e);
+      return false;
+    }
+  }
+
+  function preserveCorruptTodos(raw) {
+    if (!raw) return;
+    if (!backupCorruptTodos(raw)) {
+      pendingCorruptRaw = raw;
+    }
+  }
+
   // Load todos from localStorage
   function loadTodos() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem('todos');
+      raw = localStorage.getItem('todos');
       if (!raw) return [];
 
       let parsed = JSON.parse(raw);
@@ -114,11 +143,13 @@
       parsed = parseCandidate(parsed);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
+        preserveCorruptTodos(raw);
         return [];
       }
       return parsed;
     } catch (e) {
       console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
+      preserveCorruptTodos(raw);
       return [];
     }
   }
@@ -126,6 +157,10 @@
   // Save todos to localStorage
   function saveTodos(todos) {
     try {
+      if (pendingCorruptRaw !== null) {
+        if (!backupCorruptTodos(pendingCorruptRaw)) return false;
+        pendingCorruptRaw = null;
+      }
       const result = localStorage.setItem('todos', JSON.stringify(todos));
       return result !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     } catch (error) {
@@ -186,6 +221,12 @@
   }
 
   window.addEventListener('storageBridgeWriteError', (event) => {
+    // A rejected corrupt-payload backup rolls back the backup key, so keep the raw
+    // payload pending; the next saveTodos() retries the backup before overwriting.
+    if (event?.detail?.key === 'todos_corrupt_backup' && typeof event.detail.value === 'string') {
+      pendingCorruptRaw = event.detail.value;
+      return;
+    }
     if (event?.detail?.key !== 'todos') return;
 
     setTimeout(() => {

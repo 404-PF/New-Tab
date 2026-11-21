@@ -27,6 +27,9 @@
   const CACHE_KEY = 'weatherCache';
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   const CACHE_LOCATION_TOLERANCE_KM = 10;
+  // Cached coordinates are rounded to 0.01° (≤ ~0.8 km of drift); reserve that
+  // margin so the fetch point itself stays within the tolerance.
+  const CACHE_COORD_ROUNDING_MARGIN_KM = 1;
   const GEO_TIMEOUT_MS = 10000; // 10 seconds
 
   // State
@@ -190,7 +193,7 @@
         return false;
       }
       return getDistanceKm(cache.lat, cache.lon, currentLocation.lat, currentLocation.lon)
-        <= CACHE_LOCATION_TOLERANCE_KM;
+        <= CACHE_LOCATION_TOLERANCE_KM - CACHE_COORD_ROUNDING_MARGIN_KM;
     }
     if (locationMode === 'manual' && cache.manualCity !== manualCity.trim()) return false;
     return true;
@@ -532,9 +535,10 @@
         ? (location.country ? `${location.name}, ${location.country}` : location.name)
         : formatCoords(location.lat, location.lon);
 
+      // Persist coordinates at ~1 km precision; the match check reserves margin for the rounding.
       const newCache = {
-        lat: location.lat,
-        lon: location.lon,
+        lat: Math.round(location.lat * 100) / 100,
+        lon: Math.round(location.lon * 100) / 100,
         data: weatherData,
         timestamp: Date.now(),
         locationMode: locationMode,
