@@ -589,17 +589,20 @@
     // reports 'ready' until the async cleanup settles (PR #1187 review).
     setState('loading', 0);
     const consts = getHarrierConsts();
-    let vectorClearFn = null;
+    let notesCache = null;
+    let todoCache = null;
     try {
-      if (window.NotesVectorCache && typeof window.NotesVectorCache.clearCachedVectors === 'function') {
-        vectorClearFn = window.NotesVectorCache.clearCachedVectors;
-      }
-    } catch { vectorClearFn = null; }
-    // Wrap the call so a synchronous throw becomes a rejection instead of
+      notesCache = window.NotesVectorCache || null;
+      todoCache = window.TodoVectorCache || null;
+    } catch { /* leave both caches unset: nothing to purge */ }
+    // Wrap each call so a synchronous throw becomes a rejection instead of
     // escaping deleteModel synchronously (no try/catch return, per S4822).
-    const clearVectors = vectorClearFn
-      ? new Promise(function (resolve) { resolve(vectorClearFn.call(window.NotesVectorCache, consts.modelId)); })
-      : Promise.resolve(true);
+    const clearVectorCache = function (cache) {
+      if (!cache || typeof cache.clearCachedVectors !== 'function') return Promise.resolve(true);
+      return new Promise(function (resolve) { resolve(cache.clearCachedVectors.call(cache, consts.modelId)); });
+    };
+    const clearVectors = Promise.all([clearVectorCache(notesCache), clearVectorCache(todoCache)])
+      .then(function (results) { return results.every(function (r) { return r !== false; }); });
     let cacheDeleteFn = null;
     try {
       if (typeof caches !== 'undefined' && caches && typeof caches.delete === 'function') {

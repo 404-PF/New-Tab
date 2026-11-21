@@ -1996,6 +1996,9 @@ function applyNotesSemanticEnabled() {
       window.renderNotes();
     }
   } catch { /* ignore */ }
+  try {
+    if (typeof window.applyTodoSemanticEnabled === 'function') window.applyTodoSemanticEnabled();
+  } catch { /* ignore */ }
 }
 
 // The embedding modules stay out of the bootstrap scriptSources path

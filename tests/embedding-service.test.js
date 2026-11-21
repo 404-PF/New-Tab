@@ -302,6 +302,19 @@ describe('EmbeddingService state machine', () => {
     }
   });
 
+  it('deleteModel reports failure when the todo vector purge fails', async () => {
+    window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({}) };
+    await window.EmbeddingService.ensureModel();
+    const originalClear = window.TodoVectorCache.clearCachedVectors;
+    window.TodoVectorCache.clearCachedVectors = function () { return Promise.resolve(false); };
+    try {
+      expect(await window.EmbeddingService.deleteModel()).toBe(false);
+      expect(window.EmbeddingService.getStatus().status).toBe('error');
+    } finally {
+      window.TodoVectorCache.clearCachedVectors = originalClear;
+    }
+  });
+
   it('reloads the model after deleteModel', async () => {
     window.__embeddingTestHooks = { pipelineFactory: mockFactoryFor({}) };
     await window.EmbeddingService.ensureModel();

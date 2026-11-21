@@ -26,6 +26,14 @@
   // matching the Notes scratchpad search; trimmed on write.
   let todoSearchQuery = '';
 
+  // Semantic rerank bookkeeping (issue #1330); see the semantic block below.
+  let todoSemanticGeneration = 0;
+  let todoSemanticDebounceId = null;
+  let todoSemanticRankedView = false;
+  // Set when a finished rerank was dropped because a row was focused or
+  // dragged; applied once the gesture ends (see flushDeferredTodoSemanticRerank).
+  let todoSemanticDeferred = false;
+
   function getTodoSearchQuery() {
     return todoSearchQuery;
   }
@@ -861,9 +869,9 @@
     }
   }
 
-  // Incomplete items first (ordered by the selected sort mode), then
-  // completed items (by completion time).
-  function filterTodos() {
+  // Status, priority and label pills (AND-ed). Semantic search (issue #1330)
+  // ranks from this base so the pills still apply first.
+  function getPillFilteredTodos() {
     let filtered = [...todos];
 
     // Status filter
@@ -906,23 +914,33 @@
       filtered = filtered.filter(todo => todo.label === currentFilters.label);
     }
 
-    // Text search (issue #1060). AND with the pill filters: match the todo
-    // text, any subtask text, the free-form details (issue #1228), or the
-    // label, case-insensitively. The sort below still runs on whatever
-    // survives, so all five sort modes compose unchanged.
-    if (todoSearchQuery) {
-      const query = todoSearchQuery.toLowerCase();
-      filtered = filtered.filter(todo => {
-        const textMatch = typeof todo.text === 'string' && todo.text.toLowerCase().includes(query);
-        const subtaskMatch = Array.isArray(todo.subtasks) &&
-          todo.subtasks.some(subtask => typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(query));
-        const detailsMatch = typeof todo.details === 'string' && todo.details.toLowerCase().includes(query);
-        const labelMatch = typeof todo.label === 'string' && todo.label.toLowerCase().includes(query);
-        return textMatch || subtaskMatch || detailsMatch || labelMatch;
-      });
-    }
+    return filtered;
+  }
 
-    filtered.sort((a, b) => {
+  // Keyword relevance for the toolbar search (issue #1060): 1 for a match in
+  // the text, any subtask text or the details (issue #1228), 0.6 for a label
+  // match, 0 otherwise. Shared with the semantic ranker (issue #1330) so both
+  // paths agree on what a keyword hit is.
+  function todoKeywordScore(todo, query) {
+    const q = String(query || '').toLowerCase();
+    if (!q) return 0;
+    const contentMatch = (typeof todo.text === 'string' && todo.text.toLowerCase().includes(q))
+      || (Array.isArray(todo.subtasks) && todo.subtasks.some(subtask =>
+        typeof subtask.text === 'string' && subtask.text.toLowerCase().includes(q)))
+      || (typeof todo.details === 'string' && todo.details.toLowerCase().includes(q));
+    if (contentMatch) return 1;
+    if (typeof todo.label === 'string' && todo.label.toLowerCase().includes(q)) return 0.6;
+    return 0;
+  }
+
+  function todoKeywordFilter(list, query) {
+    return list.filter(todo => todoKeywordScore(todo, query) > 0);
+  }
+
+  // Incomplete items first (ordered by the selected sort mode), then
+  // completed items (by completion time). Sorts in place and returns the list.
+  function sortTodosForDisplay(list) {
+    return list.sort((a, b) => {
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
       }
@@ -933,9 +951,245 @@
       }
       return compareIncompleteTodos(a, b);
     });
+  }
 
-    filteredTodos = filtered;
-    return filtered;
+  // Keyword pass: pill filters, then text search (AND with the pills), then
+  // the active sort. Pure: does not touch filteredTodos.
+  function buildFilteredTodos() {
+    const filtered = getPillFilteredTodos();
+
+    // Text search (issue #1060). Match the todo text, any subtask text, the
+    // free-form details (issue #1228), or the label. The sort below still
+    // runs on whatever survives, so all five sort modes compose unchanged.
+    const searched = todoSearchQuery ? todoKeywordFilter(filtered, todoSearchQuery) : filtered;
+    return sortTodosForDisplay(searched);
+  }
+
+  function filterTodos() {
+    filteredTodos = buildFilteredTodos();
+    todoSemanticRankedView = false;
+    return filteredTodos;
+  }
+
+
+  // Semantic todo search (issue #1330). The keyword pass above stays the fast
+  // path and the fallback. Once the shared Harrier model is ready, a debounced
+  // hybrid keyword + cosine re-rank replaces the order. Gated by the Notes
+  // semantic opt-in flag and the same model, so nothing new is downloaded.
+  const TODO_SEMANTIC_DEBOUNCE_MS = 200;
+  const TODO_EMBEDDING_TEXT_CAP = 4000;
+  const TODO_SEMANTIC_DEFAULT_MODEL_ID = 'onnx-community/harrier-oss-v1-270m-ONNX';
+
+  function isTodoSemanticEnabled() {
+    try {
+      if (typeof window.loadNotesSemanticEnabled === 'function') {
+        return window.loadNotesSemanticEnabled();
+      }
+      return localStorage.getItem('notesSemanticEnabled') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  function isTodoSemanticReady() {
+    try {
+      if (!isTodoSemanticEnabled()) return false;
+      return !!(window.EmbeddingService && typeof window.EmbeddingService.isReady === 'function'
+        && window.EmbeddingService.isReady());
+    } catch {
+      return false;
+    }
+  }
+
+  function getTodoSemanticModelId() {
+    try {
+      const status = window.EmbeddingService && typeof window.EmbeddingService.getStatus === 'function'
+        ? window.EmbeddingService.getStatus()
+        : null;
+      if (status && status.modelId) return status.modelId;
+    } catch { /* ignore */ }
+    return (window.HarrierProvider && window.HarrierProvider.HARRIER_MODEL_ID) || TODO_SEMANTIC_DEFAULT_MODEL_ID;
+  }
+
+  // Pre-cap only (bounds hashing and transport); the exact 512-token truncate
+  // happens in embedding-service.js.
+  function todoToEmbeddingText(todo) {
+    const parts = [];
+    if (typeof todo.text === 'string' && todo.text) parts.push(todo.text);
+    if (Array.isArray(todo.subtasks)) {
+      todo.subtasks.forEach(subtask => {
+        if (subtask && typeof subtask.text === 'string' && subtask.text) parts.push(subtask.text);
+      });
+    }
+    if (typeof todo.details === 'string' && todo.details) parts.push(todo.details);
+    return parts.join('\n').slice(0, TODO_EMBEDDING_TEXT_CAP);
+  }
+
+  // Same guard as Notes: with no download marker no vectors were ever written,
+  // so there is nothing to purge and the cache store is not created.
+  function invalidateTodoVector(todoId) {
+    try {
+      if (localStorage.getItem('notesSemanticDownload') === null) return;
+      if (window.TodoVectorCache && typeof window.TodoVectorCache.deleteCachedVectorsForItem === 'function') {
+        window.TodoVectorCache.deleteCachedVectorsForItem(todoId).catch(() => { /* ignore */ });
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Keyword-first results with cosine re-rank when the model is ready. Falls
+  // back to the keyword pass whenever the model, loader or cache is missing.
+  // Batched like Notes: one cache pass, then one embedTexts call for all misses.
+  function getFilteredTodosRanked() {
+    const query = todoSearchQuery;
+    const ranker = window.NotesSemanticSearch;
+    const service = window.EmbeddingService;
+    const cache = window.TodoVectorCache;
+    if (!query || !isTodoSemanticReady() || !ranker || !service || !cache) {
+      return Promise.resolve(buildFilteredTodos());
+    }
+    const base = sortTodosForDisplay(getPillFilteredTodos());
+    if (base.length === 0) return Promise.resolve([]);
+    const modelId = getTodoSemanticModelId();
+    const inputs = base.map(todoToEmbeddingText);
+    // The shared ranker breaks score ties on `order`, so copy the display
+    // position in: ties keep the active sort instead of the stored order.
+    const ordered = base.map((todo, i) => ({ ...todo, order: i }));
+
+    return Promise.all(base.map((todo, i) => cache.getCachedVector(todo.id, inputs[i], modelId).catch(() => null)))
+      .then(cached => {
+        const vectors = new Array(base.length).fill(null);
+        const missIndexes = [];
+        cached.forEach((record, i) => {
+          if (record && Array.isArray(record.vector) && record.vector.length > 0) {
+            vectors[i] = record.vector;
+          } else if (inputs[i].trim()) {
+            missIndexes.push(i);
+          }
+        });
+        if (missIndexes.length === 0) return vectors;
+        return service.embedTexts(missIndexes.map(i => inputs[i])).then(missed => {
+          const liveById = new Map(todos.map(t => [t.id, t]));
+          missIndexes.forEach((index, j) => {
+            const vec = Array.isArray(missed) && Array.isArray(missed[j]) ? missed[j] : null;
+            if (!vec || vec.length === 0) return;
+            vectors[index] = vec;
+            // Skip the write-back when the todo was edited or deleted during
+            // inference, or the model was disabled: its invalidation has
+            // already run and a late put would resurrect the stale vector.
+            const current = liveById.get(base[index].id);
+            if (!current || todoToEmbeddingText(current) !== inputs[index]) return;
+            if (!isTodoSemanticReady()) return;
+            cache.putCachedVector(base[index].id, inputs[index], modelId, vec).catch(() => { /* ignore */ });
+          });
+          return vectors;
+        }).catch(() => vectors);
+      })
+      .then(vectors => {
+        const byId = new Map(base.map((todo, i) => [todo.id, vectors[i]]));
+        return ranker.rankNotesForQuery(ordered, query, {
+          embedQuery: q => service.embedQuery(q),
+          getNoteVector: todo => Promise.resolve(byId.get(todo.id) || null)
+        }, { keywordScore: todoKeywordScore, keywordFilter: todoKeywordFilter });
+      })
+      .catch(() => buildFilteredTodos());
+  }
+
+  function clearTodoSemanticDebounce() {
+    if (todoSemanticDebounceId) {
+      clearTimeout(todoSemanticDebounceId);
+      todoSemanticDebounceId = null;
+    }
+  }
+
+  function runTodoSemanticRerank() {
+    const generation = todoSemanticGeneration;
+    getFilteredTodosRanked().then(ranked => {
+      if (generation !== todoSemanticGeneration || !isTodoSemanticReady()) return;
+      // Re-rendering removes the focused or dragged node mid-gesture, so wait
+      // for the next rerank (the list keeps its keyword order until then).
+      const active = document.activeElement;
+      if (draggedElement || (active && typeof active.closest === 'function' && active.closest('#todo-list'))) {
+        todoSemanticDeferred = true;
+        return;
+      }
+      todoSemanticDeferred = false;
+      const liveById = new Map(todos.map(t => [t.id, t]));
+      filteredTodos = ranked.map(t => liveById.get(t.id)).filter(Boolean);
+      todoSemanticRankedView = true;
+      renderTodos();
+    }).catch(() => { /* keep the keyword order */ });
+  }
+
+  // Returns to keyword order without starting a model load.
+  function dropTodoSemanticRankedView() {
+    todoSemanticGeneration += 1;
+    clearTodoSemanticDebounce();
+    todoSemanticDeferred = false;
+    if (todoSemanticRankedView) {
+      todoSemanticRankedView = false;
+      filterTodos();
+      renderTodos();
+    }
+  }
+
+  // Every call bumps the generation and drops any pending debounce, so
+  // in-flight reranks for an older query never render.
+  function scheduleTodoSemanticRerank() {
+    todoSemanticGeneration += 1;
+    clearTodoSemanticDebounce();
+    if (!todoSearchQuery || !isTodoSemanticEnabled()) {
+      dropTodoSemanticRankedView();
+      return;
+    }
+    if (!isTodoSemanticReady()) {
+      const scriptsLoaded = !!(window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function'
+        && window.EmbeddingScripts.scriptsLoaded());
+      if (!scriptsLoaded && window.EmbeddingScripts && typeof window.EmbeddingScripts.ensureScripts === 'function') {
+        window.EmbeddingScripts.ensureScripts()
+          .then(() => { if (todoSearchQuery) scheduleTodoSemanticRerank(); })
+          .catch(() => { /* keyword path stays */ });
+      } else if (typeof window.requestSemanticModelLoad === 'function') {
+        window.requestSemanticModelLoad();
+      }
+      return;
+    }
+    todoSemanticDebounceId = setTimeout(() => {
+      todoSemanticDebounceId = null;
+      runTodoSemanticRerank();
+    }, TODO_SEMANTIC_DEBOUNCE_MS);
+  }
+
+  function handleTodoEmbeddingStatus(event) {
+    const status = event && event.detail ? event.detail.status : null;
+    // Download progress ticks change no ranking; only state transitions do.
+    if (status === 'loading') return;
+    if (status === 'ready') {
+      if (todoSearchQuery) scheduleTodoSemanticRerank();
+      return;
+    }
+    // Leaving ready (Delete, error) drops the relevance view and any deferred
+    // rerank. Going through scheduleTodoSemanticRerank here would re-trigger
+    // the passive model load.
+    if (todoSemanticRankedView || todoSemanticDeferred) dropTodoSemanticRankedView();
+  }
+
+  // Applies a rerank that was deferred while a row was focused or dragged.
+  function flushDeferredTodoSemanticRerank() {
+    if (!todoSemanticDeferred) return;
+    todoSemanticDeferred = false;
+    if (todoSearchQuery) scheduleTodoSemanticRerank();
+  }
+
+  function handleTodoListFocusOut() {
+    // Focus moves after focusout, so check the gesture on the next tick.
+    setTimeout(flushDeferredTodoSemanticRerank, 0);
+  }
+
+  // Settings calls this when the shared semantic flag changes so the list
+  // gains or drops semantic order immediately.
+  function applyTodoSemanticEnabled() {
+    if (!elements.todoList) return;
+    applyFilters();
   }
 
   // Distinguish "no todos exist" from "none match the active filters or
@@ -1485,6 +1739,7 @@
     }
 
     applyFilters();
+    invalidateTodoVector(id);
     scheduleTodoReminderCheck(id);
     return true;
   }
@@ -1628,6 +1883,7 @@
     }
 
     applyFilters();
+    invalidateTodoVector(id);
     scheduleTodoReminderCheck(id);
     if (removedIndex !== -1) {
       offerTodoUndo([{ todo: previousTodos[removedIndex], index: removedIndex }]);
@@ -1750,6 +2006,7 @@ function applyFilters() {
   updateProgressRing();
   updateFilterCounts();
   updateBulkActions();
+  scheduleTodoSemanticRerank();
   // Add/complete/delete and filter changes all funnel through here, so
   // re-arming here keeps the due-minute timer aligned with the list
   // (issue #1205).
@@ -2080,6 +2337,7 @@ function bulkDeleteSelected() {
   }
 
   clearTodoSelection();
+  removed.forEach(entry => invalidateTodoVector(entry.todo.id));
   applyFilters();
   scheduleTodoReminderCheck();
   if (removed.length > 0) {
@@ -2137,6 +2395,7 @@ function showClearCompletedDialog() {
       applyFilters();
       showTodoSaveError();
     } else {
+      removed.forEach(entry => invalidateTodoVector(entry.todo.id));
       applyFilters();
       scheduleTodoReminderCheck();
       if (removed.length > 0) {
@@ -2273,6 +2532,7 @@ function handleDragStart(event) {
 function handleDragEnd(event) {
   event.target.style.opacity = '1';
   draggedElement = null;
+  flushDeferredTodoSemanticRerank();
 }
 
 function handleDragOver(event) {
@@ -3278,6 +3538,7 @@ function initTodo() {
 
   // Event listeners
   elements.addTodoBtn.addEventListener('click', handleAddTodo);
+  document.addEventListener('embedding-status', handleTodoEmbeddingStatus);
   elements.todoInput.addEventListener('keypress', handleKeyPress);
   const todoLabelInput = document.getElementById('todo-label-input');
   if (todoLabelInput) {
@@ -3373,6 +3634,7 @@ function initTodo() {
   // Drag and drop
   elements.todoList.addEventListener('dragstart', handleDragStart);
   elements.todoList.addEventListener('dragend', handleDragEnd);
+  elements.todoList.addEventListener('focusout', handleTodoListFocusOut);
   elements.todoList.addEventListener('dragover', handleDragOver);
   elements.todoList.addEventListener('drop', handleDrop);
 
@@ -3977,6 +4239,8 @@ try {
   window.renderTodos = renderTodos;
   window.reloadTodosState = reloadTodosState;
   window.filterTodos = filterTodos;
+  window.getFilteredTodosRanked = getFilteredTodosRanked;
+  window.applyTodoSemanticEnabled = applyTodoSemanticEnabled;
   window.handleFilterPillClick = handleFilterPillClick;
   window.validateTodoData = validateTodoData;
   window.showImportDialog = showImportDialog;

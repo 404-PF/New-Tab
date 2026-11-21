@@ -97,10 +97,6 @@
     return copy;
   }
 
-  function keywordResults(list, q) {
-    return keywordFilter(list, q).map(function (n) { return copyWithScore(n, null); });
-  }
-
   // deps: { embedQuery(query)->Promise<vector>, getNoteVector(note)->Promise<vector|null> }
   // Returns ranked note array (new array of copies; stored notes never mutated).
   // Keyword fallbacks return every match (no cap) to match the keyword-only
@@ -109,13 +105,22 @@
   // keyword match so enabling the model never drops keyword matches the user
   // otherwise sees (PR #1187 human review). DEFAULT_MAX_RESULTS stays exported for
   // callers that want an opt-in truncation.
+  // options.keywordScore / options.keywordFilter let other item types (todos,
+  // issue #1330) reuse the ranker with their own keyword rules; they default
+  // to the note rules.
   function rankNotesForQuery(tagFilteredNotes, query, deps, options) {
     const opts = options || {};
     const alpha = opts.alpha !== undefined ? opts.alpha : DEFAULT_ALPHA;
     const minScore = opts.minScore !== undefined ? opts.minScore : DEFAULT_MIN_SCORE;
     const maxResults = opts.maxResults;
+    const scoreKeyword = typeof opts.keywordScore === 'function' ? opts.keywordScore : keywordScore;
+    const filterKeyword = typeof opts.keywordFilter === 'function' ? opts.keywordFilter : keywordFilter;
     const notes = Array.isArray(tagFilteredNotes) ? tagFilteredNotes : [];
     const q = (query || '').trim();
+
+    function keywordOnly() {
+      return filterKeyword(notes, q).map(function (n) { return copyWithScore(n, null); });
+    }
 
     if (!q) {
       return Promise.resolve(notes.map(function (n) { return copyWithScore(n, null); }));
@@ -124,23 +129,23 @@
       return Promise.resolve([]);
     }
     if (!deps || typeof deps.embedQuery !== 'function' || typeof deps.getNoteVector !== 'function') {
-      return Promise.resolve(keywordResults(notes, q));
+      return Promise.resolve(keywordOnly());
     }
 
     return deps.embedQuery(q).then(function (queryVector) {
       if (!Array.isArray(queryVector) || queryVector.length === 0) {
-        return keywordResults(notes, q);
+        return keywordOnly();
       }
       const jobs = notes.map(function (note) {
         return deps.getNoteVector(note).then(function (vec) {
           const cosine = Array.isArray(vec) && vec.length === queryVector.length
             ? cosineSimilarity(queryVector, vec)
             : 0;
-          const keyword = keywordScore(note, q);
+          const keyword = scoreKeyword(note, q);
           const score = hybridScore(keyword, cosine, alpha);
           return { note, score, cosine, keyword };
         }).catch(function () {
-          const keyword = keywordScore(note, q);
+          const keyword = scoreKeyword(note, q);
           return { note, score: hybridScore(keyword, 0, alpha), cosine: 0, keyword };
         });
       });
@@ -151,7 +156,7 @@
         // (PR #1187 review).
         const hasSignal = scored.some(function (s) { return s.cosine !== 0; });
         if (!hasSignal) {
-          return keywordResults(notes, q);
+          return keywordOnly();
         }
         const ranked = rankByScores(scored).filter(function (s) { return s.score >= minScore || s.keyword > 0; });
         const capped = Number.isFinite(maxResults) ? ranked.slice(0, maxResults) : ranked;
@@ -163,12 +168,12 @@
         // If semantic filtering is too aggressive (empty), fall back to
         // keyword matches rather than a surprising empty list.
         if (limited.length === 0) {
-          return keywordResults(notes, q);
+          return keywordOnly();
         }
         return limited;
       });
     }).catch(function () {
-      return keywordResults(notes, q);
+      return keywordOnly();
     });
   }
 

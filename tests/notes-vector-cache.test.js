@@ -5,7 +5,8 @@ import { injectScript } from './helpers/inject-script.js';
 // notes-vector-cache.js (open/upgrade/transaction/objectStore/index/get/put/
 // delete/getAll/clear with onsuccess + tx.oncomplete).
 function makeMockIndexedDB() {
-  const stores = new Map();
+  // Each database name starts empty so onupgradeneeded creates its stores.
+  const databases = new Map();
 
   function makeStoreFacade(records, tx) {
     // Like real IndexedDB, tx.oncomplete fires only after every request in
@@ -47,43 +48,45 @@ function makeMockIndexedDB() {
       index(name) {
         return {
           getAllKeys: (key) => req(() => Array.from(records.values())
-            .filter((r) => (name === 'byModel' ? r.modelId : r.noteId) === key)
+            .filter((r) => r[({ byModel: 'modelId', byTodo: 'todoId' })[name] || 'noteId'] === key)
             .map((r) => r.key))
         };
       }
     };
   }
 
-  const db = {
-    _stores: stores,
-    objectStoreNames: { contains: (name) => stores.has(name) },
-    createObjectStore(name) {
-      if (!stores.has(name)) stores.set(name, new Map());
-      return { createIndex: function () {} };
-    },
-    transaction(names, mode) {
-      void mode;
-      const tx = { oncomplete: null, onabort: null, onerror: null, _pending: 0 };
-      tx.objectStore = (name) => makeStoreFacade(stores.get(name), tx);
-      void names;
-      return tx;
-    },
-    close() {}
-  };
+  function makeDatabase(stores) {
+    return {
+      _stores: stores,
+      objectStoreNames: { contains: (name) => stores.has(name) },
+      createObjectStore(name) {
+        if (!stores.has(name)) stores.set(name, new Map());
+        return { createIndex: function () {} };
+      },
+      transaction(names, mode) {
+        void mode;
+        const tx = { oncomplete: null, onabort: null, onerror: null, _pending: 0 };
+        tx.objectStore = (name) => makeStoreFacade(stores.get(name), tx);
+        void names;
+        return tx;
+      },
+      close() {}
+    };
+  }
 
   return {
-    open() {
+    open(name) {
       const request = { onupgradeneeded: null, onsuccess: null, onerror: null, result: null };
       setTimeout(() => {
-        if (!stores.has('noteVectors')) {
-          const upgradeTx = { objectStore: (name) => makeStoreFacade(stores.get(name), {}) };
-          stores.set('noteVectors', new Map());
-          if (typeof request.onupgradeneeded === 'function') {
-            request.result = db;
-            request.onupgradeneeded({ target: { result: db, transaction: upgradeTx } });
-          }
-        }
+        const isNew = !databases.has(name);
+        if (isNew) databases.set(name, new Map());
+        const stores = databases.get(name);
+        const db = makeDatabase(stores);
         request.result = db;
+        if (isNew && typeof request.onupgradeneeded === 'function') {
+          const upgradeTx = { objectStore: (storeName) => makeStoreFacade(stores.get(storeName), {}) };
+          request.onupgradeneeded({ target: { result: db, transaction: upgradeTx } });
+        }
         if (typeof request.onsuccess === 'function') request.onsuccess({ target: { result: db } });
       }, 0);
       return request;
@@ -155,6 +158,33 @@ describe('NotesVectorCache IndexedDB roundtrip', () => {
     expect(await window.NotesVectorCache.clearCachedVectors('m1')).toBe(true);
     expect(await window.NotesVectorCache.getAllCachedVectors('m1')).toEqual([]);
     expect((await window.NotesVectorCache.getAllCachedVectors('m2'))).toHaveLength(1);
+  });
+});
+
+describe('TodoVectorCache IndexedDB roundtrip', () => {
+  it('stores, misses on text change, and deletes by todo id', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    const cache = window.TodoVectorCache;
+    cache._resetForTests();
+    expect(cache.DB_NAME).toBe('NewTabTodoEmbeddings');
+    await cache.putCachedVector('t1', 'buy milk', 'm1', [0.5, 0.5]);
+    await cache.putCachedVector('t2', 'walk dog', 'm1', [1, 0]);
+    expect((await cache.getCachedVector('t1', 'buy milk', 'm1')).todoId).toBe('t1');
+    expect(await cache.getCachedVector('t1', 'buy oat milk', 'm1')).toBeNull();
+    expect(await cache.deleteCachedVectorsForItem('t1')).toBe(true);
+    expect(await cache.getCachedVector('t1', 'buy milk', 'm1')).toBeNull();
+    expect(await cache.getCachedVector('t2', 'walk dog', 'm1')).not.toBeNull();
+  });
+
+  it('clears vectors per model', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    const cache = window.TodoVectorCache;
+    cache._resetForTests();
+    await cache.putCachedVector('t1', 'a', 'm1', [1, 0]);
+    await cache.putCachedVector('t2', 'b', 'm2', [0, 1]);
+    expect(await cache.clearCachedVectors('m1')).toBe(true);
+    expect(await cache.getAllCachedVectors('m1')).toEqual([]);
+    expect(await cache.getAllCachedVectors('m2')).toHaveLength(1);
   });
 });
 
