@@ -61,6 +61,10 @@ const AIStore = (function() {
     scrollThreshold: 100,
     confirmDialogCallback: null,
     searchQuery: '',
+    // Semantic re-rank result for one normalized query: ids plus a data
+    // signature, so stored conversations are never annotated or mutated and a
+    // stale result is ignored (issue #1328).
+    semanticMatch: null,
     keyboardSelectedIndex: -1,
     isCtrlPressed: false,
     hoveredDeleteBtn: null,
@@ -1202,11 +1206,143 @@ const AIStore = (function() {
     return conversation ? conversation.messages : [];
   }
 
+  // Semantic history search (issue #1328). The keyword filter below stays the
+  // synchronous fast path; once the on-device model is ready, a cosine re-rank
+  // (notes-semantic-search.js) replaces it for the active query.
+  const SEMANTIC_KEY_PREFIX = 'conv:';
+  const SEMANTIC_EMBED_CHARS = 4000;
+  const SEMANTIC_TITLE_CHARS = 200;
+  const SEMANTIC_RECENT_MESSAGES = 10;
+  let semanticSearchSeq = 0;
+
+  function isSemanticSearchReady() {
+    try {
+      if (localStorage.getItem('notesSemanticEnabled') !== 'true') return false;
+      return !!window.EmbeddingService && window.EmbeddingService.isReady() === true;
+    } catch {
+      return false;
+    }
+  }
+
+  function getMessageContents(conversation) {
+    return (Array.isArray(conversation.messages) ? conversation.messages : [])
+      .map(message => (message && typeof message.content === 'string' ? message.content : ''));
+  }
+
+  function conversationToEmbeddingText(conversation) {
+    const title = String(conversation.title || '').slice(0, SEMANTIC_TITLE_CHARS);
+    // Newest message first: the exact 512-token cut in embedding-service.js keeps
+    // the head, so the newest text survives it. The coarse pre-cap keeps the head too.
+    const recent = getMessageContents(conversation).slice(-SEMANTIC_RECENT_MESSAGES).filter(Boolean).reverse().join('\n');
+    const room = Math.max(0, SEMANTIC_EMBED_CHARS - title.length - 1);
+    return title + '\n' + recent.slice(0, room);
+  }
+
+  // Binds the vector to updatedAt and the embedded text, so a new message or
+  // a rename always misses the cache.
+  function semanticCacheText(conversation) {
+    return String(conversation.updatedAt) + '\u001f' + conversationToEmbeddingText(conversation);
+  }
+
+  // Cheap fingerprint of the conversation list; a stored semantic match is
+  // only reused while it still matches.
+  function semanticDataSignature(conversations) {
+    return conversations.map(conversation => [
+      conversation.id,
+      conversation.updatedAt,
+      conversation.title,
+      Array.isArray(conversation.messages) ? conversation.messages.length : 0
+    ].join('\u001f')).join('\u001e');
+  }
+
+  function isConversationRevisionCurrent(conversationId, text) {
+    if (!isSemanticSearchReady()) return false;
+    const current = state.conversations.find(item => item.id === conversationId);
+    return !!current && semanticCacheText(current) === text;
+  }
+
+  function cacheConversationVector(conversation, text, modelId, vector, cache) {
+    const noteId = SEMANTIC_KEY_PREFIX + conversation.id;
+    // Skip obsolete revisions before touching rows, so a late write-back
+    // cannot erase the vector of a newer revision.
+    if (!isConversationRevisionCurrent(conversation.id, text)) return;
+    // Drop rows for earlier revisions first, so each conversation keeps one vector.
+    cache.deleteCachedVectorsForNote(noteId).then(function () {
+      if (!isConversationRevisionCurrent(conversation.id, text)) return null;
+      return cache.putCachedVector(noteId, text, modelId, vector);
+    }).catch(function () { /* cache is best-effort */ });
+  }
+
+  function loadConversationVectors(conversations, modelId, cache, service) {
+    const texts = conversations.map(semanticCacheText);
+    return Promise.all(conversations.map((conversation, i) =>
+      cache.getCachedVector(SEMANTIC_KEY_PREFIX + conversation.id, texts[i], modelId).catch(() => null)
+    )).then(function (cached) {
+      const vectors = new Map();
+      const misses = [];
+      cached.forEach(function (record, i) {
+        if (record && Array.isArray(record.vector) && record.vector.length > 0) {
+          vectors.set(conversations[i].id, record.vector);
+        } else {
+          misses.push(i);
+        }
+      });
+      if (misses.length === 0) return vectors;
+      return service.embedTexts(misses.map(i => conversationToEmbeddingText(conversations[i]))).then(function (embedded) {
+        misses.forEach(function (convIndex, j) {
+          const vector = Array.isArray(embedded) && Array.isArray(embedded[j]) ? embedded[j] : null;
+          if (!vector || vector.length === 0) return;
+          vectors.set(conversations[convIndex].id, vector);
+          cacheConversationVector(conversations[convIndex], texts[convIndex], modelId, vector, cache);
+        });
+        return vectors;
+      }).catch(() => vectors);
+    });
+  }
+
+  // Resolves true when a semantic result was stored for the current query and
+  // the caller should re-render; false when keyword results stay in place.
+  function rankConversationsSemantically() {
+    const query = state.searchQuery.toLowerCase().trim();
+    const seq = ++semanticSearchSeq;
+    const ranker = window.NotesSemanticSearch;
+    const service = window.EmbeddingService;
+    const cache = window.NotesVectorCache;
+    if (!query || !ranker || !cache || !isSemanticSearchReady() || state.conversations.length === 0) {
+      return Promise.resolve(false);
+    }
+    const conversations = state.conversations.slice();
+    const modelId = service.getStatus().modelId;
+    // Keyword text mirrors the substring filter: title plus every message.
+    const notes = conversations.map((conversation, order) => ({
+      id: conversation.id,
+      text: [String(conversation.title || ''), ...getMessageContents(conversation)].join('\n'),
+      tag: '',
+      order
+    }));
+
+    return loadConversationVectors(conversations, modelId, cache, service).then(function (vectors) {
+      return ranker.rankNotesForQuery(notes, query, {
+        embedQuery: text => service.embedQuery(text),
+        getNoteVector: note => Promise.resolve(vectors.get(note.id) || null)
+      });
+    }).then(function (ranked) {
+      if (seq !== semanticSearchSeq || state.searchQuery.toLowerCase().trim() !== query) return false;
+      state.semanticMatch = { query, ids: ranked.map(note => note.id), signature: semanticDataSignature(conversations) };
+      return true;
+    }).catch(() => false);
+  }
+
   function getFilteredConversations() {
     let filtered = [...state.conversations];
 
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase().trim();
+      const match = state.semanticMatch;
+      if (match?.query === query && match.signature === semanticDataSignature(state.conversations) && isSemanticSearchReady()) {
+        const byId = new Map(state.conversations.map(conversation => [conversation.id, conversation]));
+        return match.ids.map(id => byId.get(id)).filter(Boolean);
+      }
       filtered = filtered.filter(conversation =>
         conversation.title.toLowerCase().includes(query) ||
         conversation.messages.some(message => message.content && message.content.toLowerCase().includes(query))
@@ -1270,6 +1406,9 @@ const AIStore = (function() {
 
     const previousState = createSaveSnapshot();
     state.conversations.splice(index, 1);
+    if (window.NotesVectorCache && typeof window.NotesVectorCache.deleteCachedVectorsForNote === 'function') {
+      window.NotesVectorCache.deleteCachedVectorsForNote(SEMANTIC_KEY_PREFIX + conversationId).catch(() => {});
+    }
 
     if (state.currentConversationId === conversationId) {
       if (state.conversations.length > 0) {
@@ -1312,6 +1451,8 @@ const AIStore = (function() {
   function setSearchQuery(query) {
     state.searchQuery = query;
     state.keyboardSelectedIndex = -1;
+    state.semanticMatch = null;
+    semanticSearchSeq += 1;
   }
 
   function sanitizeFilenameTitle(title) {
@@ -1482,6 +1623,8 @@ const AIStore = (function() {
     getCurrentConversation,
     getCurrentMessages,
     getFilteredConversations,
+    rankConversationsSemantically,
+    conversationToEmbeddingText,
     addMessageToConversation,
     createNewChat,
     switchConversation,
