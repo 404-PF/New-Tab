@@ -890,6 +890,22 @@
     "message": "詳細",
     "description": "Button that expands or collapses the details block on a todo row"
   },
+  "todoEditLabel": {
+    "message": "ラベル",
+    "description": "Label for the grouping label field in the todo edit modal"
+  },
+  "todoLabelPlaceholder": {
+    "message": "ラベル",
+    "description": "Placeholder and accessible name for the todo grouping label input"
+  },
+  "todoLabelFilterAll": {
+    "message": "すべてのラベル",
+    "description": "Label filter option that shows todos with any label"
+  },
+  "todoLabelFilterAria": {
+    "message": "ラベルで絞り込み",
+    "description": "Accessible name for the todo label filter dropdown"
+  },
   "todoEditPriority": {
     "message": "優先度",
     "description": "Label for the priority selector in the edit dialog"
