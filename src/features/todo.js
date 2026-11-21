@@ -89,6 +89,7 @@
 
   // Copy an unrecoverable raw payload aside so the next saveTodos() cannot erase it.
   function backupCorruptTodos(raw) {
+    if (!raw) return;
     try {
       localStorage.setItem('todos_corrupt_backup', raw);
     } catch (e) {
@@ -122,7 +123,7 @@
       return parsed;
     } catch (e) {
       console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
-      if (typeof raw === 'string' && raw) backupCorruptTodos(raw);
+      backupCorruptTodos(raw);
       return [];
     }
   }
