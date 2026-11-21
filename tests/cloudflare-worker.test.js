@@ -42,11 +42,20 @@ function upstreamResponse() {
 }
 
 async function groundingContentFor(result) {
-  upstreamFetch.mockImplementation((url) => Promise.resolve(
-    String(url).startsWith('https://api.tavily.com')
-      ? { status: 200, ok: true, json: () => Promise.resolve({ results: [result] }) }
-      : upstreamResponse()
-  ));
+  upstreamFetch.mockImplementation((url) => {
+    let isTavily = false;
+    try {
+      const parsedUrl = new URL(String(url));
+      isTavily = parsedUrl.protocol === 'https:' && parsedUrl.hostname === 'api.tavily.com';
+    } catch {
+      isTavily = false;
+    }
+    return Promise.resolve(
+      isTavily
+        ? { status: 200, ok: true, json: () => Promise.resolve({ results: [result] }) }
+        : upstreamResponse()
+    );
+  });
   const res = await postRequest(chatBody({
     messages: [{ role: 'user', content: 'latest news' }],
     plugins: [{ id: 'web', max_results: 1 }]
