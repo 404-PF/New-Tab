@@ -518,11 +518,14 @@ const OpenRouterAPI = (function() {
           const MAX_SSE_LINE_SIZE = 1024 * 1024;
           let buffer = ''; // Buffer for incomplete SSE data
           let streamError = null;
+          let sawDone = false;
 
           const processSseLine = (line) => {
             const event = parseSseDataLine(line);
 
-            if (event.kind === 'error') {
+            if (event.kind === 'done') {
+              sawDone = true;
+            } else if (event.kind === 'error') {
               streamError = event.error;
             } else if (event.kind === 'content') {
               fullContent += event.content;
@@ -590,6 +593,19 @@ const OpenRouterAPI = (function() {
               error: getTranslation('aiNetworkError'),
               streamError: true
             };
+          }
+
+          // A clean EOF without [DONE] means the connection was cut short, so
+          // the text is a truncated answer rather than a finished one.
+          if (!sawDone) {
+            console.error('OpenRouter stream ended before [DONE]');
+            if (fullContent.trim()) {
+              return {
+                success: false,
+                error: getTranslation('aiNetworkError'),
+                partialContent: fullContent
+              };
+            }
           }
 
           if (!fullContent.trim()) {

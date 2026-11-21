@@ -25,6 +25,7 @@ describe('OpenRouterAPI', () => {
           read: vi.fn()
             .mockResolvedValueOnce({ done: false, value: encoder.encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n') })
             .mockResolvedValueOnce({ done: false, value: encoder.encode('data: {"choices":[{"delta":{"content":"!"}}]}\n') })
+            .mockResolvedValueOnce({ done: false, value: encoder.encode('data: [DONE]\n\n') })
             .mockResolvedValue({ done: true })
         })
       }
@@ -105,7 +106,8 @@ describe('OpenRouter streaming resilience (#714)', () => {
         .mockRejectedValueOnce(new Error('network failure'))
         .mockRejectedValueOnce(new Error('network failure'))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const promise = OpenRouterAPI.sendMessageStreaming('hello');
@@ -145,7 +147,8 @@ describe('OpenRouter streaming resilience (#714)', () => {
         .mockResolvedValueOnce(createErrorResponse(429))
         .mockResolvedValueOnce(createErrorResponse(500))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const result = await OpenRouterAPI.sendMessageStreaming('hello');
@@ -232,7 +235,11 @@ describe('OpenRouter streaming resilience (#714)', () => {
         body: {
           getReader: () => ({
             read: vi.fn(() => {
-              if (index >= parts.length) {
+              if (index === parts.length) {
+                index++;
+                return Promise.resolve({ done: false, value: encoder.encode('data: [DONE]\n\n') });
+              }
+              if (index > parts.length) {
                 return Promise.resolve({ done: true, value: undefined });
               }
 
@@ -508,7 +515,8 @@ describe('OpenRouter streaming resilience (#714)', () => {
           }
         })
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const result = await OpenRouterAPI.sendMessageStreaming('hello');
@@ -541,7 +549,8 @@ describe('OpenRouter streaming resilience (#714)', () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
       'data: {not valid json}\n',
-      'data: {"choices":[{"delta":{"content":"Valid"}}]}\n'
+      'data: {"choices":[{"delta":{"content":"Valid"}}]}\n',
+      'data: [DONE]\n\n'
     ]));
 
     try {
@@ -626,6 +635,20 @@ describe('OpenRouter mid-stream errors (#1308)', () => {
 
     expect(result).toMatchObject({ success: false, error: 'Network error occurred', streamError: true });
     expect(result.partialContent).toBeUndefined();
+  });
+});
+
+describe('OpenRouter truncated streams', () => {
+  it('returns a failure with partial content when the stream ends cleanly without [DONE]', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
+      'data: {"choices":[{"delta":{"content":"Partial"}}]}\n'
+    ]));
+
+    const result = await OpenRouterAPI.sendMessageStreaming('Hi');
+
+    expect(result).toMatchObject({ success: false, error: 'Network error occurred', partialContent: 'Partial' });
+    expect(result.streamError).toBeUndefined();
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -736,7 +759,8 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
       globalThis.fetch = vi.fn()
         .mockResolvedValueOnce(createNonJsonErrorResponse(502, { statusText: 'Bad Gateway' }))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const result = await OpenRouterAPI.sendMessageStreaming('hello');
@@ -867,7 +891,8 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
       globalThis.fetch = vi.fn()
         .mockResolvedValueOnce(createNonJsonErrorResponse(429, { headers: { 'Retry-After': '30' } }))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Recovered"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const promise = OpenRouterAPI.sendMessageStreaming('hello');
@@ -902,7 +927,8 @@ describe('OpenRouter proxy token (#1086)', () => {
       globalThis.fetch = vi.fn()
         .mockResolvedValueOnce(createNonJsonErrorResponse(429))
         .mockResolvedValueOnce(createStreamingResponse([
-          'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+          'data: {"choices":[{"delta":{"content":"Hi"}}]}\n',
+          'data: [DONE]\n\n'
         ]));
 
       const result = await OpenRouterAPI.sendMessageStreaming('hello');
@@ -924,7 +950,8 @@ describe('OpenRouter proxy token (#1086)', () => {
 describe('OpenRouter web grounding (#707)', () => {
   it('adds the web plugin with five results when grounding is enabled', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
-      'data: {"choices":[{"delta":{"content":"Grounded"}}]}\n'
+      'data: {"choices":[{"delta":{"content":"Grounded"}}]}\n',
+      'data: [DONE]\n\n'
     ]));
 
     const result = await OpenRouterAPI.sendMessageStreaming(
@@ -947,7 +974,8 @@ describe('OpenRouter web grounding (#707)', () => {
 
   it('omits the web plugin when grounding is disabled', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(createStreamingResponse([
-      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\n'
+      'data: {"choices":[{"delta":{"content":"Ungrounded"}}]}\n',
+      'data: [DONE]\n\n'
     ]));
 
     const result = await OpenRouterAPI.sendMessageStreaming(
@@ -967,7 +995,7 @@ describe('OpenRouter web grounding (#707)', () => {
   it('surfaces the proxy X-Grounding header in the result', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       createStreamingResponse(
-        ['data: {"choices":[{"delta":{"content":"Plain"}}]}\n'],
+        ['data: {"choices":[{"delta":{"content":"Plain"}}]}\n', 'data: [DONE]\n\n'],
         { 'X-Grounding': 'unavailable' }
       )
     );
