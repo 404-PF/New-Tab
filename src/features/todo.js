@@ -508,7 +508,7 @@
     const afterText = after.replace(/^\s+/, '');
     const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
     const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
-    return (beforeText + boundarySpace + afterText).trim();
+    return beforeText + boundarySpace + afterText;
   }
 
   // Parse due-date, due-time, and recurrence phrases out of add-bar text.
@@ -550,7 +550,7 @@
       stripped = removeTodoPhraseSpan(stripped, span.start, span.end);
     });
 
-    const result = { text: stripped || text, dueDate: dueDate };
+    const result = { text: stripped.trim() || text, dueDate: dueDate };
     if (dueTime) result.dueTime = dueTime;
     if (recurrence) result.recurrence = recurrence;
     return result;

@@ -4711,6 +4711,11 @@ describe('Todo natural-language due dates (issue #1192)', () => {
   };
 
   describe('parseTodoDatePhrase', () => {
+    it('keeps text intact when leading whitespace precedes multiple phrases', () => {
+      expect(parseTodoDatePhrase('  Call mom tomorrow at 5pm').text).toBe('Call mom');
+      expect(parseTodoDatePhrase('   Pay rent tomorrow every friday').text).toBe('Pay rent');
+    });
+
     it('resolves tomorrow and strips only the matched span', () => {
       expect(parseTodoDatePhrase('Pay rent tomorrow')).toEqual({
         text: 'Pay rent',
