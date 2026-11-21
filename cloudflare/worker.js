@@ -222,11 +222,21 @@ async function tavilySearch(query, maxResults) {
   }
 }
 
+// Entity-escape page text so it cannot close the <web_search_results> block or pass pre-escaped entities through.
+// URLs keep their raw '&' so query strings in cited links stay intact.
+function sanitizeGroundingText(value, { keepAmpersands = false } = {}) {
+  let text = String(value).replace(/\s+/g, ' ');
+  if (!keepAmpersands) text = text.replaceAll('&', '&amp;');
+  return text.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
 function groundingMessage(results, searchPrompt) {
   const today = new Date().toISOString().slice(0, 10);
   const lines = results.map((r, i) => {
-    const snippet = String(r.content || '').replace(/\s+/g, ' ').slice(0, MAX_SNIPPET_CHARS);
-    return `[${i + 1}] ${r.title || r.url}\nURL: ${r.url}\n${snippet}`;
+    const title = sanitizeGroundingText(r.title || r.url);
+    const url = sanitizeGroundingText(r.url, { keepAmpersands: true });
+    const snippet = sanitizeGroundingText(String(r.content || '').replace(/\s+/g, ' ').slice(0, MAX_SNIPPET_CHARS));
+    return `[${i + 1}] ${title}\nURL: ${url}\n${snippet}`;
   });
   return {
     role: 'user',
