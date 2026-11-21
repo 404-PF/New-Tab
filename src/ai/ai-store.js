@@ -61,8 +61,9 @@ const AIStore = (function() {
     scrollThreshold: 100,
     confirmDialogCallback: null,
     searchQuery: '',
-    // Semantic re-rank result for one normalized query: ids only, so stored
-    // conversations are never annotated or mutated (issue #1328).
+    // Semantic re-rank result for one normalized query: ids plus a data
+    // signature, so stored conversations are never annotated or mutated and a
+    // stale result is ignored (issue #1328).
     semanticMatch: null,
     keyboardSelectedIndex: -1,
     isCtrlPressed: false,
@@ -1230,11 +1231,11 @@ const AIStore = (function() {
 
   function conversationToEmbeddingText(conversation) {
     const title = String(conversation.title || '').slice(0, SEMANTIC_TITLE_CHARS);
-    const recent = getMessageContents(conversation).slice(-SEMANTIC_RECENT_MESSAGES).filter(Boolean).join('\n');
-    // Coarse pre-cap only; the exact 512-token cut happens in embedding-service.js.
-    // Keep the newest text when the cap applies.
+    // Newest message first: the exact 512-token cut in embedding-service.js keeps
+    // the head, so the newest text survives it. The coarse pre-cap keeps the head too.
+    const recent = getMessageContents(conversation).slice(-SEMANTIC_RECENT_MESSAGES).filter(Boolean).reverse().join('\n');
     const room = Math.max(0, SEMANTIC_EMBED_CHARS - title.length - 1);
-    return title + '\n' + recent.slice(Math.max(0, recent.length - room));
+    return title + '\n' + recent.slice(0, room);
   }
 
   // Binds the vector to updatedAt and the embedded text, so a new message or
@@ -1243,13 +1244,31 @@ const AIStore = (function() {
     return String(conversation.updatedAt) + '\u001f' + conversationToEmbeddingText(conversation);
   }
 
+  // Cheap fingerprint of the conversation list; a stored semantic match is
+  // only reused while it still matches.
+  function semanticDataSignature(conversations) {
+    return conversations.map(conversation => [
+      conversation.id,
+      conversation.updatedAt,
+      conversation.title,
+      Array.isArray(conversation.messages) ? conversation.messages.length : 0
+    ].join('\u001f')).join('\u001e');
+  }
+
+  function isConversationRevisionCurrent(conversationId, text) {
+    if (!isSemanticSearchReady()) return false;
+    const current = state.conversations.find(item => item.id === conversationId);
+    return !!current && semanticCacheText(current) === text;
+  }
+
   function cacheConversationVector(conversation, text, modelId, vector, cache) {
     const noteId = SEMANTIC_KEY_PREFIX + conversation.id;
+    // Skip obsolete revisions before touching rows, so a late write-back
+    // cannot erase the vector of a newer revision.
+    if (!isConversationRevisionCurrent(conversation.id, text)) return;
     // Drop rows for earlier revisions first, so each conversation keeps one vector.
     cache.deleteCachedVectorsForNote(noteId).then(function () {
-      if (!isSemanticSearchReady()) return null;
-      const current = state.conversations.find(item => item.id === conversation.id);
-      if (!current || semanticCacheText(current) !== text) return null;
+      if (!isConversationRevisionCurrent(conversation.id, text)) return null;
       return cache.putCachedVector(noteId, text, modelId, vector);
     }).catch(function () { /* cache is best-effort */ });
   }
@@ -1309,7 +1328,7 @@ const AIStore = (function() {
       });
     }).then(function (ranked) {
       if (seq !== semanticSearchSeq || state.searchQuery.toLowerCase().trim() !== query) return false;
-      state.semanticMatch = { query, ids: ranked.map(note => note.id) };
+      state.semanticMatch = { query, ids: ranked.map(note => note.id), signature: semanticDataSignature(conversations) };
       return true;
     }).catch(() => false);
   }
@@ -1319,9 +1338,10 @@ const AIStore = (function() {
 
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase().trim();
-      if (state.semanticMatch && state.semanticMatch.query === query) {
+      const match = state.semanticMatch;
+      if (match && match.query === query && match.signature === semanticDataSignature(state.conversations) && isSemanticSearchReady()) {
         const byId = new Map(state.conversations.map(conversation => [conversation.id, conversation]));
-        return state.semanticMatch.ids.map(id => byId.get(id)).filter(Boolean);
+        return match.ids.map(id => byId.get(id)).filter(Boolean);
       }
       filtered = filtered.filter(conversation =>
         conversation.title.toLowerCase().includes(query) ||
