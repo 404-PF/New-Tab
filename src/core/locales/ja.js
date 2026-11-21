@@ -696,6 +696,9 @@ window.i18n.__registerLocale('ja', {
   aiGroundWithWeb: 'ウェブで補強',
   aiGroundWithWebDescription: '現在の質問への回答にリアルタイムのウェブ結果を使用します。',
   aiSources: '出典',
+  aiIncludeNotes: 'メモを含める',
+  aiIncludeNotesDescription: '最も関連性の高いローカルのメモをプロンプトに追加します。メッセージと一緒に AI モデルへ送信されます。',
+  aiContextNotesUsed: 'コンテキストとして使用したメモ',
   aiSearchingWeb: 'ウェブを検索中…',
   aiGroundingFallback: 'ウェブ検索を利用できません。リアルタイムのウェブデータなしで回答します。',
   // Games

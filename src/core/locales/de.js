@@ -696,6 +696,9 @@ window.i18n.__registerLocale('de', {
   aiGroundWithWeb: 'Mit Web anreichern',
   aiGroundWithWebDescription: 'Aktuelle Web-Ergebnisse für aktuelle Antworten verwenden.',
   aiSources: 'Quellen',
+  aiIncludeNotes: 'Meine Notizen einbeziehen',
+  aiIncludeNotesDescription: 'Die relevantesten lokalen Notizen zur Anfrage hinzufügen. Sie werden zusammen mit deiner Nachricht an das KI-Modell gesendet.',
+  aiContextNotesUsed: 'Als Kontext verwendete Notizen',
   aiSearchingWeb: 'Web wird durchsucht…',
   aiGroundingFallback: 'Die Websuche ist nicht verfügbar. Antwort ohne aktuelle Webdaten.',
   // Games

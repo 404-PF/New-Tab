@@ -8,6 +8,9 @@ const AIRenderer = (function() {
     aiGroundWithWeb: 'Ground with web',
     aiGroundWithWebDescription: 'Use live web results for current answers.',
     aiSources: 'Sources',
+    aiIncludeNotes: 'Include my notes',
+    aiIncludeNotesDescription: 'Add the most relevant local notes to the prompt. They are sent to the AI model with your message.',
+    aiContextNotesUsed: 'Notes used as context',
     copyFailed: 'Failed to copy text. Please select and copy manually.',
     copySuccess: 'Copied!',
     copyFailedShort: 'Failed',
@@ -136,6 +139,57 @@ const AIRenderer = (function() {
     const control = createWebGroundingControl();
     if (!control) return;
     control.checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true;
+    control.checkbox.disabled = !!isOffline;
+    control.refreshLabels();
+    control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
+    updateLocalContextControl(isOffline);
+  }
+
+  // Opt-in for adding the user's notes to the prompt (issue #1333). Off by
+  // default; the checkbox reflects the stored choice, not model readiness.
+  function createLocalContextControl() {
+    if (elements.localContextControl) return elements.localContextControl;
+
+    const inputContainer = elements.input?.parentElement;
+    if (!inputContainer) return null;
+
+    const label = document.createElement('label');
+    label.className = 'ai-grounding-toggle ai-local-context-toggle';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+
+    const text = document.createElement('span');
+    text.className = 'ai-grounding-toggle-label';
+
+    const refreshLabels = () => {
+      const labelText = getTranslation('aiIncludeNotes');
+      label.title = getTranslation('aiIncludeNotesDescription');
+      checkbox.setAttribute('aria-label', labelText);
+      text.textContent = labelText;
+    };
+
+    checkbox.addEventListener('change', () => {
+      if (!window.OpenRouterAPI?.setLocalContextEnabled) return;
+      const restoreLocalContextCheckbox = () => {
+        checkbox.checked = window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false;
+      };
+      Promise.resolve(window.OpenRouterAPI.setLocalContextEnabled(checkbox.checked)).then((persisted) => {
+        if (persisted === false) restoreLocalContextCheckbox();
+      }).catch(restoreLocalContextCheckbox);
+    });
+
+    label.append(checkbox, text);
+    inputContainer.appendChild(label);
+    window.addEventListener('languageChanged', refreshLabels);
+    elements.localContextControl = { label, checkbox, text, refreshLabels };
+    return elements.localContextControl;
+  }
+
+  function updateLocalContextControl(isOffline) {
+    const control = createLocalContextControl();
+    if (!control) return;
+    control.checkbox.checked = window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false;
     control.checkbox.disabled = !!isOffline;
     control.refreshLabels();
     control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
@@ -649,6 +703,16 @@ const AIRenderer = (function() {
     const meta = content?.querySelector('.ai-message-meta');
     if (content) content.insertBefore(nextSources, meta || null);
   }
+  // Visible record of which notes were sent with this answer (issue #1333).
+  // Titles only: the note bodies are not shown here.
+  function renderContextNotesHTML(message) {
+    const titles = Array.isArray(message?.contextSources) ? message.contextSources : [];
+    if (titles.length === 0) return '';
+    const items = titles.map(title => '<li>' + escapeHTML(String(title)) + '</li>').join('');
+    return '<div class="ai-message-context"><div class="ai-message-context-title">'
+      + escapeHTML(getTranslation('aiContextNotesUsed')) + '</div><ul>' + items + '</ul></div>';
+  }
+
   function getMessageHTML(message) {
     const isUser = message.role === 'user';
     const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : '';
@@ -672,6 +736,7 @@ const AIRenderer = (function() {
         <div class="ai-message-content">
           <div class="ai-message-text ${isStreaming ? 'ai-message-streaming' : ''}">${renderedContent}</div>
           ${renderSourcesHTML(message)}
+          ${renderContextNotesHTML(message)}
           <div class="ai-message-meta">
             <div class="ai-message-time">${time}</div>
             <button class="ai-message-copy" aria-label="Copy message" tabindex="0">

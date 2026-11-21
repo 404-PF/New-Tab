@@ -696,6 +696,9 @@ window.i18n.__registerLocale('ru', {
   aiGroundWithWeb: 'Использовать веб-поиск',
   aiGroundWithWebDescription: 'Использовать актуальные результаты веб-поиска для текущих ответов.',
   aiSources: 'Источники',
+  aiIncludeNotes: 'Включать мои заметки',
+  aiIncludeNotesDescription: 'Добавляет в запрос наиболее подходящие локальные заметки. Они отправляются ИИ-модели вместе с вашим сообщением.',
+  aiContextNotesUsed: 'Заметки, использованные как контекст',
   aiSearchingWeb: 'Поиск в интернете…',
   aiGroundingFallback: 'Веб-поиск недоступен. Ответ будет дан без актуальных данных из интернета.',
   // Games
