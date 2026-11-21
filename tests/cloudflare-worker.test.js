@@ -48,7 +48,7 @@ async function groundingContentFor(result) {
       const parsedUrl = new URL(String(url));
       isTavily = parsedUrl.protocol === 'https:' && parsedUrl.hostname === 'api.tavily.com';
     } catch {
-      isTavily = false;
+      // Non-URL input is never Tavily; keep the default false.
     }
     return Promise.resolve(
       isTavily
