@@ -665,6 +665,30 @@ const AIService = (function() {
       return;
     }
 
+    showLoading(
+      groundingEnabled
+        ? getTranslation('aiSearchingWeb')
+        : getTranslation('aiThinking')
+    );
+
+    const abortController = new AbortController();
+    AIStore.setAbortController(abortController);
+
+    const useLocalContext = !networkStatus.isOffline && window.OpenRouterAPI.isLocalContextEnabled();
+    const localContextNotes = useLocalContext ? await retrieveLocalContext(normalizedUserMessage) : [];
+
+    // Stop pressed while notes were being retrieved cancels the send before
+    // anything is written, so no empty answer bubble is left behind.
+    if (abortController.signal.aborted) {
+      if (AIStore.state.abortController === null || AIStore.state.abortController === abortController) {
+        AIStore.setInFlightConversation(null);
+        hideLoading();
+      }
+      return;
+    }
+
+    // Appended only after the await, so the question lands in the same
+    // conversation as the answer even if the user switched chats meanwhile.
     if (!reuseExistingUserMessage) {
       AIStore.addMessageToConversation({
         role: 'user',
@@ -679,17 +703,6 @@ const AIService = (function() {
       }
     }
 
-    showLoading(
-      groundingEnabled
-        ? getTranslation('aiSearchingWeb')
-        : getTranslation('aiThinking')
-    );
-
-    const abortController = new AbortController();
-    AIStore.setAbortController(abortController);
-
-    const useLocalContext = !networkStatus.isOffline && window.OpenRouterAPI.isLocalContextEnabled();
-    const localContextNotes = useLocalContext ? await retrieveLocalContext(normalizedUserMessage) : [];
     const localContextOptions = localContextNotes.length > 0 ? { localContext: localContextNotes } : {};
 
     const messages = AIStore.getCurrentMessages();

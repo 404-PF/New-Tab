@@ -423,7 +423,7 @@
     try {
       service = window.EmbeddingService || null;
     } catch { service = null; }
-    let cache = null;
+    let cache;
     try {
       cache = window.NotesVectorCache || null;
     } catch { cache = null; }
@@ -481,6 +481,7 @@
         if (!current || noteToEmbeddingText(current) !== inputs[i]) return;
         scored.push({ note: current, cosine: ranker.cosineSimilarity(queryVector, vectors[i]) });
       });
+      if (!isNotesSemanticReady()) return [];
       return ranker.selectContextNotes(scored);
     }).catch(function () { return []; });
   }

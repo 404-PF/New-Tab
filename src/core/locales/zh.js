@@ -741,6 +741,9 @@ window.i18n.__registerLocale('zh', {
   aiGroundWithWeb: '使用网页增强',
   aiGroundWithWebDescription: '使用即时网页结果回答当前问题。',
   aiSources: '来源',
+  aiIncludeNotes: '包含我的笔记',
+  aiIncludeNotesDescription: '将最相关的本地笔记添加到提示中。它们会与你的消息一起发送给 AI 模型。',
+  aiContextNotesUsed: '用作上下文的笔记',
   aiSearchingWeb: '正在搜索网页…',
   aiGroundingFallback: '网页搜索不可用。将不使用即时网页数据回答。',
   // Games

@@ -696,6 +696,9 @@ window.i18n.__registerLocale('fr', {
   aiGroundWithWeb: 'Utiliser le web',
   aiGroundWithWebDescription: 'Utiliser les résultats web en direct pour les réponses actuelles.',
   aiSources: 'Sources',
+  aiIncludeNotes: 'Inclure mes notes',
+  aiIncludeNotesDescription: 'Ajoute à la requête les notes locales les plus pertinentes. Elles sont envoyées au modèle d\'IA avec votre message.',
+  aiContextNotesUsed: 'Notes utilisées comme contexte',
   aiSearchingWeb: 'Recherche sur le web…',
   aiGroundingFallback: 'La recherche web est indisponible. Réponse sans données web en temps réel.',
   // Games

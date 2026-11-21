@@ -1583,6 +1583,7 @@ describe('AIService local notes context (#1333)', () => {
     expect(window.retrieveNotesForAI).toHaveBeenCalledWith('hello');
     expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).not.toHaveProperty('localContext');
     expect(conversation.messages[1].contextSources).toBeUndefined();
+    expect(document.querySelector('.ai-message-context')).toBeNull();
   });
 
   it('passes retrieved notes to the request and records their titles on the answer', async () => {

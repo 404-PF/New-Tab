@@ -171,9 +171,12 @@ const AIRenderer = (function() {
 
     checkbox.addEventListener('change', () => {
       if (!window.OpenRouterAPI?.setLocalContextEnabled) return;
-      if (!window.OpenRouterAPI.setLocalContextEnabled(checkbox.checked)) {
-        checkbox.checked = window.OpenRouterAPI.isLocalContextEnabled();
-      }
+      const restoreLocalContextCheckbox = () => {
+        checkbox.checked = window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false;
+      };
+      Promise.resolve(window.OpenRouterAPI.setLocalContextEnabled(checkbox.checked)).then((persisted) => {
+        if (persisted === false) restoreLocalContextCheckbox();
+      }).catch(restoreLocalContextCheckbox);
     });
 
     label.append(checkbox, text);
