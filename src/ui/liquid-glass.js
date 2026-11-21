@@ -184,6 +184,8 @@
   // its warp would refract the ancestor's warped output, not the page.
   function isExcluded(el) {
     if (el.closest('#todo-app-widget-host')) return true;
+    // Motto buttons warp inside the pill on purpose: the second refraction is
+    // accepted so their glass matches the pill's, and was reviewed visually.
     if (el.id === 'refresh-motto-btn' || el.id === 'copy-motto-btn') return false;
     const parent = el.parentElement;
     return Boolean(parent) && Boolean(parent.closest('.glass--liquid'));
