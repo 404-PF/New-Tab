@@ -154,8 +154,30 @@ describe('Settings menu and section transitions (#875)', () => {
 
   it('disables the settings modal animations under prefers-reduced-motion', () => {
     const css = readCoreCss();
-    const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
-    expect(reduced).not.toBeNull();
+    const mediaHeader = '@media (prefers-reduced-motion: reduce)';
+    const mediaStart = css.indexOf(mediaHeader);
+    expect(mediaStart).toBeGreaterThan(-1);
+
+    const openBrace = css.indexOf('{', mediaStart);
+    expect(openBrace).toBeGreaterThan(-1);
+
+    let depth = 0;
+    let closeBrace = -1;
+    for (let i = openBrace; i < css.length; i += 1) {
+      const ch = css[i];
+      if (ch === '{') depth += 1;
+      if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          closeBrace = i;
+          break;
+        }
+      }
+    }
+
+    expect(closeBrace).toBeGreaterThan(openBrace);
+    const reduced = [css.slice(mediaStart, closeBrace + 1)];
+
     expect(reduced[0]).toMatch(/#settings-modal/);
     expect(reduced[0]).toMatch(/#settings-modal > div/);
     expect(reduced[0]).toMatch(/\.settings-menu-item/);
