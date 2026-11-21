@@ -7,14 +7,6 @@ const CHECK_INTERVAL_MINUTES = 1;
 const REMINDER_LATE_GRACE_MINUTES = CHECK_INTERVAL_MINUTES;
 // SYNC: This alarm name must match the hardcoded string in src/features/todo.js fallback
 const ALARM_NAME = 'todoReminderCheck';
-// SYNC: These two migration constants must match the ones in
-// src/features/migrate-legacy.js. Registering the uninstall redirect here (on
-// install/startup) means uninstalls of the legacy listing land on the current
-// listing even if the user never opens a new tab, where the page module would
-// otherwise be the only place to set it.
-const MIGRATION_ENABLED = false;
-const MIGRATION_LISTING_URL =
-  'https://chromewebstore.google.com/detail/new-tab/maifjidpfffffeapgephnpdhomkocncd';
 // Durable placeholder written between the notified-map pre-persist and the
 // confirmation write. A 'pending' value means the reminder was durably claimed
 // but never confirmed as shown (creation or cleanup write failed), so the next
@@ -635,15 +627,6 @@ async function snoozeTodoReminderFromNotification(todoId) {
 }
 
 function handleStartup() {
-  // Point any uninstalls of the old item at the new listing (legacy-publisher
-  // build only). No extra permission required.
-  if (MIGRATION_ENABLED && chrome?.runtime?.setUninstallURL) {
-    try {
-      chrome.runtime.setUninstallURL(MIGRATION_LISTING_URL);
-    } catch (e) {
-      console.warn('Failed to set migration uninstall URL:', e);
-    }
-  }
   try {
     chrome.alarms.get(ALARM_NAME, (alarm) => {
       if (!alarm) {
