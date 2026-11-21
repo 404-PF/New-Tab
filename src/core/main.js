@@ -374,6 +374,7 @@ const SEARCH_HISTORY_LIMIT = 8;
 const SEARCH_SUGGESTION_DEBOUNCE_MS = 150;
 const SEARCH_REMOTE_SUGGESTION_LIMIT = 5;
 const SEARCH_SUGGESTION_LIMIT = 8;
+const SEARCH_APP_MATCH_LIMIT = 5;
 
 const SEARCH_PROVIDER_STORAGE_KEY = 'searchProvider';
 const CUSTOM_PROVIDERS_STORAGE_KEY = 'customSearchProviders';
@@ -428,6 +429,8 @@ let searchSuggestionRequestSequence = 0;
 let searchSuggestionItems = [];
 let searchSuggestionIndex = -1;
 let searchProviderLiveRegion = null;
+let semanticAppMatches = [];
+let semanticAppRequestSequence = 0;
 
 function isSearchHistoryEnabled() {
   try {
@@ -1021,6 +1024,11 @@ function mergeSearchSuggestions(localSuggestions, remoteSuggestions) {
   const seen = new Set();
 
   [...localSuggestions, ...remoteSuggestions].forEach((item) => {
+    if (item && typeof item === 'object' && item.app) {
+      merged.push(item);
+      return;
+    }
+
     const normalized = normalizeRemoteSuggestion(item, '');
     if (!normalized) return;
 
@@ -1048,6 +1056,15 @@ function cancelSearchSuggestionsFetch() {
   searchSuggestionRequestSequence += 1;
 }
 
+function getLocalSearchSuggestions(effectiveQuery) {
+  const searchHistory = readSearchHistory();
+  const historySuggestions = effectiveQuery
+    ? searchHistory.filter((item) => item.toLowerCase().includes(effectiveQuery.toLowerCase()))
+    : searchHistory;
+  const appSuggestions = semanticAppMatches.map((app) => ({ text: getSemanticAppLabel(app), app }));
+  return [...appSuggestions, ...historySuggestions];
+}
+
 function scheduleSearchSuggestionsFetch() {
   if (!searchInputElement || !isSearchInputFocused || !isSearchHistoryEnabled()) {
     cancelSearchSuggestionsFetch();
@@ -1058,10 +1075,7 @@ function scheduleSearchSuggestionsFetch() {
   const rawQuery = searchInputElement.value.trim();
   const resolved = resolveSearchQuery(rawQuery);
   const effectiveQuery = resolved.query;
-  const searchHistory = readSearchHistory();
-  const localSuggestions = effectiveQuery
-    ? searchHistory.filter((item) => item.toLowerCase().includes(effectiveQuery.toLowerCase()))
-    : searchHistory;
+  const localSuggestions = getLocalSearchSuggestions(effectiveQuery);
 
   renderSearchSuggestions(localSuggestions, resolved.providerId);
 
@@ -1084,13 +1098,10 @@ function scheduleSearchSuggestionsFetch() {
       return;
     }
 
-    const latestHistory = readSearchHistory();
     const latestQuery = searchInputElement.value.trim();
     const latestResolved = resolveSearchQuery(latestQuery);
     const latestEffectiveQuery = latestResolved.query;
-    const latestLocalSuggestions = latestEffectiveQuery
-      ? latestHistory.filter((item) => item.toLowerCase().includes(latestEffectiveQuery.toLowerCase()))
-      : latestHistory;
+    const latestLocalSuggestions = getLocalSearchSuggestions(latestEffectiveQuery);
 
     if (
       latestResolved.providerId !== resolved.providerId ||
@@ -1288,8 +1299,79 @@ function executeSearch(query, providerIdOverride = null) {
   runDefaultSearch(resolved.query, null, providerId);
 }
 
+function getSemanticAppLabel(app) {
+  const grid = window.AppGridState;
+  const label = grid && typeof grid.getAppDisplayName === 'function' ? grid.getAppDisplayName(app) : '';
+  return label || app.name || '';
+}
+
+function launchSemanticAppMatch(app) {
+  if (typeof window.openInternalApp === 'function' && window.openInternalApp(app.id)) {
+    return;
+  }
+  const validation = validateUrl(app.url);
+  if (validation.status !== 'valid') {
+    return;
+  }
+  if (loadOpenNewTabSetting()) {
+    window.open(validation.url.href, '_blank', 'noopener,noreferrer');
+  } else {
+    window.location.href = validation.url.href;
+  }
+}
+
+// Ranks apps for the current input only when semantic search is enabled and
+// the model is ready; otherwise no app items are shown and the history
+// dropdown behaves exactly as before. Stale responses are dropped by sequence.
+function refreshSemanticAppMatches() {
+  const sequence = ++semanticAppRequestSequence;
+  const query = searchInputElement ? searchInputElement.value.trim() : '';
+  semanticAppMatches = [];
+
+  let enabled;
+  try {
+    enabled = typeof window.loadNotesSemanticEnabled === 'function'
+      ? !!window.loadNotesSemanticEnabled()
+      : localStorage.getItem('notesSemanticEnabled') === 'true';
+  } catch {
+    enabled = false;
+  }
+  if (!query || !enabled || !window.EmbeddingScripts || !window.AppSemanticSearch) {
+    return;
+  }
+
+  window.EmbeddingScripts.ensureScripts()
+    .then(() => {
+      const service = window.EmbeddingService;
+      if (!service || typeof service.isReady !== 'function' || !service.isReady()) {
+        return [];
+      }
+      const apps = typeof window.getAllAppData === 'function' ? window.getAllAppData() : [];
+      const folders = window.AppFolders && typeof window.AppFolders.getFolders === 'function'
+        ? window.AppFolders.getFolders()
+        : [];
+      return window.AppSemanticSearch.rankApps(query, apps, folders);
+    })
+    .catch(() => [])
+    .then((ranked) => {
+      if (sequence !== semanticAppRequestSequence) {
+        return;
+      }
+      semanticAppMatches = Array.isArray(ranked) ? ranked.slice(0, SEARCH_APP_MATCH_LIMIT) : [];
+      if (isSearchInputFocused) {
+        renderSearchHistorySuggestions();
+      }
+    });
+}
+
 function selectSearchHistorySuggestion(suggestion) {
   if (!searchInputElement) {
+    return;
+  }
+
+  if (suggestion && typeof suggestion === 'object' && suggestion.app) {
+    hideSearchHistorySuggestions();
+    launchSemanticAppMatch(suggestion.app);
     return;
   }
 
@@ -1336,7 +1418,8 @@ function renderSearchSuggestions(suggestions, providerId = activeProviderId) {
   searchHistoryListEl.innerHTML = '';
   searchSuggestionItems = suggestions.slice(0, SEARCH_SUGGESTION_LIMIT).map((item) => ({
     text: typeof item === 'string' ? item : (item && item.text) || '',
-    providerId: typeof item === 'object' && item && item.providerId ? item.providerId : providerId
+    providerId: typeof item === 'object' && item && item.providerId ? item.providerId : providerId,
+    app: typeof item === 'object' && item && item.app ? item.app : null
   }));
 
   searchSuggestionItems.forEach((item, index) => {
@@ -1368,12 +1451,8 @@ function renderSearchHistorySuggestions() {
 
   const rawQuery = searchInputElement.value.trim();
   const resolved = resolveSearchQuery(rawQuery);
-  const searchHistory = readSearchHistory();
-  const suggestions = resolved.query
-    ? searchHistory.filter((item) => item.toLowerCase().includes(resolved.query.toLowerCase()))
-    : searchHistory;
 
-  renderSearchSuggestions(suggestions, resolved.providerId);
+  renderSearchSuggestions(getLocalSearchSuggestions(resolved.query), resolved.providerId);
   scheduleSearchSuggestionsFetch();
 }
 
@@ -1552,6 +1631,7 @@ function initSearchEngine() {
 
   searchInputElement.addEventListener('input', function () {
     clearSearchValidationFeedback();
+    refreshSemanticAppMatches();
     if (isSearchInputFocused) {
       renderSearchHistorySuggestions();
     }

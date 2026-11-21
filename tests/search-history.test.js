@@ -585,3 +585,89 @@ describe('search bar honors open in current tab setting', () => {
     });
   });
 });
+
+// Issue #1329: semantic app matches surface in the search dropdown only when
+// semantic search is enabled and the model is ready.
+describe('semantic app launcher matches (#1329)', () => {
+  const LAUNCHER_APPS = [
+    { id: 'gmail', name: 'Gmail', url: 'https://mail.google.com/' },
+    { id: 'photos', name: 'Photos', url: 'https://photos.example.com' }
+  ];
+
+  function conceptVector(text) {
+    const t = String(text).toLowerCase();
+    if (/mail|gmail|email/.test(t)) return [1, 0, 0];
+    if (/photo/.test(t)) return [0, 1, 0];
+    return [0, 0, 1];
+  }
+
+  function setServiceReady(ready) {
+    window.EmbeddingService = {
+      isReady: () => ready,
+      getStatus: () => ({ modelId: 'harrier-test' }),
+      embedTexts: (texts) => Promise.resolve(texts.map(conceptVector)),
+      embedQuery: (text) => Promise.resolve(conceptVector(text))
+    };
+  }
+
+  async function typeQuery(text) {
+    const input = focusSearchInput();
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    for (let i = 0; i < 50; i += 1) await vi.advanceTimersByTimeAsync(0);
+    return input;
+  }
+
+  function dropdownLabels() {
+    const panel = document.querySelector('.search-history-panel');
+    if (!panel || panel.hidden) return [];
+    return Array.from(panel.querySelectorAll('.search-history-item')).map((el) => el.textContent);
+  }
+
+  beforeAll(() => {
+    injectScript('src/ai/embeddings/notes-semantic-search.js');
+    injectScript('src/ai/embeddings/app-semantic-search.js');
+    window.EmbeddingScripts = { ensureScripts: () => Promise.resolve() };
+    window.getAllAppData = () => LAUNCHER_APPS;
+    window.AppFolders = { getFolders: () => [] };
+    window.AppSemanticSearch.clearCache();
+  });
+
+  beforeEach(() => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('searchHistory', JSON.stringify(['email newsletters']));
+    window.AppSemanticSearch.clearCache();
+    setServiceReady(true);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('notesSemanticEnabled');
+    delete window.EmbeddingService;
+  });
+
+  it('shows the semantically matched app first and launches it on selection', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    localStorage.setItem('openAppsInNewTab', 'true');
+    await typeQuery('email');
+
+    const labels = dropdownLabels();
+    expect(labels[0]).toBe('Gmail');
+    expect(labels).not.toContain('Photos');
+
+    document.querySelector('.search-history-item').click();
+    expect(openSpy).toHaveBeenCalledWith('https://mail.google.com/', '_blank', 'noopener,noreferrer');
+    openSpy.mockRestore();
+  });
+
+  it('shows no app matches when the model is not ready', async () => {
+    setServiceReady(false);
+    await typeQuery('email');
+    expect(dropdownLabels()).toEqual(['email newsletters']);
+  });
+
+  it('shows no app matches when semantic search is disabled', async () => {
+    localStorage.setItem('notesSemanticEnabled', 'false');
+    await typeQuery('email');
+    expect(dropdownLabels()).toEqual(['email newsletters']);
+  });
+});
