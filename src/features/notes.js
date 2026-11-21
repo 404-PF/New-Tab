@@ -456,6 +456,216 @@
     } catch { /* ignore */ }
   }
 
+  // Related panel and duplicate hint (issue #1331). Candidates come only from
+  // the vector cache (no inference); the subject note is the only item that
+  // may be embedded. Both are suggestions: nothing is merged or deleted.
+  let _relatedGeneration = 0;
+  let _duplicateHint = null;
+  // Notes created this session: duplicate checks run on blur for these only,
+  // so a stored note does not trigger inference on every edit.
+  const _newNoteIds = new Set();
+
+  function previewLabel(text) {
+    const line = String(text || '').trim().split('\n')[0];
+    return line.length > 60 ? line.slice(0, 60) + '…' : line;
+  }
+
+  function translateOr(key, fallback) {
+    try {
+      return window.i18n ? window.i18n.t(key) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function hideRelatedPanel() {
+    _relatedGeneration += 1;
+    const el = document.getElementById('notes-related');
+    if (el) {
+      el.hidden = true;
+      el.textContent = '';
+    }
+  }
+
+  function hideDuplicateHint() {
+    _duplicateHint = null;
+    const el = document.getElementById('notes-duplicate-hint');
+    if (el) {
+      el.hidden = true;
+      el.textContent = '';
+    }
+  }
+
+  function isSemanticAvailableForSuggestions() {
+    return isNotesSemanticReady()
+      && !!window.NotesSemanticSearch && !!window.NotesVectorCache && !!window.EmbeddingService;
+  }
+
+  // Cached vectors for the given notes whose stored hash still matches the
+  // current text. Stale or missing rows are skipped, never re-embedded here.
+  function getCurrentCachedVectors(modelId, list) {
+    const cache = window.NotesVectorCache;
+    return cache.getAllCachedVectors(modelId).then(function (records) {
+      const byNote = new Map();
+      records.forEach(function (r) { byNote.set(String(r.noteId), r); });
+      const out = [];
+      list.forEach(function (note) {
+        const r = byNote.get(String(note.id));
+        if (r && r.textHash === cache.hashNoteText(noteToEmbeddingText(note))) {
+          out.push({ id: note.id, vector: r.vector });
+        }
+      });
+      return out;
+    });
+  }
+
+  function getSubjectVector(note, modelId) {
+    const cache = window.NotesVectorCache;
+    const text = noteToEmbeddingText(note);
+    return cache.getCachedVector(note.id, text, modelId).then(function (record) {
+      if (record && Array.isArray(record.vector)) return record.vector;
+      if (!text.trim()) return null;
+      return window.EmbeddingService.embedTexts([text]).then(function (vectors) {
+        const vec = Array.isArray(vectors) && Array.isArray(vectors[0]) ? vectors[0] : null;
+        const current = notes.find(function (n) { return n.id === note.id; });
+        // Same write-back guard as the search path: skip if the note was
+        // deleted/edited or the model was disabled while inference ran.
+        if (vec && current && noteToEmbeddingText(current) === text && isNotesSemanticReady()) {
+          cache.putCachedVector(note.id, text, modelId, vec).catch(function () { /* ignore */ });
+        }
+        return vec;
+      });
+    });
+  }
+
+  function focusNoteById(id) {
+    const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
+    if (ta) {
+      ta.focus();
+      ta.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function createNoteLink(note, className) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.dataset.id = note.id;
+    btn.textContent = previewLabel(note.text) || '…';
+    return btn;
+  }
+
+  function renderRelatedPanel(panel, ranked) {
+    panel.textContent = '';
+    const items = ranked
+      .map(function (r) { return notes.find(function (n) { return n.id === r.id; }); })
+      .filter(Boolean);
+    if (items.length === 0) {
+      panel.hidden = true;
+      return;
+    }
+    const title = document.createElement('div');
+    title.className = 'notes-related-title';
+    title.textContent = translateOr('notesRelatedTitle', 'Related');
+    const list = document.createElement('ul');
+    list.className = 'notes-related-list';
+    items.forEach(function (note) {
+      const li = document.createElement('li');
+      li.appendChild(createNoteLink(note, 'notes-related-item'));
+      list.appendChild(li);
+    });
+    panel.append(title, list);
+    panel.hidden = false;
+  }
+
+  function showRelatedFor(noteId) {
+    const panel = document.getElementById('notes-related');
+    if (!panel) return;
+    const note = notes.find(function (n) { return n.id === noteId; });
+    if (!isSemanticAvailableForSuggestions() || !note || !noteToEmbeddingText(note).trim()) {
+      hideRelatedPanel();
+      return;
+    }
+    const generation = ++_relatedGeneration;
+    const modelId = getSemanticModelId();
+    const others = getTagFilteredNotes().filter(function (n) { return n.id !== noteId; });
+    Promise.all([getSubjectVector(note, modelId), getCurrentCachedVectors(modelId, others)])
+      .then(function (results) {
+        if (generation !== _relatedGeneration) return;
+        if (!isSemanticAvailableForSuggestions() || !results[0]) {
+          hideRelatedPanel();
+          return;
+        }
+        const ranked = window.NotesSemanticSearch.rankSimilarItems(results[0], results[1], { excludeId: noteId });
+        renderRelatedPanel(panel, ranked);
+      })
+      .catch(function () {
+        if (generation === _relatedGeneration) hideRelatedPanel();
+      });
+  }
+
+  function renderDuplicateHint(noteId, matchId) {
+    const el = document.getElementById('notes-duplicate-hint');
+    const match = notes.find(function (n) { return n.id === matchId; });
+    if (!el || !match) return;
+    el.textContent = '';
+    const label = document.createElement('span');
+    label.className = 'notes-duplicate-label';
+    label.textContent = translateOr('notesDuplicateHint', 'Possible duplicate of');
+    const link = createNoteLink(match, 'notes-duplicate-link');
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'notes-duplicate-dismiss';
+    dismiss.textContent = '×';
+    dismiss.setAttribute('aria-label', translateOr('notesDuplicateDismiss', 'Dismiss'));
+    el.append(label, link, dismiss);
+    el.hidden = false;
+    _duplicateHint = { noteId, matchId };
+  }
+
+  function checkDuplicateFor(noteId) {
+    if (!isSemanticAvailableForSuggestions()) return;
+    const note = notes.find(function (n) { return n.id === noteId; });
+    if (!note || !noteToEmbeddingText(note).trim()) return;
+    const textAtStart = note.text;
+    const modelId = getSemanticModelId();
+    const others = notes.filter(function (n) { return n.id !== noteId; });
+    getSubjectVector(note, modelId).then(function (subject) {
+      if (!subject || !isSemanticAvailableForSuggestions()) return null;
+      const current = notes.find(function (n) { return n.id === noteId; });
+      if (!current || current.text !== textAtStart) return null;
+      return getCurrentCachedVectors(modelId, others).then(function (candidates) {
+        const best = window.NotesSemanticSearch.rankSimilarItems(subject, candidates, {
+          excludeId: noteId,
+          minScore: window.NotesSemanticSearch.DEFAULT_DUPLICATE_MIN_SCORE,
+          maxResults: 1
+        })[0];
+        // Revalidate after the async cache read: the note may have been edited or deleted meanwhile.
+        const live = notes.find(function (n) { return n.id === noteId; });
+        if (best && live && live.text === textAtStart && isSemanticAvailableForSuggestions()) renderDuplicateHint(noteId, best.id);
+      });
+    }).catch(function () { /* suggestions are best-effort */ });
+  }
+
+  function handleRelatedClick(e) {
+    const item = e.target.closest('.notes-related-item, .notes-duplicate-link');
+    if (item) {
+      focusNoteById(item.dataset.id);
+      return;
+    }
+    if (e.target.closest('.notes-duplicate-dismiss')) hideDuplicateHint();
+  }
+
+  function handleRelatedFocusIn(e) {
+    const ta = e.target && e.target.closest ? e.target.closest('.note-textarea') : null;
+    if (ta) showRelatedFor(ta.dataset.id);
+  }
+
+  // Typing changes the subject note, so drop the stale panel and any in-flight results.
+  function handleRelatedInput(e) {
+    if (e.target && e.target.closest && e.target.closest('.note-textarea')) hideRelatedPanel();
+  }
+
   // The embedding modules stay out of the bootstrap scriptSources path
   // (issue #1186): they load on demand, mirroring the games-app lazy
   // loader. The canonical source list and loader live in
@@ -673,6 +883,10 @@
   function renderNotes() {
     const { notesList, notesEmpty } = elements;
     if (!notesList || !notesEmpty) return;
+    if (!isSemanticAvailableForSuggestions()) {
+      hideRelatedPanel();
+      hideDuplicateHint();
+    }
     // Any sync re-render invalidates in-flight reranks: ranked results
     // capture the tag base at start, so a tag click or import racing
     // inference would otherwise paint stale tag-A order under tag B
@@ -907,6 +1121,7 @@
     flushPendingSaves();
     const previousNotes = notes.map(n => ({ ...n }));
     notes.unshift(note);
+    _newNoteIds.add(note.id);
     if (!saveNotes(notes)) {
       notes = previousNotes;
       renderNotes();
@@ -940,6 +1155,8 @@
       delete debounceTimers[id];
     }
     delete notePreviewModes[id];
+    hideRelatedPanel();
+    if (_duplicateHint && (_duplicateHint.noteId === id || _duplicateHint.matchId === id)) hideDuplicateHint();
     const previousNotes = notes.map(n => ({ ...n }));
     notes = notes.filter(n => n.id !== id);
     if (!saveNotes(notes)) {
@@ -947,6 +1164,7 @@
       renderNotes();
       return;
     }
+    _newNoteIds.delete(id);
     invalidateNoteVector(id);
     bumpSemanticGeneration();
     renderNotes();
@@ -968,6 +1186,7 @@
       return;
     }
     invalidateNoteVector(id);
+    if (_duplicateHint && (_duplicateHint.noteId === id || _duplicateHint.matchId === id)) hideDuplicateHint();
     // Drop in-flight reranks (their base predates this edit) but do NOT
     // re-render here: the textarea is focused and typing must never churn
     // the list. Blur re-ranks via handleNotesBlur so stale membership
@@ -1538,6 +1757,7 @@
       return;
     }
     updateNoteText(ta.dataset.id, text);
+    if (_newNoteIds.has(id)) checkDuplicateFor(id);
     // Editing may have changed search membership; re-rank now that the
     // editor is blurred (runSemanticRerank skips while a textarea is focused).
     if (_activeSearchQuery && isNotesSemanticEnabled()) scheduleSemanticRerank();
@@ -1782,6 +2002,9 @@
     document.addEventListener('dragstart', handleDragStart, true);
     document.removeEventListener('focusout', handleGripFocusOut);
     document.addEventListener('focusout', handleGripFocusOut);
+    document.addEventListener('focusin', handleRelatedFocusIn);
+    document.addEventListener('input', handleRelatedInput);
+    document.addEventListener('click', handleRelatedClick);
     // 'embedding-status' is subscribed once at file scope below; DOM
     // dedupes identical listeners, so initNotes must not re-add it here.
   }

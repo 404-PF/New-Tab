@@ -846,6 +846,18 @@
     "message": "正在加载设备端模型…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "相关",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "可能与以下笔记重复：",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "忽略",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "正在开始下载…",
     "description": "Status when the model download starts"

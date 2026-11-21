@@ -846,6 +846,18 @@
     "message": "Carregando modelo no dispositivo…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "Relacionadas",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "Possível duplicata de",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "Dispensar",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "Iniciando download…",
     "description": "Status when the model download starts"

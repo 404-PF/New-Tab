@@ -862,6 +862,18 @@
     "message": "Loading on-device model…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "Related",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "Possible duplicate of",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "Dismiss",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "Starting download…",
     "description": "Status when the model download starts"

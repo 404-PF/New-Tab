@@ -846,6 +846,18 @@
     "message": "Загрузка модели на устройство…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "Похожие",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "Возможный дубликат:",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "Скрыть",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "Начинается загрузка…",
     "description": "Status when the model download starts"

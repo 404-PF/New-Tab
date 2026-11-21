@@ -1117,6 +1117,8 @@ notesSection.innerHTML = `
     </div>
     <div class="notes-tag-filter" id="notes-tag-filter"></div>
   <div class="notes-semantic-status" id="notes-semantic-status" hidden aria-live="polite"></div>
+  <div class="notes-related" id="notes-related" hidden></div>
+  <div class="notes-duplicate-hint" id="notes-duplicate-hint" hidden role="status"></div>
   <div class="notes-list" id="notes-list"></div>
   <div class="notes-empty" id="notes-empty"><p>No notes yet.</p></div>
 `;

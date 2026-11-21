@@ -1054,6 +1054,18 @@
     "message": "Semantic search…",
     "description": "Notes search status while semantic re-ranking"
   },
+  "notesRelatedTitle": {
+    "message": "Related",
+    "description": "Heading for notes related to the focused note (semantic)"
+  },
+  "notesDuplicateHint": {
+    "message": "Possible duplicate of",
+    "description": "Non-blocking hint shown when a new note resembles an existing one"
+  },
+  "notesDuplicateDismiss": {
+    "message": "Dismiss",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticLoading": {
     "message": "Loading on-device model…",
     "description": "Notes search status while the model loads"

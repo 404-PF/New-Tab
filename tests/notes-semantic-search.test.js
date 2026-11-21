@@ -206,3 +206,45 @@ describe('NotesSemanticSearch.rankNotesForQuery', () => {
     });
   });
 });
+
+describe('NotesSemanticSearch.rankSimilarItems (issue #1331)', () => {
+  let S;
+  beforeAll(() => { S = window.NotesSemanticSearch; });
+  const target = [1, 0];
+  const candidates = [
+    { id: 'same', vector: [1, 0] },
+    { id: 'edge', vector: [0.75, Math.sqrt(1 - 0.5625)] },
+    { id: 'below', vector: [0.7, Math.sqrt(1 - 0.49)] },
+    { id: 'orthogonal', vector: [0, 1] },
+    { id: 'novector', vector: null }
+  ];
+
+  it('exposes the related and duplicate thresholds as constants', () => {
+    expect(S.DEFAULT_RELATED_MIN_SCORE).toBe(0.75);
+    expect(S.DEFAULT_DUPLICATE_MIN_SCORE).toBe(0.9);
+  });
+
+  it('keeps items at or above the threshold, best first', () => {
+    const ranked = S.rankSimilarItems(target, candidates, { minScore: 0.75 });
+    expect(ranked.map((r) => r.id)).toEqual(['same', 'edge']);
+    expect(ranked[1].score).toBeCloseTo(0.75);
+  });
+
+  it('excludes the subject note and items without vectors', () => {
+    const ranked = S.rankSimilarItems(target, candidates, { minScore: 0, excludeId: 'same' });
+    expect(ranked.map((r) => r.id)).not.toContain('same');
+    expect(ranked.map((r) => r.id)).not.toContain('novector');
+  });
+
+  it('applies a stricter duplicate threshold and caps results', () => {
+    expect(S.rankSimilarItems(target, candidates, { minScore: S.DEFAULT_DUPLICATE_MIN_SCORE, maxResults: 5 }).map((r) => r.id))
+      .toEqual(['same']);
+    expect(S.rankSimilarItems(target, candidates, { minScore: 0, maxResults: 2 })).toHaveLength(2);
+  });
+
+  it('returns nothing for an empty cache or missing target vector', () => {
+    expect(S.rankSimilarItems(target, [])).toEqual([]);
+    expect(S.rankSimilarItems(target, undefined)).toEqual([]);
+    expect(S.rankSimilarItems(null, candidates)).toEqual([]);
+  });
+});

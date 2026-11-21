@@ -18,6 +18,11 @@
   // re-check against real Harrier distributions if the model changes.
   const DEFAULT_MIN_SCORE = 0.5;
   const DEFAULT_MAX_RESULTS = 50;
+  // Related-item and duplicate thresholds (issue #1331) are raw cosine
+  // values, not hybrid scores. Tune against real Harrier distributions.
+  const DEFAULT_RELATED_MIN_SCORE = 0.75;
+  const DEFAULT_RELATED_MAX_RESULTS = 5;
+  const DEFAULT_DUPLICATE_MIN_SCORE = 0.9;
 
   function cosineSimilarity(a, b) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return 0;
@@ -177,17 +182,41 @@
     });
   }
 
+  // candidates: [{ id, vector }]. Returns [{ id, score }] (raw cosine), best
+  // first, keeping only items at or above minScore. Candidates without a
+  // usable vector and the excluded id are skipped.
+  function rankSimilarItems(targetVector, candidates, options) {
+    const opts = options || {};
+    const minScore = Number.isFinite(opts.minScore) ? opts.minScore : DEFAULT_RELATED_MIN_SCORE;
+    const maxResults = Number.isFinite(opts.maxResults) ? Math.max(0, Math.floor(opts.maxResults)) : DEFAULT_RELATED_MAX_RESULTS;
+    if (!Array.isArray(targetVector) || targetVector.length === 0) return [];
+    const list = Array.isArray(candidates) ? candidates : [];
+    const scored = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const c = list[i];
+      if (!c || c.id === opts.excludeId || !Array.isArray(c.vector) || c.vector.length !== targetVector.length) continue;
+      const score = cosineSimilarity(targetVector, c.vector);
+      if (score >= minScore) scored.push({ id: c.id, score });
+    }
+    scored.sort(function (a, b) { return b.score - a.score; });
+    return scored.slice(0, maxResults);
+  }
+
   const api = {
     DEFAULT_ALPHA,
     DEFAULT_MIN_SCORE,
     DEFAULT_MAX_RESULTS,
+    DEFAULT_RELATED_MIN_SCORE,
+    DEFAULT_RELATED_MAX_RESULTS,
+    DEFAULT_DUPLICATE_MIN_SCORE,
     cosineSimilarity,
     keywordScore,
     hybridScore,
     filterByTag,
     keywordFilter,
     rankByScores,
-    rankNotesForQuery
+    rankNotesForQuery,
+    rankSimilarItems
   };
 
   try {

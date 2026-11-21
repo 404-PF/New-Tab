@@ -846,6 +846,18 @@
     "message": "オンデバイスモデルを読み込み中…",
     "description": "Notes search status while the model loads"
   },
+  "notesRelatedTitle": {
+    "message": "関連",
+    "description": "Heading for the related notes panel"
+  },
+  "notesDuplicateHint": {
+    "message": "重複の可能性：",
+    "description": "Label before the suggested duplicate note link"
+  },
+  "notesDuplicateDismiss": {
+    "message": "閉じる",
+    "description": "Accessible label for dismissing the duplicate hint"
+  },
   "notesSemanticStarting": {
     "message": "ダウンロードを開始しています…",
     "description": "Status when the model download starts"

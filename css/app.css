@@ -5871,6 +5871,65 @@ body.light-theme .notes-semantic-status {
   display: none;
 }
 
+/* Related items and duplicate hint (issue #1331): suggestions only, never
+   blocking edits. Explicit [hidden] rules keep author display from winning. */
+.notes-related,
+.notes-duplicate-hint {
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.9);
+  margin: -4px 0 10px;
+}
+
+.notes-related[hidden],
+.notes-duplicate-hint[hidden] {
+  display: none;
+}
+
+.notes-related-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.notes-related-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notes-related-item,
+.notes-duplicate-link {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+  font-size: inherit;
+}
+
+.notes-duplicate-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.notes-duplicate-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+body.light-theme .notes-related,
+body.light-theme .notes-duplicate-hint {
+  color: rgba(71, 85, 105, 0.95);
+}
+
 /* Semantic model controls in Settings > General. Explicit [hidden] rules:
    author button/progress styles would otherwise override the UA
    [hidden] display:none, leaving stale controls visible. */
