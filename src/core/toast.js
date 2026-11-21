@@ -650,18 +650,9 @@ function featureToggleControlDesynced(key) {
   const recent = checkRecentSettingsDesynced(key);
   if (recent !== null) return recent;
   switch (key) {
-    case 'simpleMode': {
-      const checkbox = document.getElementById('simple-mode-checkbox');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
-    case 'focusMode': {
-      const checkbox = document.getElementById('focus-mode-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
-    case 'todoEnabled': {
-      const checkbox = document.getElementById('todo-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
+    case 'simpleMode': return desyncCheckboxControl('simple-mode-checkbox', key, true);
+    case 'focusMode': return desyncCheckboxControl('focus-mode-setting', key, true);
+    case 'todoEnabled': return desyncCheckboxControl('todo-enabled-setting', key, false);
     case 'todoSortOrder': {
       const select = document.getElementById('todo-sort-select');
       // Mirror todo.js's normalizeTodoSort: resyncTodoSort restores the
@@ -672,14 +663,8 @@ function featureToggleControlDesynced(key) {
       const expected = modes.includes(stored) ? stored : 'due';
       return Boolean(select) && select.value !== expected;
     }
-    case 'notesEnabled': {
-      const checkbox = document.getElementById('notes-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'notesSemanticEnabled': {
-      const checkbox = document.getElementById('notes-semantic-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
+    case 'notesEnabled': return desyncCheckboxControl('notes-enabled-setting', key, false);
+    case 'notesSemanticEnabled': return desyncCheckboxControl('notes-semantic-enabled-setting', key, true);
     case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
     case 'searchBoxEnabled': return desyncCheckboxControl('search-box-enabled-setting', key, false);
     case 'eyeCareReminder': {
@@ -695,10 +680,7 @@ function featureToggleControlDesynced(key) {
         return true;
       }
     }
-    case 'autoTheme': {
-      const checkbox = document.getElementById('auto-theme-toggle');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
+    case 'autoTheme': return desyncCheckboxControl('auto-theme-toggle', key, true);
     case 'autoThemeLightTime': {
       // Mirror the module's fallback defaults (auto-theme.js).
       const input = document.getElementById('auto-theme-light-time');
@@ -708,10 +690,7 @@ function featureToggleControlDesynced(key) {
       const input = document.getElementById('auto-theme-dark-time');
       return Boolean(input) && input.value !== (localStorage.getItem(key) || '19:00');
     }
-    case 'weatherEnabled': {
-      const checkbox = document.getElementById('weather-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) === 'true');
-    }
+    case 'weatherEnabled': return desyncCheckboxControl('weather-enabled-setting', key, true);
     case 'weatherUnit': {
       const stored = localStorage.getItem(key) === 'fahrenheit' ? 'fahrenheit' : 'celsius';
       const buttons = document.querySelectorAll('[data-weather-choice="unit"] .weather-choice-button');
