@@ -689,6 +689,7 @@ describe('initSettings background startup', () => {
       isolatedWindow.Image = MockImage;
 
       injectScript('src/core/motion.js', dom.getInternalVMContext());
+      injectScript('src/core/utils.js', dom.getInternalVMContext());
       injectScript('src/ui/settings.js', dom.getInternalVMContext());
 
       isolatedWindow.document.dispatchEvent(new isolatedWindow.Event('DOMContentLoaded'));
