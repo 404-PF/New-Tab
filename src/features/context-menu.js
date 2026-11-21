@@ -55,13 +55,34 @@ function createFallbackIconSvg() {
   return svg;
 }
 
+function isSafeContextMenuIconUrl(url) {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  // Allow common relative paths used by built-in assets.
+  if (trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
+    return true;
+  }
+
+  // Allow only http(s) and image data URLs.
+  if (/^https?:\/\//i.test(trimmed)) {
+    return true;
+  }
+  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,[a-zA-Z0-9+/=\s]+$/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
 function setContextMenuPreviewIcon(previewIcon, iconUrl) {
   if (!previewIcon) return;
 
   previewIcon.textContent = '';
 
   const normalizedIconUrl = typeof iconUrl === 'string' ? iconUrl.trim() : '';
-  if (!normalizedIconUrl) {
+  if (!normalizedIconUrl || !isSafeContextMenuIconUrl(normalizedIconUrl)) {
     previewIcon.appendChild(createFallbackIconSvg());
     return;
   }
