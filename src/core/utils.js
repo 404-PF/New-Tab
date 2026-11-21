@@ -816,6 +816,67 @@
   // Make utilities available globally
   window.generateUuidV4 = generateUuidV4;
   window.formatLocalDateISO = formatLocalDateISO;
+
+  // Shared video-background reset; callers pass their own transition-timeout clearer and pause/load wrappers
+  function resetBackgroundVideoEl(videoEl, unloadSource, { clearTransitionTimeout, pause, load }) {
+    if (!videoEl) return;
+
+    clearTransitionTimeout();
+
+    videoEl.oncanplaythrough = null;
+    videoEl.onloadeddata = null;
+    videoEl.onplaying = null;
+    videoEl.onloadedmetadata = null;
+    videoEl.onerror = null;
+    videoEl.onpause = null;
+
+    videoEl.classList.remove('active', 'ready', 'loading');
+    videoEl.classList.add('hidden');
+    pause(videoEl);
+
+    delete videoEl.dataset.currentBg;
+    delete videoEl.dataset.wasPlaying;
+    delete videoEl.dataset.reducedMotionPaused;
+    delete videoEl.dataset.crossfadeTriggered;
+    delete videoEl.dataset.lastPauseTime;
+    delete videoEl.dataset.resumeAttempts;
+
+    videoEl.autoplay = false;
+    videoEl.muted = true;
+
+    if (!unloadSource) return;
+
+    const sourceEl = videoEl.querySelector('source');
+    if (!sourceEl) return;
+
+    sourceEl.removeAttribute('src');
+    sourceEl.type = 'video/mp4';
+    load(videoEl);
+  }
+
+  // Shared auto-resume handler for background videos; `isCurrent` gates stale requests
+  function handleBackgroundVideoPause(videoEl, { isCurrent, autoplayEnabled }) {
+    if (!isCurrent()) return;
+
+    // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+    const now = Date.now();
+    const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+    if (now - lastPause < 2000) return;
+    videoEl.dataset.lastPauseTime = now;
+
+    // Cap consecutive auto-resume attempts to avoid high-CPU play/pause cycles
+    const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
+
+    if (!document.hidden && videoEl.classList.contains('active') && autoplayEnabled && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
+      if (resumeAttempts >= 3) return;
+      videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
+      videoEl.play().catch(() => {});
+    }
+  }
+
+  // Make utilities available globally
+  window.resetBackgroundVideoEl = resetBackgroundVideoEl;
+  window.handleBackgroundVideoPause = handleBackgroundVideoPause;
   window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
