@@ -957,7 +957,7 @@ function resolveFontAlias(value) {
 // Clock style
 function loadClockStyle() {
   const size = parseInt(localStorage.getItem('clockSize') || '80', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestSettingSize(size, CLOCK_SIZE_OPTIONS) : 80;
+  const normalizedSize = Number.isFinite(size) ? window.getClosestSizeOption(size, CLOCK_SIZE_OPTIONS) : 80;
   if (normalizedSize !== size) {
     localStorage.setItem('clockSize', normalizedSize);
   }
@@ -976,23 +976,6 @@ function loadClockStyle() {
 const CLOCK_SIZE_OPTIONS = [60, 80, 100];
 const DATE_SIZE_OPTIONS = [20, 24, 30];
 
-function getClosestSettingSize(size, options) {
-  return options.reduce((closest, option) => {
-    return Math.abs(option - size) < Math.abs(closest - size) ? option : closest;
-  }, options[0]);
-}
-
-function syncSettingSizeButtons(groupName, size, options) {
-  const activeSize = getClosestSettingSize(size, options);
-  const buttons = document.querySelectorAll(`[data-size-group="${groupName}"] .size-choice-button`);
-  buttons.forEach((button) => {
-    const buttonSize = parseInt(button.dataset.size, 10);
-    const isActive = buttonSize === activeSize;
-    button.classList.toggle('active', isActive);
-    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-  });
-}
-
 function applyClockStyle() {
   const style = loadClockStyle();
   const clock = document.querySelector('#clock .clock-time') || document.getElementById('clock');
@@ -1005,7 +988,7 @@ function applyClockStyle() {
   const clockFontPicker = document.getElementById('clock-font-picker');
   if (clockColorPicker && clockColorPicker.value !== style.color) clockColorPicker.value = style.color;
   if (clockFontPicker && clockFontPicker.value !== style.font) clockFontPicker.value = style.font;
-  syncSettingSizeButtons('clock', parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
+  window.syncSizeChoiceButtons('clock', parseInt(style.size, 10), CLOCK_SIZE_OPTIONS);
 }
 
 function loadClockFormatSetting() {
@@ -1101,7 +1084,7 @@ if (clockFormatPicker) {
 // Date style
 function loadDateStyle() {
   const size = parseInt(localStorage.getItem('dateSize') || '24', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestSettingSize(size, DATE_SIZE_OPTIONS) : 24;
+  const normalizedSize = Number.isFinite(size) ? window.getClosestSizeOption(size, DATE_SIZE_OPTIONS) : 24;
   if (normalizedSize !== size) {
     localStorage.setItem('dateSize', normalizedSize);
   }
@@ -1128,7 +1111,7 @@ function applyDateStyle() {
   const dateFontPicker = document.getElementById('date-font-picker');
   if (dateColorPicker && dateColorPicker.value !== style.color) dateColorPicker.value = style.color;
   if (dateFontPicker && dateFontPicker.value !== style.font) dateFontPicker.value = style.font;
-  syncSettingSizeButtons('date', parseInt(style.size, 10), DATE_SIZE_OPTIONS);
+  window.syncSizeChoiceButtons('date', parseInt(style.size, 10), DATE_SIZE_OPTIONS);
 }
 
 function loadDateFormatSetting() {
@@ -3629,7 +3612,7 @@ window.hideBackgroundOverlay = hideBackgroundOverlay;
 window.stopBackground = stopBackground;
 window.applyBg = applyBg;
 window.loadClockStyle = loadClockStyle;
-window.getClosestSettingSize = getClosestSettingSize;
+window.getClosestSettingSize = window.getClosestSizeOption;
 window.loadClockFormatSetting = loadClockFormatSetting;
 window.loadDateStyle = loadDateStyle;
 window.loadDateFormatSetting = loadDateFormatSetting;

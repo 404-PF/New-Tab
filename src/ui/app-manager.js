@@ -529,26 +529,9 @@ window.addEventListener('themeChanged', applyOpenNewTabSetting);
 // Load and apply icon size
 const ICON_SIZE_OPTIONS = [48, 60, 72];
 
-function getClosestIconSize(size, options) {
-  return options.reduce((closest, option) => {
-    return Math.abs(option - size) < Math.abs(closest - size) ? option : closest;
-  }, options[0]);
-}
-
-function syncIconSizeButtons(groupName, size, options) {
-  const activeSize = getClosestIconSize(size, options);
-  const buttons = document.querySelectorAll(`[data-size-group="${groupName}"] .size-choice-button`);
-  buttons.forEach((button) => {
-    const buttonSize = parseInt(button.dataset.size, 10);
-    const isActive = buttonSize === activeSize;
-    button.classList.toggle('active', isActive);
-    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-  });
-}
-
 function loadIconSize() {
   const size = parseInt(localStorage.getItem('iconSize') || '60', 10);
-  const normalizedSize = Number.isFinite(size) ? getClosestIconSize(size, ICON_SIZE_OPTIONS) : 60;
+  const normalizedSize = Number.isFinite(size) ? window.getClosestSizeOption(size, ICON_SIZE_OPTIONS) : 60;
   if (normalizedSize !== size) {
     localStorage.setItem('iconSize', normalizedSize);
   }
@@ -558,7 +541,7 @@ function applyIconSize() {
   const size = loadIconSize();
   document.documentElement.style.setProperty('--app-icon-size', size + 'px');
   applyCurvature();
-  syncIconSizeButtons('icon', size, ICON_SIZE_OPTIONS);
+  window.syncSizeChoiceButtons('icon', size, ICON_SIZE_OPTIONS);
 }
 
 function initIconSize() {
