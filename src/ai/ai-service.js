@@ -1090,13 +1090,13 @@ const AIService = (function() {
           // embedding-status 'ready' listener reranks once it lands.
           window.requestSemanticModelLoad();
         }
-      });
+      }).catch(function () { /* ranking is best-effort; keyword results stay */ });
     }, SEMANTIC_RERANK_DEBOUNCE_MS);
   }
 
   function initEventListeners() {
     document.addEventListener('embedding-status', function (event) {
-      const status = event && event.detail ? event.detail.status : null;
+      const status = event?.detail ? event.detail.status : null;
       if (status === 'ready' && AIStore.state.searchQuery.trim()) scheduleSemanticRerank();
     });
 

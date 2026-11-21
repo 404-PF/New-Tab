@@ -1339,7 +1339,7 @@ const AIStore = (function() {
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase().trim();
       const match = state.semanticMatch;
-      if (match && match.query === query && match.signature === semanticDataSignature(state.conversations) && isSemanticSearchReady()) {
+      if (match?.query === query && match.signature === semanticDataSignature(state.conversations) && isSemanticSearchReady()) {
         const byId = new Map(state.conversations.map(conversation => [conversation.id, conversation]));
         return match.ids.map(id => byId.get(id)).filter(Boolean);
       }
