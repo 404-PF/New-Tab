@@ -34,6 +34,7 @@
         && window.NotesVectorCache
         && window.EmbeddingService
         && window.NotesSemanticSearch
+        && window.AppSemanticSearch
       );
     } catch {
       return false;

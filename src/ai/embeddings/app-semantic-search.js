@@ -22,6 +22,16 @@
     return typeof value === 'string' ? value.trim() : '';
   }
 
+  // Built-in apps store nameKey instead of name, so resolve the displayed name
+  // the same way the grid does.
+  function displayNameOf(app) {
+    const grid = window.AppGridState;
+    if (grid && typeof grid.getAppDisplayName === 'function') {
+      return trimmed(grid.getAppDisplayName(app));
+    }
+    return trimmed(app.name) || trimmed(app.nameKey);
+  }
+
   // Each app becomes a note-shaped doc so the shared ranker can score it:
   // text (name + host) drives the keyword score, tag (folder) is a weaker
   // keyword signal, and embedText is what the model embeds.
@@ -36,7 +46,7 @@
     return (Array.isArray(apps) ? apps : [])
       .filter(function (app) { return app && app.id; })
       .map(function (app, order) {
-        const name = trimmed(app.name);
+        const name = displayNameOf(app);
         const host = getHost(app.url);
         const folder = folderByAppId.get(app.id) || '';
         return {
