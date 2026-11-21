@@ -31,6 +31,7 @@ const getAllAppData = () => {
   const customApps = loadCustomApps().map(app => ({ ...app, className: 'custom-app' }));
   return [...visibleDefaults, ...customApps];
 };
+window.getAllAppData = getAllAppData;
 
 const HANDLED_APP_HANDLER_IDS = new Set(['settings-app', 'ai-app', 'weather-app', 'games-app', 'todo-app']);
 
