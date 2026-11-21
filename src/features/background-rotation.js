@@ -135,15 +135,9 @@
     console.warn(message);
   }
 
-  // The storage bridge's setItem returns false for a rejected write; the
-  // native Storage API returns undefined. Only an explicit false is a failure.
-  function isWriteAccepted(result) {
-    return result !== false;
-  }
-
   function saveEnabled(value) {
     try {
-      return isWriteAccepted(localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false'));
+      return window.isStorageWriteAccepted(localStorage.setItem(ROTATION_ENABLED_KEY, value ? 'true' : 'false'));
     } catch (err) {
       console.warn('saveEnabled localStorage error:', err);
       return false;
@@ -152,7 +146,7 @@
 
   function saveInterval(value) {
     try {
-      return isWriteAccepted(localStorage.setItem(ROTATION_INTERVAL_KEY, value));
+      return window.isStorageWriteAccepted(localStorage.setItem(ROTATION_INTERVAL_KEY, value));
     } catch (err) {
       console.warn('saveInterval localStorage error:', err);
       return false;
@@ -161,7 +155,7 @@
 
   function saveStoredSelection(key, ids) {
     try {
-      return isWriteAccepted(localStorage.setItem(key, JSON.stringify(ids)));
+      return window.isStorageWriteAccepted(localStorage.setItem(key, JSON.stringify(ids)));
     } catch (err) {
       console.warn('saveSelection localStorage error:', err);
       return false;
@@ -182,7 +176,7 @@
 
   function saveDayTime(value) {
     try {
-      return isWriteAccepted(localStorage.setItem(TOD_DAY_TIME_KEY, value));
+      return window.isStorageWriteAccepted(localStorage.setItem(TOD_DAY_TIME_KEY, value));
     } catch (err) {
       console.warn('saveDayTime localStorage error:', err);
       return false;
@@ -191,7 +185,7 @@
 
   function saveNightTime(value) {
     try {
-      return isWriteAccepted(localStorage.setItem(TOD_NIGHT_TIME_KEY, value));
+      return window.isStorageWriteAccepted(localStorage.setItem(TOD_NIGHT_TIME_KEY, value));
     } catch (err) {
       console.warn('saveNightTime localStorage error:', err);
       return false;
@@ -200,7 +194,7 @@
 
   function saveHomepageBg(id) {
     try {
-      return isWriteAccepted(localStorage.setItem('homepageBg', id));
+      return window.isStorageWriteAccepted(localStorage.setItem('homepageBg', id));
     } catch (err) {
       console.warn('saveHomepageBg localStorage error:', err);
       return false;

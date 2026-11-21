@@ -185,11 +185,6 @@
     }
   }
 
-  // Bridge setItem returns false on a rejected write; native returns undefined.
-  function isWriteAccepted(result) {
-    return result !== false;
-  }
-
   // Each import collects the results of its own writes. The storage bridge
   // accepts writes optimistically and can still fail asynchronously
   // (chrome.storage runtime.lastError), so applyData waits for these results
@@ -197,10 +192,10 @@
   function trackImportWrite(pendingWrites, key, promise) {
     if (!pendingWrites) return;
     pendingWrites.push(Promise.resolve(promise).then(function (ok) {
-      if (!isWriteAccepted(ok)) {
+      if (!window.isStorageWriteAccepted(ok)) {
         console.warn('[data-manager] Storage write was not persisted for key "' + key + '"');
       }
-      return isWriteAccepted(ok);
+      return window.isStorageWriteAccepted(ok);
     }, function (err) {
       console.warn('[data-manager] Failed to persist key "' + key + '":', err);
       return false;
@@ -266,7 +261,7 @@
         }
         return;
       }
-      if (!isWriteAccepted(localStorage.setItem(key, serialized))) {
+      if (!window.isStorageWriteAccepted(localStorage.setItem(key, serialized))) {
         throw new Error('Storage write was not accepted for key "' + key + '"');
       }
     } catch (err) {
