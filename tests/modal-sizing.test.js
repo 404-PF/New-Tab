@@ -81,9 +81,28 @@ describe('Shared modal width scale (#1073)', () => {
     expectDeclaration(body, 'min-width', 'min(500px, calc(100vw - 32px))');
     expectDeclaration(body, 'max-height', 'var(--overlay-max-height)');
 
-    const mq = FEATURES_CSS.match(
-      /@media screen and \(max-width: 500px\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/
-    );
+    const mediaStart = '@media screen and (max-width: 500px) {';
+    const mediaIndex = FEATURES_CSS.indexOf(mediaStart);
+    let mq = null;
+    if (mediaIndex !== -1) {
+      let depth = 0;
+      let endIndex = -1;
+      for (let i = mediaIndex; i < FEATURES_CSS.length; i += 1) {
+        const ch = FEATURES_CSS[i];
+        if (ch === '{') {
+          depth += 1;
+        } else if (ch === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      if (endIndex !== -1) {
+        mq = [FEATURES_CSS.slice(mediaIndex, endIndex + 1)];
+      }
+    }
     expect(mq, 'Add App <=500px media block').toBeTruthy();
     expect(mq[0]).toMatch(/#add-app-modal > div\s*\{[^}]*min-width:\s*auto/);
   });
