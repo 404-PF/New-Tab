@@ -325,7 +325,7 @@ describe('liquid glass core module (#1108)', () => {
         '<div class="search-provider-bar"></div>' +
         '</div>' +
         '</div>' +
-        '<div id="motto-container"><span id="motto-text"></span><div class="motto-buttons"></div></div>'
+        '<div id="motto-container"><span id="motto-text"></span><div class="motto-buttons"><button type="button" id="refresh-motto-btn"></button><button type="button" id="copy-motto-btn"></button></div></div>'
       );
     }
 
@@ -335,6 +335,17 @@ describe('liquid glass core module (#1108)', () => {
       });
       expect(document.querySelector('.glass__warp')).toBeNull();
     }
+
+    itWhenLiquidEnabled('gives the motto action buttons the pill glass once the pill is marked', () => {
+      buildHeroes();
+      const lg = loadLiquidGlass();
+      lg.init();
+      ['#refresh-motto-btn', '#copy-motto-btn'].forEach((selector) => {
+        const el = document.querySelector(selector);
+        expect(el.getAttribute('data-liquid-glass')).toBe('pill');
+        expect(el.classList.contains('glass--liquid')).toBe(true);
+      });
+    });
 
     itWhenLiquidEnabled('marks the three heroes, leaves the search bar and clock plain, and injects warp plus highlight layers', () => {
       buildHeroes();
@@ -520,6 +531,16 @@ describe('liquid glass core module (#1108)', () => {
           /body\.glass-liquid #motto-container\.glass--liquid\s*\{[^}]*backdrop-filter:\s*none/
         );
         expect(css).toContain('body.glass-liquid.light-theme #motto-container.glass--liquid');
+      });
+
+      it('gives the light-theme motto the dark theme’s translucent fill and a visible edge', () => {
+        const lightFill = css.match(/body\.glass-liquid\.light-theme #motto-container\.glass--liquid\s*\{([^}]*)\}/);
+        expect(lightFill?.[1]).not.toMatch(/background:/);
+        expect(css).toMatch(/body\.glass-liquid\.light-theme #copy-motto-btn\.glass--liquid > \.glass__highlight\s*\{[^}]*rgba\(15,\s*23,\s*42/);
+      });
+
+      it('gives the motto action buttons the pill glass in every theme', () => {
+        expect(css).toMatch(/body\.glass-liquid :is\(#refresh-motto-btn, #copy-motto-btn\)\.glass--liquid\s*\{[^}]*backdrop-filter:\s*none/);
       });
 
       it('keeps the ID-lifted glass.css light surfaces off the enhanced heroes', () => {

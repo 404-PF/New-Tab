@@ -184,6 +184,9 @@
   // its warp would refract the ancestor's warped output, not the page.
   function isExcluded(el) {
     if (el.closest('#todo-app-widget-host')) return true;
+    // Motto buttons warp inside the pill on purpose: the second refraction is
+    // accepted so their glass matches the pill's.
+    if (el.id === 'refresh-motto-btn' || el.id === 'copy-motto-btn') return false;
     const parent = el.parentElement;
     return Boolean(parent) && Boolean(parent.closest('.glass--liquid'));
   }
@@ -443,6 +446,13 @@
     { selector: '#focus-mode-indicator', sizeClass: 'pill' }
   ];
   const ELASTIC_SELECTORS = HERO_GLASS.map((hero) => hero.selector);
+  // The motto action buttons take the pill glass layers but stay out of the
+  // elasticity set so they do not drift with the pointer.
+  const MOTTO_BUTTON_GLASS = [
+    { selector: '#refresh-motto-btn', sizeClass: 'pill' },
+    { selector: '#copy-motto-btn', sizeClass: 'pill' }
+  ];
+  const GLASS_MARKED = HERO_GLASS.concat(MOTTO_BUTTON_GLASS);
   const ELASTIC_RADIUS = 320;
   const ELASTIC_MAX = 6;
   const SPRING = 0.14;
@@ -587,13 +597,18 @@
   // never renders mid-entrance (#1157).
   function markHeroWidgets() {
     if (!isLiquid() || isReducedMotion()) return;
-    HERO_GLASS.forEach((hero) => {
+    GLASS_MARKED.forEach((hero) => {
       const el = document.querySelector(hero.selector);
       if (!el || el.hasAttribute(ATTR) || entranceWaiters.has(el)) return;
+      if (MOTTO_BUTTON_GLASS.includes(hero)) {
+        const pill = document.querySelector('#motto-container');
+        if (!pill || !pill.hasAttribute(ATTR)) return;
+      }
       if (hasEntranceAnimation(el)) {
         whenEntranceSettled(el, () => {
           if (isLiquid() && !isReducedMotion() && !el.hasAttribute(ATTR)) {
             el.setAttribute(ATTR, hero.sizeClass);
+            markHeroWidgets();
           }
         });
         return;
@@ -610,8 +625,8 @@
       el.removeEventListener('animationcancel', onSettled);
     });
     entranceWaiters.clear();
-    ELASTIC_SELECTORS.forEach((sel) => {
-      document.querySelectorAll(`${sel}[${ATTR}]`).forEach((el) => {
+    GLASS_MARKED.forEach(({ selector }) => {
+      document.querySelectorAll(`${selector}[${ATTR}]`).forEach((el) => {
         el.removeAttribute(ATTR);
       });
     });

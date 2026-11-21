@@ -125,10 +125,47 @@ body.glass-liquid #motto-container.glass--liquid {
   backdrop-filter: none;
 }
 
+/* Light theme redefines --glass-text-primary as near-black, so the pill
+   uses the dark theme's white literal to match its text contrast. */
 body.glass-liquid.light-theme #motto-container.glass--liquid {
-  background: rgba(255, 255, 255, 0.55);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  color: #1f2937;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* features.css sets #motto-text to #374151 in light theme; restate the
+   white so the text matches the dark theme's motto. */
+body.glass-liquid.light-theme #motto-container.glass--liquid #motto-text {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* The white highlight edge vanishes on a light fill, so the light theme
+   draws a dark hairline inside the pill to keep the glass edge defined. */
+body.glass-liquid.light-theme #motto-container.glass--liquid > .glass__highlight,
+body.glass-liquid.light-theme #refresh-motto-btn.glass--liquid > .glass__highlight,
+body.glass-liquid.light-theme #copy-motto-btn.glass--liquid > .glass__highlight {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+/* The motto action buttons use the pill's translucent tint in every theme,
+   with no backdrop blur of their own. Hover comes from the shared
+   glass__hover layer, so the tint is restated at a specificity that beats
+   the shell and light-theme hover fills. */
+body.glass-liquid :is(#refresh-motto-btn, #copy-motto-btn).glass--liquid {
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.glass-liquid :is(#refresh-motto-btn, #copy-motto-btn).glass--liquid:not(:focus-visible) {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+body.glass-liquid.light-theme #refresh-motto-btn.glass--liquid:not(:focus-visible),
+body.glass-liquid.light-theme #copy-motto-btn.glass--liquid:not(:focus-visible) {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* Weather and focus indicator: replace the near-opaque fills (the light
@@ -153,6 +190,8 @@ body.glass-liquid.light-theme .focus-mode-indicator.glass--liquid {
    gave app-icon glyphs. */
 body.glass-liquid :is(
   #motto-container,
+  #refresh-motto-btn,
+  #copy-motto-btn,
   #weather-widget,
   #focus-mode-indicator
 ).glass--liquid > :not(.glass__warp):not(.glass__highlight):not(.glass__over-light):not(.glass__hover) {
