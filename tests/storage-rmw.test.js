@@ -126,7 +126,7 @@ describe('cross-tab storage read-modify-write merging', () => {
       id: 'conversation-1',
       title: 'Chat',
       messages: [
-        { role: 'user', content: 'Hello' }
+        { id: 'message-1', role: 'user', content: 'Hello' }
       ],
       createdAt: 1,
       updatedAt: 1
@@ -136,7 +136,7 @@ describe('cross-tab storage read-modify-write merging', () => {
     nativeSetItem('ai_conversations', JSON.stringify([{
       ...baseConversation,
       messages: [
-        { id: 'message-from-b', role: 'user', content: 'Hello' },
+        { id: 'message-1', role: 'user', content: 'Hello' },
         { id: 'message-2', role: 'assistant', content: 'Hi from tab B' }
       ],
       updatedAt: 2
@@ -144,7 +144,7 @@ describe('cross-tab storage read-modify-write merging', () => {
     localStorage.setItem('ai_conversations', JSON.stringify([{
       ...baseConversation,
       messages: [
-        { id: 'message-from-a', role: 'user', content: 'Hello' },
+        { id: 'message-1', role: 'user', content: 'Hello' },
         { id: 'message-3', role: 'user', content: 'Follow-up from tab A' }
       ],
       updatedAt: 3
@@ -155,7 +155,7 @@ describe('cross-tab storage read-modify-write merging', () => {
     expect(mergedConversation.messages).toHaveLength(3);
     expect(mergedConversation.messages.filter(message => message.content === 'Hello')).toHaveLength(1);
     expect(mergedConversation.messages.map(message => message.id)).toEqual(
-      expect.arrayContaining(['message-from-a', 'message-2', 'message-3'])
+      expect.arrayContaining(['message-1', 'message-2', 'message-3'])
     );
   });
 
@@ -368,6 +368,51 @@ describe('null merge base for keys absent at session start', () => {
     expect(merged).toHaveLength(1);
     expect(merged[0].id).toBe('todo-shared');
     expect(merged[0].text).toBe('From tab A');
+  });
+
+  it('does not duplicate a todo created in another tab when this tab edits it with a stale base', () => {
+    const { context, persisted } = createStorageContext();
+    context.localStorage.getItem('todos');
+    context.localStorage.setItem('todos', JSON.stringify([]));
+
+    persisted.set('todos', JSON.stringify([{ id: 't1', title: 'buy milk', completed: false }]));
+    context.localStorage.setItem('todos', JSON.stringify([{ id: 't1', title: 'buy milk', completed: true }]));
+
+    const merged = JSON.parse(persisted.get('todos'));
+    expect(merged).toEqual([{ id: 't1', title: 'buy milk', completed: true }]);
+  });
+
+  it('does not duplicate a legacy AI message when two tabs assign it different IDs', () => {
+    const legacyMessage = { role: 'user', content: 'Hello', timestamp: 100 };
+    const baseConversation = { id: 'conversation-legacy', title: 'Chat', messages: [legacyMessage], createdAt: 1, updatedAt: 1 };
+    const { context: tabA, persisted } = createStorageContext({ ai_conversations: JSON.stringify([baseConversation]) });
+    const tabB = vm.createContext({
+      localStorage: {
+        getItem: key => (persisted.has(key) ? persisted.get(key) : null),
+        setItem: (key, value) => {
+          persisted.set(key, String(value));
+          return true;
+        }
+      },
+      console
+    });
+    injectScript('src/core/storage-rmw.js', tabB);
+
+    tabA.localStorage.getItem('ai_conversations');
+    tabB.localStorage.getItem('ai_conversations');
+    tabA.localStorage.setItem('ai_conversations', JSON.stringify([{
+      ...baseConversation,
+      messages: [{ ...legacyMessage, id: 'generated-by-tab-a' }],
+      updatedAt: 2
+    }]));
+    tabB.localStorage.setItem('ai_conversations', JSON.stringify([{
+      ...baseConversation,
+      messages: [{ ...legacyMessage, id: 'generated-by-tab-b' }],
+      updatedAt: 3
+    }]));
+
+    const merged = JSON.parse(persisted.get('ai_conversations'))[0];
+    expect(merged.messages.filter(message => message.content === 'Hello')).toHaveLength(1);
   });
 
   // Regression for the CI failure left by #917 on main: the null-base path now

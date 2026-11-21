@@ -111,16 +111,17 @@
   /** Resolve an array entry key using its ID or deterministic legacy identity. */
   function getArrayKey(value, baseKeys) {
     const id = getId(value);
+    const deterministicIdentity = getDeterministicIdentity(value);
+    const legacyKey = deterministicIdentity ? 'legacy:' + deterministicIdentity : null;
+
     if (id) {
       const idKey = 'id:' + id;
       if (!baseKeys || baseKeys.has(idKey)) return idKey;
+      // The base holds this entry without an ID (legacy), and this tab assigned one since; keep the legacy key so the entry isn't duplicated.
+      if (legacyKey && baseKeys.has(legacyKey)) return legacyKey;
+      return idKey;
     }
 
-    const deterministicIdentity = getDeterministicIdentity(value);
-    if (!deterministicIdentity) return null;
-
-    const legacyKey = 'legacy:' + deterministicIdentity;
-    if (baseKeys?.has(legacyKey)) return legacyKey;
     return legacyKey;
   }
 
@@ -244,10 +245,10 @@
 
   /** Merge concurrent arrays that share no merge base, keying entries by ID. */
   function mergeConcurrentArrays(current, candidate) {
-    const currentArray = createArrayMap(current, null);
+    const currentArray = createArrayMap(current);
     if (!currentArray) return clone(candidate);
 
-    const candidateArray = createArrayMap(candidate, null);
+    const candidateArray = createArrayMap(candidate);
     if (!candidateArray) return clone(candidate);
 
     // An empty candidate is a deletion, not an "unmentioned" write. Without a
