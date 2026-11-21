@@ -10,7 +10,9 @@ body.light-theme {
   --body-bg: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
   --settings-modal-bg: rgba(255, 255, 255, 0.98);
   --settings-menu-bg: rgba(0, 0, 0, 0.03);
-  --settings-text-color: rgba(55, 65, 81, 0.9);
+  /* Opaque tokens meet WCAG AA without alpha blending (#1272). */
+  --settings-text-color: #1f2937;
+  --settings-text-secondary: #4b5563;
   /* In-component scrollbars only: the dashboard viewport scrollbar is
      native and no longer reads these tokens (#1098). */
   --scrollbar-thumb: rgba(0, 0, 0, 0.2);
@@ -662,19 +664,21 @@ body.light-theme .bg-thumb.selected {
 }
 
 body.light-theme .bg-subsection-desc {
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
 }
 
 body.light-theme .upload-bg-btn {
   border-color: rgba(33, 150, 243, 0.3) !important;
   background: rgba(33, 150, 243, 0.05) !important;
-  color: rgba(33, 150, 243, 0.5) !important;
+  /* #1976d2 is ~4.37:1 on the translucent blue surface; use the darker
+     light-theme link blue so the base state meets WCAG AA 4.5:1 (#1272). */
+  color: #1565c0 !important;
 }
 
 body.light-theme .upload-bg-btn:hover {
   background: rgba(33, 150, 243, 0.12) !important;
   border-color: rgba(33, 150, 243, 0.55) !important;
-  color: #2196f3 !important;
+  color: #1565c0 !important;
 }
 
 /* Modern Context Menu Styles */
@@ -1240,7 +1244,7 @@ body.light-theme .color-hex {
 .font-swatch-arrow {
   width: 14px;
   height: 14px;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
   flex-shrink: 0;
   margin-left: 8px;
   transition: transform 0.2s ease;
@@ -1350,7 +1354,7 @@ body.light-theme .font-swatch-preview {
 }
 
 body.light-theme .font-swatch-arrow {
-  color: #6b7280;
+  color: var(--settings-text-secondary);
 }
 
 body.light-theme .font-picker-popup {
@@ -1404,7 +1408,7 @@ body.light-theme .font-option-name {
 .about-setting-group > p {
   margin: 0 0 20px 0;
   font-size: 14px;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
   line-height: 1.5;
 }
 
@@ -1447,7 +1451,7 @@ body.light-theme .about-cards .setting-card a:hover {
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.45;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
 }
 
 /* Eye-care Reminder — family layout on the shared shell. Keeps its countdown
@@ -1551,7 +1555,7 @@ body.light-theme .about-cards .setting-card a:hover {
 }
 
 body.light-theme .setting-description {
-  color: rgba(55, 65, 81, 0.8);
+  color: var(--settings-text-secondary);
 }
 
 /* The reminder keeps its info hue in light theme, restoring the variant over
@@ -1648,7 +1652,7 @@ body:has(.eye-care-reminder:not([hidden])) .toast-notification {
 .update-settings-group p {
   margin: 0 0 12px 0;
   font-size: 13px;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
   line-height: 1.4;
 }
 
@@ -1698,7 +1702,7 @@ body:has(.eye-care-reminder:not([hidden])) .toast-notification {
 .language-setting-group p {
   margin: 0 0 16px 0;
   font-size: 12px;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
   line-height: 1.4;
 }
 
@@ -1749,6 +1753,11 @@ body:has(.eye-care-reminder:not([hidden])) .toast-notification {
   font-weight: 600;
 }
 
+body.light-theme .language-option.modern input[type="radio"]:checked ~ .label {
+  /* #2196f3 fails AA on white; use the darker light-theme link blue (#1272). */
+  color: #1565c0;
+}
+
 .language-preview {
   display: flex;
   flex-direction: column;
@@ -1773,7 +1782,8 @@ body:has(.eye-care-reminder:not([hidden])) .toast-notification {
 .language-code {
   font-size: 10px;
   font-weight: 600;
-  color: #666;
+  /* Preview tile is white in both themes, so use the light secondary. */
+  color: #4b5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1792,13 +1802,12 @@ body.light-theme .language-setting-group {
   border-color: rgba(0, 0, 0, 0.1);
 }
 
-body.light-theme .language-setting-group h4,
-body.light-theme .language-setting-group p {
-  color: rgba(55, 65, 81, 0.9);
+body.light-theme .language-setting-group h4 {
+  color: var(--settings-text-color);
 }
 
 body.light-theme .language-setting-group p {
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--settings-text-secondary);
 }
 
 body.light-theme .language-option.modern {
@@ -1816,7 +1825,7 @@ body.light-theme .language-preview {
 }
 
 body.light-theme .language-code {
-  color: #666;
+  color: #4b5563;
 }
 
 body.light-theme .manual-check-result {
@@ -1832,6 +1841,8 @@ body.light-theme .update-settings-group {
 body.light-theme .update-settings-group .setting-btn {
   background: rgba(33, 150, 243, 0.05);
   border-color: rgba(33, 150, 243, 0.2);
+  /* #1976d2 is ~4.37:1 here; #1565c0 reaches 4.5:1 on this surface (#1272). */
+  color: #1565c0;
 }
 
 body.light-theme .update-settings-group .setting-btn:hover {
@@ -3083,7 +3094,7 @@ body.light-theme .weather-spinner {
 body.light-theme .weather-choice-button {
   background: rgba(255, 255, 255, 0.55);
   border-color: rgba(0, 0, 0, 0.15);
-  color: rgba(55, 65, 81, 0.9);
+  color: #374151;
 }
 
 body.light-theme .weather-choice-button:hover {
