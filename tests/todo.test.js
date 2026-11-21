@@ -5110,3 +5110,37 @@ describe('External todo sync (issue #1233)', () => {
     }
   });
 });
+
+describe('Clear completed dialog Escape cleanup (issue #1252)', () => {
+  beforeAll(() => {
+    injectScript('src/features/shortcuts.js');
+  });
+
+  it('Escape with focus outside detaches listeners so a re-open clears once', () => {
+    addTodo('Keep');
+    addTodo('Done one');
+    const doneId = loadTodos().find(todo => todo.text === 'Done one').id;
+    toggleTodo(doneId);
+    const setItemSpy = vi.spyOn(localStorage, 'setItem');
+
+    clearCompleted();
+    const dialog = document.getElementById('clear-completed-dialog');
+    const removeSpies = [
+      document.getElementById('clear-completed-confirm'),
+      dialog.querySelector('.ai-confirm-cancel'),
+      dialog.querySelector('.ai-confirm-overlay'),
+    ].map(el => vi.spyOn(el, 'removeEventListener'));
+    document.activeElement?.blur();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(dialog.classList.contains('ai-confirm-open')).toBe(false);
+    removeSpies.forEach(spy => expect(spy).toHaveBeenCalledWith('click', expect.any(Function)));
+
+    clearCompleted();
+    setItemSpy.mockClear();
+    document.getElementById('clear-completed-confirm').click();
+
+    expect(setItemSpy.mock.calls.filter(([key]) => key === 'todos')).toHaveLength(1);
+    expect(loadTodos().map(todo => todo.text)).toEqual(['Keep']);
+    setItemSpy.mockRestore();
+  });
+});

@@ -2045,6 +2045,10 @@ function clearCompleted() {
   showClearCompletedDialog();
 }
 
+// Detaches the listeners of the currently open clear-completed dialog.
+// Kept at module scope so every close path (buttons, overlay, Escape) can run it.
+let detachClearCompletedListeners = null;
+
 // Show clear completed confirmation dialog
 function showClearCompletedDialog() {
   const dialog = document.getElementById('clear-completed-dialog');
@@ -2053,6 +2057,8 @@ function showClearCompletedDialog() {
   const overlay = dialog?.querySelector('.ai-confirm-overlay');
   
   if (!dialog) return;
+
+  if (detachClearCompletedListeners) detachClearCompletedListeners();
   
   // Show the dialog
   dialog.classList.add('ai-confirm-open');
@@ -2088,21 +2094,18 @@ function showClearCompletedDialog() {
     }
 
     hideClearCompletedDialog();
-
-    // Remove event listeners
-    confirmBtn?.removeEventListener('click', handleConfirm);
-    cancelBtn?.removeEventListener('click', handleCancel);
-    overlay?.removeEventListener('click', handleCancel);
   };
   
   // Handle cancel button click
   const handleCancel = () => {
     hideClearCompletedDialog();
-    
-    // Remove event listeners
+  };
+
+  detachClearCompletedListeners = () => {
     confirmBtn?.removeEventListener('click', handleConfirm);
     cancelBtn?.removeEventListener('click', handleCancel);
     overlay?.removeEventListener('click', handleCancel);
+    detachClearCompletedListeners = null;
   };
   
   // Add event listeners
@@ -2111,12 +2114,13 @@ function showClearCompletedDialog() {
   overlay?.addEventListener('click', handleCancel);
 }
 
-// Hide clear completed confirmation dialog
+// Escape also routes here (accessibility.js and shortcuts.js), so listeners are detached on every close path.
 function hideClearCompletedDialog() {
   const dialog = document.getElementById('clear-completed-dialog');
   if (dialog) {
     dialog.classList.remove('ai-confirm-open');
   }
+  if (detachClearCompletedListeners) detachClearCompletedListeners();
 }
 
 // Handle filter pill clicks
@@ -3896,6 +3900,7 @@ try {
   window.validateTodoData = validateTodoData;
   window.showImportDialog = showImportDialog;
   window.clearCompleted = clearCompleted;
+  window.hideClearCompletedDialog = hideClearCompletedDialog;
   window.scheduleTodoReminderCheck = scheduleTodoReminderCheck;
   window.formatDateISO = formatDateISO;
   window.isOverdue = isOverdue;

@@ -580,6 +580,12 @@
           window._customBackgrounds.closeConfirmDialog();
           return true;
         }
+        // Clear-completed listeners live in todo.js: route through its hide
+        // hook so they are detached instead of only stripping the class.
+        if (def.selector === '#clear-completed-dialog' && typeof window.hideClearCompletedDialog === 'function') {
+          window.hideClearCompletedDialog();
+          return true;
+        }
         el.classList.remove(def.cssClass);
         return true;
       }
