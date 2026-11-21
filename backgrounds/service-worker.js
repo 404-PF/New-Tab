@@ -478,18 +478,24 @@ async function showTodoNotification(todo, dueDisplay) {
   }
 }
 
+function isValidRecurrenceAnchorDay(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 31;
+}
+
 // Advance a YYYY-MM-DD due date by one recurrence step until it lands strictly
 // after the current local day (mirror of getNextDueDate in src/features/todo.js,
 // including the month-safe monthly anchor clamp — SYNC), so completing a
 // recurring todo from a notification reschedules it instead of closing it out.
-function advanceDueDate(dueDate, recurrence) {
+function advanceDueDate(dueDate, recurrence, recurrenceAnchorDay) {
   if (!RECURRENCE_VALUES.includes(recurrence)) return dueDate;
   const parsed = parseDueDate(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const base = parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : new Date(today);
   base.setHours(0, 0, 0, 0);
-  const monthlyAnchorDay = recurrence === 'monthly' ? base.getDate() : null;
+  const monthlyAnchorDay = recurrence === 'monthly'
+    ? (isValidRecurrenceAnchorDay(recurrenceAnchorDay) ? recurrenceAnchorDay : base.getDate())
+    : null;
   do {
     if (recurrence === 'daily') {
       base.setDate(base.getDate() + 1);
@@ -547,7 +553,14 @@ async function markTodoDoneFromNotification(todoId) {
       if (todo) {
         if (RECURRENCE_VALUES.includes(todo.recurrence)) {
           if (!hasAdvanced || todo.dueDate !== advancedDueDate) {
-            advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence);
+            // Seed a missing monthly anchor from the still-unclamped due date
+            // (mirror of ensureMonthlyRecurrenceAnchor in src/features/todo.js),
+            // then persist it with the rest of the todo.
+            if (todo.recurrence === 'monthly' && !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+              const parsedDue = parseDueDate(todo.dueDate);
+              todo.recurrenceAnchorDay = parsedDue ? parsedDue.getDate() : new Date().getDate();
+            }
+            advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
             hasAdvanced = true;
             todo.dueDate = advancedDueDate;
           }
