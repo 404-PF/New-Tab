@@ -599,6 +599,23 @@ const AIService = (function() {
   }
 
   /**
+   * Retrieves local notes for the prompt (issue #1333). The caller checks the
+   * opt-in first so the default path never awaits here. Never throws: any
+   * failure or missing model yields no context.
+   * @param {string} prompt The trimmed user message.
+   * @returns {Promise<Array<{id: string, title: string, text: string}>>}
+   */
+  async function retrieveLocalContext(prompt) {
+    try {
+      if (typeof window.retrieveNotesForAI !== 'function') return [];
+      const notes = await window.retrieveNotesForAI(prompt);
+      return Array.isArray(notes) ? notes : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Sends a user message after trimming and rejecting blank input.
    * @param {string} userMessage The message text to send.
    * @param {object} [options] Request options.
@@ -671,6 +688,10 @@ const AIService = (function() {
     const abortController = new AbortController();
     AIStore.setAbortController(abortController);
 
+    const useLocalContext = !networkStatus.isOffline && window.OpenRouterAPI.isLocalContextEnabled();
+    const localContextNotes = useLocalContext ? await retrieveLocalContext(normalizedUserMessage) : [];
+    const localContextOptions = localContextNotes.length > 0 ? { localContext: localContextNotes } : {};
+
     const messages = AIStore.getCurrentMessages();
     const historyForAPI = messages
       .filter(message => message.role !== 'system')
@@ -684,6 +705,9 @@ const AIService = (function() {
       isStreaming: true,
       grounded: groundingEnabled
     };
+    if (localContextNotes.length > 0) {
+      assistantMsg.contextSources = localContextNotes.map(note => note.title);
+    }
 
     AIStore.addMessageToConversation(assistantMsg);
     renderConversationUI();
@@ -804,7 +828,7 @@ const AIService = (function() {
           historyForAPI,
           handleStreamingChunk,
           abortController.signal,
-          { grounding: groundingEnabled }
+          { grounding: groundingEnabled, ...localContextOptions }
         );
 
         if (
@@ -822,7 +846,7 @@ const AIService = (function() {
             historyForAPI,
             handleStreamingChunk,
             abortController.signal,
-            { grounding: false }
+            { grounding: false, ...localContextOptions }
           );
         }
 

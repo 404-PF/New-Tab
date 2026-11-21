@@ -6201,3 +6201,22 @@ body.light-theme .ai-message-sources a {
 body.light-theme .ai-message-sources a:hover {
   color: #1d4ed8;
 }
+
+.ai-message-context {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.ai-message-context-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.78;
+}
+
+.ai-message-context ul {
+  margin: 0;
+  padding-left: 18px;
+}

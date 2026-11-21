@@ -23,6 +23,12 @@
   const DEFAULT_RELATED_MIN_SCORE = 0.75;
   const DEFAULT_RELATED_MAX_RESULTS = 5;
   const DEFAULT_DUPLICATE_MIN_SCORE = 0.9;
+  // AI context retrieval (issue #1333) has no keyword signal, so it uses the
+  // hybrid floor directly: with alpha 0.35, a 0.5 hybrid needs cosine >= 0.54.
+  const DEFAULT_CONTEXT_MIN_COSINE = 0.54;
+  const DEFAULT_CONTEXT_MAX_ITEMS = 4;
+  const DEFAULT_CONTEXT_MAX_CHARS = 1500;
+  const CONTEXT_TITLE_MAX_CHARS = 60;
 
   function cosineSimilarity(a, b) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return 0;
@@ -202,6 +208,33 @@
     return scored.slice(0, maxResults);
   }
 
+  // Picks the notes to inject into an AI prompt (issue #1333). scored is
+  // [{ note, cosine }]. Keeps the best cosines at or above minCosine, at most
+  // maxItems, and stops once the summed text reaches maxChars (the last item
+  // is cut to fit). Returns copies shaped { id, title, text }.
+  function selectContextNotes(scored, options) {
+    const opts = options || {};
+    const minCosine = Number.isFinite(opts.minCosine) ? opts.minCosine : DEFAULT_CONTEXT_MIN_COSINE;
+    const maxItems = Number.isFinite(opts.maxItems) ? opts.maxItems : DEFAULT_CONTEXT_MAX_ITEMS;
+    const maxChars = Number.isFinite(opts.maxChars) ? opts.maxChars : DEFAULT_CONTEXT_MAX_CHARS;
+    const candidates = (Array.isArray(scored) ? scored : [])
+      .filter(function (s) { return s && s.note && Number.isFinite(s.cosine) && s.cosine >= minCosine; })
+      .sort(function (a, b) { return b.cosine - a.cosine; });
+    const picked = [];
+    let used = 0;
+    for (let i = 0; i < candidates.length && picked.length < maxItems && used < maxChars; i += 1) {
+      const note = candidates[i].note;
+      const text = typeof note.text === 'string' ? note.text.trim() : '';
+      if (!text) continue;
+      const room = maxChars - used;
+      const clipped = text.slice(0, room);
+      used += clipped.length;
+      const title = clipped.split('\n')[0].slice(0, CONTEXT_TITLE_MAX_CHARS).trim();
+      picked.push({ id: note.id, title: title || clipped.slice(0, CONTEXT_TITLE_MAX_CHARS), text: clipped });
+    }
+    return picked;
+  }
+
   const api = {
     DEFAULT_ALPHA,
     DEFAULT_MIN_SCORE,
@@ -209,6 +242,9 @@
     DEFAULT_RELATED_MIN_SCORE,
     DEFAULT_RELATED_MAX_RESULTS,
     DEFAULT_DUPLICATE_MIN_SCORE,
+    DEFAULT_CONTEXT_MIN_COSINE,
+    DEFAULT_CONTEXT_MAX_ITEMS,
+    DEFAULT_CONTEXT_MAX_CHARS,
     cosineSimilarity,
     keywordScore,
     hybridScore,
@@ -216,7 +252,8 @@
     keywordFilter,
     rankByScores,
     rankNotesForQuery,
-    rankSimilarItems
+    rankSimilarItems,
+    selectContextNotes
   };
 
   try {

@@ -840,6 +840,9 @@ const translations = {
     aiGroundWithWeb: 'Ground with web',
     aiGroundWithWebDescription: 'Use live web results for current answers.',
     aiSources: 'Sources',
+    aiIncludeNotes: 'Include my notes',
+    aiIncludeNotesDescription: 'Add the most relevant local notes to the prompt. They are sent to the AI model with your message.',
+    aiContextNotesUsed: 'Notes used as context',
     aiSearchingWeb: 'Searching the web…',
     aiGroundingFallback: 'Web search is unavailable. Answering without live web data.',
     // Games

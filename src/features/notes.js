@@ -356,38 +356,13 @@
     el.dataset.i18n = key;
   }
 
-  function getFilteredNotesRanked() {
-    const query = _activeSearchQuery;
-    if (!query || !isNotesSemanticEnabled() || !isNotesSemanticReady()) {
-      return Promise.resolve(getFilteredNotes());
-    }
-    let ranker;
-    try {
-      ranker = window.NotesSemanticSearch || null;
-    } catch { ranker = null; }
-    let service = null;
-    try {
-      service = window.EmbeddingService || null;
-    } catch { service = null; }
-    let cache = null;
-    try {
-      cache = window.NotesVectorCache || null;
-    } catch { cache = null; }
-    if (!ranker || !service || !cache) {
-      return Promise.resolve(getFilteredNotes());
-    }
-    const base = getTagFilteredNotes();
-    if (base.length === 0) return Promise.resolve([]);
+  // Batch: one cache pass for all notes, then a single embedTexts call for
+  // every cache miss — not N inferences. Partial failures keep the cached
+  // vectors and null the rest (cosine 0) instead of dropping to keyword.
+  // Resolves to one vector (or null) per note in base, in the same order.
+  function gatherNoteVectors(base, service, cache) {
     const modelId = getSemanticModelId();
     const inputs = base.map(noteToEmbeddingText);
-
-    function embedQuery(q) {
-      return service.embedQuery(q);
-    }
-
-    // Batch: one cache pass for all notes, then a single embedTexts call for
-    // every cache miss — not N inferences. Partial failures keep the cached
-    // vectors and null the rest (cosine 0) instead of dropping to keyword.
     return Promise.all(base.map(function (note, i) {
       return cache.getCachedVector(note.id, inputs[i], modelId).catch(function () { return null; });
     })).then(function (cached) {
@@ -432,7 +407,37 @@
         });
         return vectors;
       }).catch(function () { return vectors; });
-    }).then(function (vectors) {
+    });
+  }
+
+  function getFilteredNotesRanked() {
+    const query = _activeSearchQuery;
+    if (!query || !isNotesSemanticEnabled() || !isNotesSemanticReady()) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    let ranker;
+    try {
+      ranker = window.NotesSemanticSearch || null;
+    } catch { ranker = null; }
+    let service = null;
+    try {
+      service = window.EmbeddingService || null;
+    } catch { service = null; }
+    let cache = null;
+    try {
+      cache = window.NotesVectorCache || null;
+    } catch { cache = null; }
+    if (!ranker || !service || !cache) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    const base = getTagFilteredNotes();
+    if (base.length === 0) return Promise.resolve([]);
+
+    function embedQuery(q) {
+      return service.embedQuery(q);
+    }
+
+    return gatherNoteVectors(base, service, cache).then(function (vectors) {
       const byId = new Map();
       base.forEach(function (note, i) { byId.set(note.id, vectors[i] || null); });
       return ranker.rankNotesForQuery(base, query, {
@@ -442,6 +447,42 @@
     }).catch(function () {
       return getFilteredNotes();
     });
+  }
+
+  // AI chat context (issue #1333): the notes most similar to the prompt, as
+  // { id, title, text } copies, capped by selectContextNotes. Resolves to []
+  // unless semantic search is on and the model is ready, so the chat path
+  // never changes when the model is absent. Vectors are checked against the
+  // live notes after the await: a note deleted or edited mid-flight is
+  // dropped rather than sent with stale text.
+  function retrieveNotesForAI(query) {
+    const q = typeof query === 'string' ? query.trim() : '';
+    if (!q || !isNotesSemanticReady()) return Promise.resolve([]);
+    const ranker = window.NotesSemanticSearch || null;
+    const service = window.EmbeddingService || null;
+    const cache = window.NotesVectorCache || null;
+    if (!ranker || !service || !cache || typeof ranker.selectContextNotes !== 'function') {
+      return Promise.resolve([]);
+    }
+    const base = notes.slice();
+    if (base.length === 0) return Promise.resolve([]);
+    const inputs = base.map(noteToEmbeddingText);
+    return Promise.all([
+      service.embedQuery(q),
+      gatherNoteVectors(base, service, cache)
+    ]).then(function (results) {
+      const queryVector = results[0];
+      const vectors = results[1];
+      if (!Array.isArray(queryVector) || queryVector.length === 0) return [];
+      const liveById = new Map(notes.map(function (n) { return [n.id, n]; }));
+      const scored = [];
+      base.forEach(function (note, i) {
+        const current = liveById.get(note.id);
+        if (!current || noteToEmbeddingText(current) !== inputs[i]) return;
+        scored.push({ note: current, cosine: ranker.cosineSimilarity(queryVector, vectors[i]) });
+      });
+      return ranker.selectContextNotes(scored);
+    }).catch(function () { return []; });
   }
 
   function invalidateNoteVector(noteId) {
@@ -2087,6 +2128,7 @@ try {
   window.renderNotes = renderNotes;
   window.getFilteredNotes = getFilteredNotes;
   window.getFilteredNotesRanked = getFilteredNotesRanked;
+  window.retrieveNotesForAI = retrieveNotesForAI;
   window.isNotesSemanticEnabled = isNotesSemanticEnabled;
   window.isNotesSemanticReady = isNotesSemanticReady;
   window.invalidateSemanticRerank = invalidateSemanticRerank;
