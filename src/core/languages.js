@@ -1580,8 +1580,13 @@ function getValidatedLocaleScriptSource(source) {
   if (typeof source !== 'string') return null;
   if (!source.startsWith(LOCALE_SCRIPT_DIR) || !source.endsWith('.js')) return null;
   const code = source.slice(LOCALE_SCRIPT_DIR.length, -3);
-  if (!isSupportedLocaleCode(code)) return null;
-  return LOCALE_SCRIPT_DIR + code + '.js';
+  // Rebuild the path from the trusted SUPPORTED_LANGUAGES entry rather than
+  // reusing the input string, so only allowlisted values reach script.src.
+  const supported = SUPPORTED_LANGUAGES.find(function (language) {
+    return language.code === code;
+  });
+  if (!supported) return null;
+  return LOCALE_SCRIPT_DIR + supported.code + '.js';
 }
 
 function loadLocaleScript(source) {
