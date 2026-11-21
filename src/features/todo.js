@@ -87,10 +87,20 @@
     }
   }
 
+  // Copy an unrecoverable raw payload aside so the next saveTodos() cannot erase it.
+  function backupCorruptTodos(raw) {
+    try {
+      localStorage.setItem('todos_corrupt_backup', raw);
+    } catch (e) {
+      console.warn('Failed to back up corrupt todos data:', e);
+    }
+  }
+
   // Load todos from localStorage
   function loadTodos() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem('todos');
+      raw = localStorage.getItem('todos');
       if (!raw) return [];
 
       let parsed = JSON.parse(raw);
@@ -106,11 +116,13 @@
       parsed = parseCandidate(parsed);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid todos data in localStorage: expected array, resetting to empty list');
+        backupCorruptTodos(raw);
         return [];
       }
       return parsed;
     } catch (e) {
       console.warn('Failed to parse todos from localStorage, resetting to empty list:', e);
+      if (typeof raw === 'string' && raw) backupCorruptTodos(raw);
       return [];
     }
   }

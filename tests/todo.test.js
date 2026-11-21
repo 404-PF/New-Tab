@@ -71,6 +71,21 @@ describe('Todo persistence', () => {
     expect(loadTodos()).toEqual([]);
   });
 
+  it('preserves corrupt todos payload in a backup key before the next add overwrites it', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      localStorage.setItem('todos', 'not-json');
+      initTodo();
+
+      addTodo('Fresh');
+
+      expect(localStorage.getItem('todos_corrupt_backup')).toBe('not-json');
+      expect(loadTodos().map(todo => todo.text)).toEqual(['Fresh']);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('loadTodos migrates wrapped legacy todo payloads', () => {
     localStorage.setItem('todos', JSON.stringify({
       count: 2,
