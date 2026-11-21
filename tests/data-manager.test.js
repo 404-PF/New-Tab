@@ -83,6 +83,8 @@ describe('DataManager backup validation', () => {
     } })).toEqual({ valid: true });
     expect(window.DataManager.validateImportData({ version: 1, data: { dangerous: true } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 1, data: { todos: [{}] } }).valid).toBe(false);
+    expect(window.DataManager.validateImportData({ version: 1, data: { todos: [{ id: 'a', label: 'work' }] } }).valid).toBe(true);
+    expect(window.DataManager.validateImportData({ version: 1, data: { todos: [{ id: 'a', label: 'x'.repeat(31) }] } }).valid).toBe(false);
     expect(window.DataManager.validateImportData({ version: 2, data: {} }).valid).toBe(false);
   });
 
