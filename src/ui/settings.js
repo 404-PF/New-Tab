@@ -2898,6 +2898,31 @@ function initCustomSearchProvidersSettings() {
     }
   }
 
+  // Disable the button, run a provider write, then re-enable the button after
+  // the success/failure handler and any unexpected-error logging have run.
+  function runProviderWrite({ button, call, onSuccess, onFailure, action }) {
+    if (button) button.disabled = true;
+    const reenable = function () {
+      if (button) button.disabled = false;
+    };
+    callProviderApi(call).then(onSuccess, onFailure)
+      .catch(logProviderHandlerError(action))
+      .then(reenable, reenable);
+  }
+
+  function notifyProvidersChanged() {
+    clearFeedback();
+    if (typeof window.refreshProviderBar === 'function') {
+      window.refreshProviderBar();
+    }
+    renderCustomProvidersList();
+  }
+
+  function reportSaveError() {
+    showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
+    renderCustomProvidersList();
+  }
+
   function handleAdd() {
     // Enter in the inputs bypasses the disabled button; ignore it too.
     if (addBtn.disabled) return;
@@ -2930,75 +2955,66 @@ function initCustomSearchProvidersSettings() {
 
     // Disable the button while the write is in flight so a second click
     // cannot queue a duplicate provider.
-    addBtn.disabled = true;
-    const reenableAdd = function () {
-      addBtn.disabled = false;
-    };
-    callProviderApi(function () {
-      return window.addCustomProvider(name, url, suggestionsUrl);
-    }).then(function (savedId) {
-      if (savedId === null) {
-        // Validation failure; the name was already checked above. Blame the
-        // suggestions URL only when the main URL looks valid and the
-        // suggestions URL does not (issue #1012).
-        if (suggestionsUrl && /^https?:\/\//i.test(url) && !/^https?:\/\//i.test(suggestionsUrl)) {
-          showFeedback(t('searchProviderInvalidSuggestionsUrl', 'Enter a valid suggestions URL with {query} and http(s).'), 'error');
-          suggestionsUrlInput.focus();
-        } else {
-          showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
-          urlInput.focus();
+    runProviderWrite({
+      button: addBtn,
+      action: 'add',
+      call: function () {
+        return window.addCustomProvider(name, url, suggestionsUrl);
+      },
+      onSuccess: function (savedId) {
+        if (savedId === null) {
+          // Validation failure; the name was already checked above. Blame the
+          // suggestions URL only when the main URL looks valid and the
+          // suggestions URL does not (issue #1012).
+          if (suggestionsUrl && /^https?:\/\//i.test(url) && !/^https?:\/\//i.test(suggestionsUrl)) {
+            showFeedback(t('searchProviderInvalidSuggestionsUrl', 'Enter a valid suggestions URL with {query} and http(s).'), 'error');
+            suggestionsUrlInput.focus();
+          } else {
+            showFeedback(t('searchProviderInvalidUrl', 'Enter a valid URL with {query} and http(s).'), 'error');
+            urlInput.focus();
+          }
+          return;
         }
-        return;
-      }
-      if (!savedId) {
-        showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
-        renderCustomProvidersList();
-        return;
-      }
+        if (!savedId) {
+          reportSaveError();
+          return;
+        }
 
-      nameInput.value = '';
-      urlInput.value = '';
-      if (suggestionsUrlInput) suggestionsUrlInput.value = '';
-      clearFeedback();
-      if (typeof window.refreshProviderBar === 'function') {
-        window.refreshProviderBar();
+        nameInput.value = '';
+        urlInput.value = '';
+        if (suggestionsUrlInput) suggestionsUrlInput.value = '';
+        notifyProvidersChanged();
+        nameInput.focus();
+      },
+      onFailure: function (error) {
+        console.warn('Failed to add custom search provider:', error);
+        reportSaveError();
       }
-      renderCustomProvidersList();
-      nameInput.focus();
-    }, function (error) {
-      console.warn('Failed to add custom search provider:', error);
-      showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
-      renderCustomProvidersList();
-    }).catch(logProviderHandlerError('add')).then(reenableAdd, reenableAdd);
+    });
   }
 
   function handleRemove(providerId, removeBtn) {
     if (typeof window.removeCustomProvider !== 'function') return;
-    // Disable the button while the save is in flight so repeated clicks
-    // cannot queue duplicate removals. The list re-renders afterwards; the
-    // reset below covers a button that survives the re-render.
-    if (removeBtn) removeBtn.disabled = true;
-    const reenableRemove = function () {
-      if (removeBtn) removeBtn.disabled = false;
-    };
-    callProviderApi(function () {
-      return window.removeCustomProvider(providerId);
-    }).then(function (removed) {
-      if (!removed) {
-        showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
-        renderCustomProvidersList();
-        return;
+    // The list re-renders afterwards; runProviderWrite's re-enable covers a
+    // button that survives the re-render.
+    runProviderWrite({
+      button: removeBtn,
+      action: 'removal',
+      call: function () {
+        return window.removeCustomProvider(providerId);
+      },
+      onSuccess: function (removed) {
+        if (!removed) {
+          reportSaveError();
+          return;
+        }
+        notifyProvidersChanged();
+      },
+      onFailure: function (error) {
+        console.warn('Failed to remove custom search provider:', error);
+        reportSaveError();
       }
-      clearFeedback();
-      if (typeof window.refreshProviderBar === 'function') {
-        window.refreshProviderBar();
-      }
-      renderCustomProvidersList();
-    }, function (error) {
-      console.warn('Failed to remove custom search provider:', error);
-      showFeedback(t('searchProviderSaveError', SEARCH_PROVIDER_SAVE_ERROR_FALLBACK), 'error');
-      renderCustomProvidersList();
-    }).catch(logProviderHandlerError('removal')).then(reenableRemove, reenableRemove);
+    });
   }
 
   addBtn.addEventListener('click', handleAdd);
