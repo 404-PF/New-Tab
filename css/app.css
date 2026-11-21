@@ -2606,7 +2606,6 @@ body.light-theme #selected-count {
   color: rgba(31, 41, 55, 0.7);
 }
 
-
 /* Light theme for todo date button */
 body.light-theme .todo-date-btn {
   background: rgba(0, 0, 0, 0.05);

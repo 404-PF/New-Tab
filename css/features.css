@@ -3315,7 +3315,6 @@ body.light-theme .todo-app-modal-content {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
-
 /* Weather app - loading state */
 .weather-app-loading {
   display: flex;
