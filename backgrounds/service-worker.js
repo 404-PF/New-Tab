@@ -545,6 +545,10 @@ async function markTodoDoneFromNotification(todoId) {
   // the uninitialized sentinel and skip its first advance.
   let advancedDueDate = null;
   let hasAdvanced = false;
+  // Monthly anchor derived from the still-unclamped due date. Reused on retries
+  // so a page snapshot that already holds the advanced (clamped) date is never
+  // re-anchored from it (mirror of ensureMonthlyRecurrenceAnchor in todo.js).
+  let seededAnchorDay = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const todos = parseTodosPayload(todosJson, null);
     let todosChanged = false;
@@ -552,14 +556,14 @@ async function markTodoDoneFromNotification(todoId) {
       const todo = todos.find((t) => t && t.id === todoId && !t.completed);
       if (todo) {
         if (RECURRENCE_VALUES.includes(todo.recurrence)) {
-          if (!hasAdvanced || todo.dueDate !== advancedDueDate) {
-            // Seed a missing monthly anchor from the still-unclamped due date
-            // (mirror of ensureMonthlyRecurrenceAnchor in src/features/todo.js),
-            // then persist it with the rest of the todo.
-            if (todo.recurrence === 'monthly' && !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+          if (todo.recurrence === 'monthly' && !isValidRecurrenceAnchorDay(todo.recurrenceAnchorDay)) {
+            if (seededAnchorDay === null) {
               const parsedDue = parseDueDate(todo.dueDate);
-              todo.recurrenceAnchorDay = parsedDue ? parsedDue.getDate() : new Date().getDate();
+              seededAnchorDay = parsedDue ? parsedDue.getDate() : new Date().getDate();
             }
+            todo.recurrenceAnchorDay = seededAnchorDay;
+          }
+          if (!hasAdvanced || todo.dueDate !== advancedDueDate) {
             advancedDueDate = advanceDueDate(todo.dueDate, todo.recurrence, todo.recurrenceAnchorDay);
             hasAdvanced = true;
             todo.dueDate = advancedDueDate;
