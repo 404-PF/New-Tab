@@ -352,9 +352,9 @@
     return new Date(year, month - 1, day);
   }
 
-  // Natural-language due-date phrases typed into the add bar (issue #1192).
-  // English words and numeric forms only; locale-specific wording is out of
-  // scope, as is recurrence/due-time parsing.
+  // Natural-language due-date, due-time, and recurrence phrases typed into the
+  // add bar (issues #1192, #1244). English words and numeric forms only;
+  // locale-specific wording is out of scope.
   const DATE_PHRASE_MONTH_PREFIX = {
     jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
     jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
@@ -364,6 +364,12 @@
   // another "/", so unsupported forms like 11/15/27 are never partially
   // matched as a leading M/D (issue #1192).
   const DATE_PHRASE_PATTERN = /\b(?:\d{4}-\d{1,2}-\d{1,2}|(?<!\/)\d{1,2}\/\d{1,2}(?:\/\d{4})?(?!\/)|next\s+week|today(?:'s)?|tonight(?:'s)?|tomorrow(?:'s)?|(?:next\s+)?(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:'s)?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2})\b/gi;
+
+  // "every <weekday>" is weekly and anchors the due date to that weekday.
+  const RECURRENCE_PHRASE_PATTERN = /\bevery\s+(day|week|month|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/gi;
+
+  // 12-hour (9am, 5:30 PM) or 24-hour (17:00) times, with an optional "at".
+  const DUE_TIME_PHRASE_PATTERN = /\b(?:at\s+)?(?:(\d{1,2})(?::([0-5]\d))?\s*(am|pm)|([01]?\d|2[0-3]):([0-5]\d))\b/gi;
 
   function startOfLocalDay(date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -458,51 +464,96 @@
     return null;
   }
 
-  // Parse a natural-language due-date phrase out of add-bar text. Returns the
-  // text with only the matched span removed (whitespace adjusted only at the
-  // removal boundary) plus the resolved YYYY-MM-DD date, or the original text
-  // and null when no phrase resolves. A phrase that is the entire input keeps
-  // the text verbatim so the todo is never emptied by stripping.
+  function resolveTodoDueTimePhrase(match) {
+    if (match[3]) {
+      const hour = Number(match[1]);
+      if (!(hour >= 1 && hour <= 12)) return null;
+      const hour24 = (hour % 12) + (match[3].toLowerCase() === 'pm' ? 12 : 0);
+      const minutes = match[2] || '00';
+      return String(hour24).padStart(2, '0') + ':' + minutes;
+    }
+    return match[4].padStart(2, '0') + ':' + match[5];
+  }
+
+  function resolveTodoRecurrencePhrase(token) {
+    const key = token.toLowerCase();
+    if (key === 'day') return { recurrence: 'daily' };
+    if (key === 'week') return { recurrence: 'weekly' };
+    if (key === 'month') return { recurrence: 'monthly' };
+    const dueDate = resolveTodoDatePhrase(key);
+    return dueDate ? { recurrence: 'weekly', dueDate: dueDate } : null;
+  }
+
+  // First match of pattern in text that resolves, as { start, end, value }.
+  function findFirstPhraseSpan(text, pattern, resolve) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const value = resolve(match);
+      if (value) {
+        return { start: match.index, end: match.index + match[0].length, value: value };
+      }
+    }
+    return null;
+  }
+
+  // Remove only the matched span and tidy the whitespace right where it was
+  // removed; whitespace elsewhere in the text is left untouched. The boundary
+  // space is skipped when one side is empty or the remainder starts with
+  // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
+  function removeTodoPhraseSpan(text, start, end) {
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+    const beforeText = before.trimEnd();
+    const afterText = after.replace(/^\s+/, '');
+    const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
+    const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
+    return beforeText + boundarySpace + afterText;
+  }
+
+  // Parse due-date, due-time, and recurrence phrases out of add-bar text.
+  // Returns the text with only the matched spans removed plus the resolved
+  // dueDate; dueTime (HH:MM) and recurrence are included only when present.
+  // A time or recurrence without a date is due today. Text without any phrase
+  // returns as-is with dueDate null. A phrase set that is the entire input
+  // keeps the text verbatim so the todo is never emptied by stripping.
   function parseTodoDatePhrase(text) {
     if (typeof text !== 'string' || !text) {
       return { text: text, dueDate: null };
     }
 
-    DATE_PHRASE_PATTERN.lastIndex = 0;
-    let resolved = null;
-    let matchStart = -1;
-    let matchEnd = -1;
-    let match;
+    // Consumed spans are masked with spaces so later patterns cannot re-match
+    // them (e.g. "friday" inside "every friday") and indices stay valid.
+    let masked = text;
+    const spans = [];
+    const claim = (span) => {
+      if (!span) return null;
+      spans.push(span);
+      masked = masked.slice(0, span.start) + ' '.repeat(span.end - span.start) + masked.slice(span.end);
+      return span.value;
+    };
 
-    while ((match = DATE_PHRASE_PATTERN.exec(text)) !== null) {
-      const dueDate = resolveTodoDatePhrase(match[0]);
-      if (dueDate) {
-        resolved = dueDate;
-        matchStart = match.index;
-        matchEnd = match.index + match[0].length;
-        break;
-      }
-    }
+    const recurrenceInfo = claim(findFirstPhraseSpan(masked, RECURRENCE_PHRASE_PATTERN, m => resolveTodoRecurrencePhrase(m[1])));
+    const dueTime = claim(findFirstPhraseSpan(masked, DUE_TIME_PHRASE_PATTERN, resolveTodoDueTimePhrase));
+    const explicitDate = claim(findFirstPhraseSpan(masked, DATE_PHRASE_PATTERN, m => resolveTodoDatePhrase(m[0])));
 
-    if (!resolved) {
+    if (spans.length === 0) {
       return { text: text, dueDate: null };
     }
 
-    // Remove only the matched span and tidy the whitespace right where it was
-    // removed; whitespace elsewhere in the text is left untouched. The boundary
-    // space is skipped when one side is empty or the remainder starts with
-    // punctuation, so 'Call mom tomorrow.' becomes 'Call mom.', not 'Call mom .'.
-    const before = text.slice(0, matchStart);
-    const after = text.slice(matchEnd);
-    const beforeText = before.trimEnd();
-    const afterText = after.replace(/^\s+/, '');
-    const hadBoundarySpace = /\s$/.test(before) || /^\s/.test(after);
-    const boundarySpace = hadBoundarySpace && beforeText && afterText && !/^[.,;:!?)]/.test(afterText) ? ' ' : '';
-    const stripped = (beforeText + boundarySpace + afterText).trim();
-    if (!stripped) {
-      return { text: text, dueDate: resolved };
-    }
-    return { text: stripped, dueDate: resolved };
+    const recurrence = recurrenceInfo ? recurrenceInfo.recurrence : null;
+    const dueDate = explicitDate || (recurrenceInfo && recurrenceInfo.dueDate) ||
+      (dueTime || recurrence ? formatDateISO(startOfLocalDay(new Date())) : null);
+
+    let stripped = text;
+    spans.sort((a, b) => b.start - a.start).forEach(span => {
+      stripped = removeTodoPhraseSpan(stripped, span.start, span.end);
+    });
+
+    const result = { text: stripped.trim() || text, dueDate: dueDate };
+    if (dueTime) result.dueTime = dueTime;
+    if (recurrence) result.recurrence = recurrence;
+    return result;
   }
 
   function getDisplayLocale() {
@@ -2172,6 +2223,8 @@ function clearInputs() {
   // A successful add ends any phrase preview; its displaced value must not
   // resurface against the fresh input state (issue #1192).
   phrasePreviewState = null;
+  phrasePreviewTimeState = null;
+
   if (elements.todoInput) elements.todoInput.value = '';
   if (elements.todoDueDate) elements.todoDueDate.value = '';
   if (elements.todoDueTime) elements.todoDueTime.value = '';
@@ -2282,6 +2335,33 @@ function handleDrop(event) {
 // the picker still shows `applied`, so deleting the phrase brings an earlier
 // manual selection back while a pick made after the preview wins (issue #1192).
 let phrasePreviewState = null;
+let phrasePreviewTimeState = null;
+
+function applyPhraseToPicker(parsed) {
+  applyPhraseDateToPicker(parsed);
+  applyPhraseTimeToPicker(parsed);
+}
+
+// Due-time preview mirrors the date preview: the time the phrase set is shown
+// in the time input, and the earlier value is restored when the phrase goes
+// away while the input still shows the phrase time (issue #1244).
+function applyPhraseTimeToPicker(parsed) {
+  const timeInput = elements.todoDueTime;
+  if (!timeInput) return;
+  if (parsed.dueTime) {
+    if (phrasePreviewTimeState) {
+      phrasePreviewTimeState.applied = parsed.dueTime;
+    } else {
+      phrasePreviewTimeState = { saved: timeInput.value, applied: parsed.dueTime };
+    }
+    timeInput.value = parsed.dueTime;
+    return;
+  }
+  if (!phrasePreviewTimeState) return;
+  const { saved, applied } = phrasePreviewTimeState;
+  phrasePreviewTimeState = null;
+  if (timeInput.value === applied) timeInput.value = saved;
+}
 
 // Applies a phrase-resolved date to the inline picker (or the plain hidden
 // input) so it is on screen before submit. Text without a phrase restores any
@@ -2330,13 +2410,14 @@ function submitTodoFromInput() {
   const parsed = parseTodoDatePhrase(input.value);
   // Phrase-derived dates pre-select in the inline picker; a picker value
   // already on screen still wins when the text has no phrase.
-  applyPhraseDateToPicker(parsed);
+  applyPhraseToPicker(parsed);
 
   const dueDate = parsed.dueDate || elements.todoDueDate?.value || null;
-  const dueTime = elements.todoDueTime?.value || null;
+  const dueTime = parsed.dueTime || elements.todoDueTime?.value || null;
+  const recurrence = parsed.recurrence || null;
   const priority = getSelectedPriority();
   const label = document.getElementById('todo-label-input')?.value || null;
-  addTodo(parsed.text, dueDate, priority, null, dueTime, null, label);
+  addTodo(parsed.text, dueDate, priority, recurrence, dueTime, null, label);
 }
 
 // Preview the resolved phrase date in the picker while the user types, so the
@@ -2345,7 +2426,7 @@ function submitTodoFromInput() {
 function handleTodoInputChange() {
   const input = elements.todoInput;
   if (!input) return;
-  applyPhraseDateToPicker(parseTodoDatePhrase(input.value));
+  applyPhraseToPicker(parseTodoDatePhrase(input.value));
 }
 
 function handleKeyPress(event) {
