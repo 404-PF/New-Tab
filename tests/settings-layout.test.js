@@ -41,13 +41,33 @@ describe('Settings layout stability (#512)', () => {
 
   it('keeps the narrow layout centered with contained scrolling', () => {
     const css = readFileSync(FEATURES_CSS_PATH, 'utf-8');
-    const mq = css.match(/@media screen and \(max-width: 600px\) \{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/);
+    const mediaStart = css.indexOf('@media screen and (max-width: 600px)');
+    let mq = null;
+
+    if (mediaStart !== -1) {
+      const blockStart = css.indexOf('{', mediaStart);
+      if (blockStart !== -1) {
+        let depth = 0;
+        for (let i = blockStart; i < css.length; i += 1) {
+          if (css[i] === '{') {
+            depth += 1;
+          } else if (css[i] === '}') {
+            depth -= 1;
+            if (depth === 0) {
+              mq = css.slice(mediaStart, i + 1);
+              break;
+            }
+          }
+        }
+      }
+    }
+
     expect(mq).toBeTruthy();
 
-    expect(mq[0]).toMatch(/#settings-modal\s*\{[^}]*justify-content:\s*center/);
-    expect(mq[0]).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)[^}]*min-width:\s*0/);
-    expect(mq[0]).toMatch(/\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
-    expect(mq[0]).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/);
+    expect(mq).toMatch(/#settings-modal\s*\{[^}]*justify-content:\s*center/);
+    expect(mq).toMatch(/#settings-modal > div\s*\{[^}]*width:\s*calc\(100vw - 24px\)[^}]*min-width:\s*0/);
+    expect(mq).toMatch(/\.settings-content\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
+    expect(mq).toMatch(/\.settings-body\s*\{[^}]*height:\s*min\(720px, calc\(85vh - 20px\)\)[^}]*max-height:\s*min\(720px, calc\(85vh - 20px\)\)/);
   });
 });
 
