@@ -1633,3 +1633,115 @@ describe('AIStore conversation rename (#1014)', () => {
     expect(persisted[0].title).toBe(conversation.title);
   });
 });
+
+describe('AIStore semantic conversation search (#1328)', () => {
+  let cacheRows;
+  let embedTexts;
+
+  const vectorFor = text => {
+    if (/deploy|pipeline|CI|build/i.test(text)) return [1, 0];
+    if (/sourdough|bread/i.test(text)) return [0, 1];
+    return [0.5, 0.5];
+  };
+
+  const seedConversations = () => {
+    AIStore.state.conversations = [
+      { id: 'conv-ci', title: 'CI pipeline failure', messages: [{ role: 'user', content: 'the build broke' }], updatedAt: 1 },
+      { id: 'conv-bread', title: 'Sourdough starter', messages: [{ role: 'user', content: 'feed it daily' }], updatedAt: 2 }
+    ];
+    AIStore.state.currentConversationId = 'conv-ci';
+  };
+
+  beforeAll(() => {
+    injectScript('src/ai/embeddings/notes-semantic-search.js');
+  });
+
+  beforeEach(() => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    cacheRows = new Map();
+    embedTexts = vi.fn(texts => Promise.resolve(texts.map(vectorFor)));
+    window.EmbeddingService = {
+      isReady: () => true,
+      getStatus: () => ({ modelId: 'test-model' }),
+      embedQuery: text => Promise.resolve(vectorFor(text)),
+      embedTexts
+    };
+    window.NotesVectorCache = {
+      getCachedVector: (noteId, text, modelId) => Promise.resolve(cacheRows.get(`${modelId}|${noteId}|${text}`) || null),
+      putCachedVector: (noteId, text, modelId, vector) => {
+        cacheRows.set(`${modelId}|${noteId}|${text}`, { vector });
+        return Promise.resolve(true);
+      },
+      deleteCachedVectorsForNote: noteId => {
+        for (const key of [...cacheRows.keys()]) {
+          if (key.split('|')[1] === noteId) cacheRows.delete(key);
+        }
+        return Promise.resolve(true);
+      }
+    };
+    seedConversations();
+    AIStore.setSearchQuery('');
+  });
+
+  afterEach(() => {
+    delete window.EmbeddingService;
+    delete window.NotesVectorCache;
+    localStorage.removeItem('notesSemanticEnabled');
+  });
+
+  it('keeps keyword results when the model is not ready', async () => {
+    window.EmbeddingService.isReady = () => false;
+    AIStore.setSearchQuery('sourdough');
+    const before = AIStore.getFilteredConversations().map(c => c.id);
+
+    await expect(AIStore.rankConversationsSemantically()).resolves.toBe(false);
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(before);
+    expect(embedTexts).not.toHaveBeenCalled();
+  });
+
+  it('keeps keyword results when semantic search is disabled', async () => {
+    localStorage.removeItem('notesSemanticEnabled');
+    AIStore.setSearchQuery('pipeline');
+    await expect(AIStore.rankConversationsSemantically()).resolves.toBe(false);
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-ci']);
+    expect(embedTexts).not.toHaveBeenCalled();
+  });
+
+  it('finds a thread by meaning when the model is ready', async () => {
+    AIStore.setSearchQuery('deployment bug');
+    expect(AIStore.getFilteredConversations()).toHaveLength(0);
+
+    await expect(AIStore.rankConversationsSemantically()).resolves.toBe(true);
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-ci']);
+    expect(AIStore.state.conversations.every(c => !('_semanticScore' in c))).toBe(true);
+  });
+
+  it('reuses cached vectors and re-embeds a conversation after it gains a message', async () => {
+    AIStore.setSearchQuery('deploy');
+    await AIStore.rankConversationsSemantically();
+    expect(embedTexts).toHaveBeenCalledTimes(1);
+    expect(embedTexts.mock.calls[0][0]).toHaveLength(2);
+
+    AIStore.setSearchQuery('deploy');
+    await AIStore.rankConversationsSemantically();
+    expect(embedTexts).toHaveBeenCalledTimes(1);
+
+    AIStore.addMessageToConversation({ role: 'user', content: 'a new follow-up' });
+    AIStore.setSearchQuery('deploy');
+    await AIStore.rankConversationsSemantically();
+    expect(embedTexts).toHaveBeenCalledTimes(2);
+    expect(embedTexts.mock.calls[1][0]).toHaveLength(1);
+    const ciRows = [...cacheRows.keys()].filter(key => key.includes('|conv:conv-ci|'));
+    expect(ciRows).toHaveLength(1);
+  });
+
+  it('drops a stale semantic result once the query changes', async () => {
+    AIStore.setSearchQuery('deployment bug');
+    await AIStore.rankConversationsSemantically();
+    AIStore.setSearchQuery('deployment');
+    expect(AIStore.state.semanticMatch).toBeNull();
+    expect(AIStore.getFilteredConversations()).toHaveLength(0);
+    AIStore.setSearchQuery('sourdough');
+    expect(AIStore.getFilteredConversations().map(c => c.id)).toEqual(['conv-bread']);
+  });
+});
