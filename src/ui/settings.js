@@ -493,6 +493,48 @@ function notifyMissingCustomBackground(bg) {
   }, 0);
 }
 
+function applyCustomBackground(bg) {
+  captureBackgroundSnapshot();
+  backgroundLoadVersion += 1;
+  stopBackground();
+  window._customBackgrounds.apply(bg);
+}
+
+function applyMissingBackground(bg) {
+  captureBackgroundSnapshot();
+  backgroundLoadVersion += 1;
+  stopBackground();
+  // Dangling custom id from an import (older backups and oversized
+  // uploads carry no media, and the media lives in IndexedDB) or any
+  // other unknown id: fall back to a built-in background
+  // and surface an error instead of leaving a blank viewport.
+  const looksCustom = bg && bg.indexOf('custom_') === 0;
+  const fallbackId = typeof window._getFallbackBackgroundId === 'function'
+    ? window._getFallbackBackgroundId()
+    : null;
+  const fallbackBgData = fallbackId && window._backgrounds
+    ? window._backgrounds.find(function (b) { return b.id === fallbackId; })
+    : null;
+  if (!fallbackBgData) {
+    if (looksCustom) {
+      notifyMissingCustomBackground(bg);
+    }
+    hideBackgroundOverlay();
+    return;
+  }
+  if (bg !== fallbackId) {
+    localStorage.setItem('homepageBg', fallbackId);
+    if (looksCustom) {
+      notifyMissingCustomBackground(bg);
+    }
+    hideBackgroundOverlay();
+    // Re-enter with the fallback id (now guaranteed to resolve to bgData).
+    applyBg();
+    return;
+  }
+  hideBackgroundOverlay();
+}
+
 function applyBg() {
   const bg = syncBackgroundSelection();
   initialBackgroundApplied = true;
@@ -504,48 +546,14 @@ function applyBg() {
 
   // Handle custom backgrounds (stored in IndexedDB)
   if (window._customBackgrounds && window._customBackgrounds.isCustom(bg)) {
-    captureBackgroundSnapshot();
-    backgroundLoadVersion += 1;
-    stopBackground();
-    window._customBackgrounds.apply(bg);
+    applyCustomBackground(bg);
     return;
   }
 
   // Get background data from the map
   const bgData = window._backgrounds ? window._backgrounds.find(b => b.id === bg) : null;
   if (!bgData) {
-    captureBackgroundSnapshot();
-    backgroundLoadVersion += 1;
-    stopBackground();
-    // Dangling custom id from an import (older backups and oversized
-    // uploads carry no media, and the media lives in IndexedDB) or any
-    // other unknown id: fall back to a built-in background
-    // and surface an error instead of leaving a blank viewport.
-    const looksCustom = bg && bg.indexOf('custom_') === 0;
-    const fallbackId = typeof window._getFallbackBackgroundId === 'function'
-      ? window._getFallbackBackgroundId()
-      : null;
-    const fallbackBgData = fallbackId && window._backgrounds
-      ? window._backgrounds.find(function (b) { return b.id === fallbackId; })
-      : null;
-    if (!fallbackBgData) {
-      if (looksCustom) {
-        notifyMissingCustomBackground(bg);
-      }
-      hideBackgroundOverlay();
-      return;
-    }
-    if (bg !== fallbackId) {
-      localStorage.setItem('homepageBg', fallbackId);
-      if (looksCustom) {
-        notifyMissingCustomBackground(bg);
-      }
-      hideBackgroundOverlay();
-      // Re-enter with the fallback id (now guaranteed to resolve to bgData).
-      applyBg();
-      return;
-    }
-    hideBackgroundOverlay();
+    applyMissingBackground(bg);
     return;
   }
 
@@ -565,24 +573,192 @@ function applyBg() {
   if (!thumbnailEl || !fullEl) return;
 
   if (bgData.type === 'interactive') {
+    applyInteractiveBackground(bgData, loadVersion, thumbnailEl, fullEl);
+    return;
+  }
 
-    fullEl.classList.remove('loaded');
-    thumbnailEl.classList.remove('hidden');
-    thumbnailEl.classList.remove('clearing');
-    thumbnailEl.src = bgData.thumb;
+  if (bgData.type === 'video') {
+    applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl, containerEl);
+    return;
+  }
 
-    fullEl.src = bgData.url || bgData.thumb;
-    requestAnimationFrame(() => {
+  applyImageFallback(bgData, loadVersion, thumbnailEl, fullEl);
+}
+
+function applyInteractiveBackground(bgData, loadVersion, thumbnailEl, fullEl) {
+  fullEl.classList.remove('loaded');
+  thumbnailEl.classList.remove('hidden');
+  thumbnailEl.classList.remove('clearing');
+  thumbnailEl.src = bgData.thumb;
+
+  fullEl.src = bgData.url || bgData.thumb;
+  requestAnimationFrame(() => {
+    if (loadVersion !== backgroundLoadVersion) {
+      return;
+    }
+
+    fullEl.classList.add('loaded');
+    hideBackgroundOverlay();
+    thumbnailEl.classList.add('clearing');
+
+    backgroundTransitionTimeout = setTimeout(() => {
       if (loadVersion !== backgroundLoadVersion) {
         return;
       }
 
-      fullEl.classList.add('loaded');
+      thumbnailEl.classList.add('hidden');
+      thumbnailEl.classList.remove('clearing');
+      backgroundTransitionTimeout = null;
+      // Belt-and-suspenders: the reduced-motion early return above
+      // normally prevents this timer from being created, but the
+      // wrapper still collapses the duration if the preference
+      // flips between scheduling and firing.
+    }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
+
+    if (window._interactiveBackground) {
+      window._interactiveBackground.apply(bgData.id);
+    }
+  });
+}
+
+function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl, containerEl) {
+  // Reset image states
+  fullEl.classList.remove('loaded');
+  thumbnailEl.classList.remove('hidden');
+  fullEl.src = '';
+
+  // Check video support - both canPlayType and HTML5 video element support
+  if (!supportsVideo() || !supportsVideoElement()) {
+    // Fallback: use thumbnail as background for unsupported browsers
+    if (containerEl) {
+      containerEl.classList.add('video-fallback');
+    }
+    thumbnailEl.src = bgData.thumb;
+    // Still load the full image as fallback
+    const fullImg = new Image();
+    fullImg.onload = function() {
+      if (loadVersion !== backgroundLoadVersion) {
+        return;
+      }
+
+      fullEl.src = bgData.thumb;
+      requestAnimationFrame(() => {
+        if (loadVersion !== backgroundLoadVersion) {
+          return;
+        }
+
+        fullEl.classList.add('loaded');
+        hideBackgroundOverlay();
+        setTimeout(() => {
+          if (loadVersion !== backgroundLoadVersion) {
+            return;
+          }
+
+          thumbnailEl.classList.add('hidden');
+        }, 1200);
+      });
+    };
+    fullImg.src = bgData.thumb;
+    return;
+  }
+
+  if (videoEl) {
+    videoEl.classList.remove('hidden');
+    videoEl.dataset.currentBg = bgData.id;
+
+    // Keep thumbnail visible while video loads (placeholder)
+    // This matches the image background behavior - show blurred thumbnail first
+    thumbnailEl.classList.remove('hidden');
+    thumbnailEl.classList.remove('clearing');
+
+    // Set thumbnail source for placeholder (show blurred version while video loads)
+    thumbnailEl.src = bgData.thumb;
+
+    fullEl.classList.remove('loaded');
+    fullEl.src = '';
+
+    // Apply user playback settings
+    const videoMuted = loadVideoMuted();
+    videoEl.muted = videoMuted;
+    videoEl.autoplay = loadVideoAutoplay();
+
+    // Set video source
+    const sourceEl = videoEl.querySelector('source');
+    sourceEl.src = bgData.url;
+    sourceEl.type = 'video/mp4';
+    safeLoad(videoEl);
+
+    // Set initial state - video starts hidden (opacity: 0)
+    videoEl.classList.add('loading');
+    videoEl.classList.remove('active');
+
+    // Start playing immediately while fading in - mimics image loading behavior
+    // This ensures the video starts playback right away without waiting for full buffer
+    const startVideoPlayback = function() {
+      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        return;
+      }
+
+      if (!loadVideoAutoplay()) {
+        hideBackgroundOverlay();
+        return;
+      }
+
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          // Auto-play was prevented, but that's okay for background video
+          console.warn('Video auto-play prevented:', error);
+        });
+      }
+    };
+
+    // Helper to trigger crossfade between thumbnail and video
+    const triggerCrossfade = function() {
+      if (videoEl.dataset.crossfadeTriggered === 'true' || loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        return;
+      }
+
+      videoEl.dataset.crossfadeTriggered = 'true';
+
+      // Remove loading class - video is now ready to show
+      videoEl.classList.remove('loading');
+
+      // When autoplay is disabled, keep thumbnail visible and video hidden
+      if (!loadVideoAutoplay()) {
+        hideBackgroundOverlay();
+        return;
+      }
+
+      // When reduced motion is preferred, treat the looping video as
+      // non-essential motion: keep the static thumbnail visible and skip
+      // the crossfade + autoplay. The user still gets the same end state
+      // (a full-bleed background) without any movement.
+      if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+        videoEl.dataset.reducedMotionPaused = 'true';
+        videoEl.classList.add('active', 'ready');
+        hideBackgroundOverlay();
+        return;
+      }
+
+      // Start video playback immediately
+      startVideoPlayback();
+
+      // Add active class to trigger video fade-in (2s ease-in-out)
+      videoEl.classList.add('active');
+      videoEl.classList.add('ready');
       hideBackgroundOverlay();
+
+      // Fade the still-blurred thumbnail out as the video fades in.
+      // The blur stays static: filter is not compositor-animatable, so
+      // animating it re-blurs the viewport every frame (#978).
       thumbnailEl.classList.add('clearing');
 
+      // After crossfade completes, fully hide the thumbnail
+      // Use 3000ms to ensure video is fully visible before hiding thumbnail
+      // This matches the 2.5s opacity transition in CSS
       backgroundTransitionTimeout = setTimeout(() => {
-        if (loadVersion !== backgroundLoadVersion) {
+        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
           return;
         }
 
@@ -593,30 +769,57 @@ function applyBg() {
         // normally prevents this timer from being created, but the
         // wrapper still collapses the duration if the preference
         // flips between scheduling and firing.
-      }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
+      }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS opacity transition duration
+    };
 
-      if (window._interactiveBackground) {
-        window._interactiveBackground.apply(bgData.id);
+    // Video can play through - trigger crossfade
+    videoEl.oncanplaythrough = triggerCrossfade;
+
+    // Fallback: if canplaythrough takes too long, trigger on loadeddata
+    videoEl.onloadeddata = function() {
+      videoEl.onloadeddata = null;
+      if (videoEl.dataset.crossfadeTriggered !== 'true') {
+        triggerCrossfade();
       }
-    });
-    return;
-  }
-  
-  // Handle video background
-  if (bgData.type === 'video') {
-    // Reset image states
-    fullEl.classList.remove('loaded');
-    thumbnailEl.classList.remove('hidden');
-    fullEl.src = '';
-    
-    // Check video support - both canPlayType and HTML5 video element support
-    if (!supportsVideo() || !supportsVideoElement()) {
-      // Fallback: use thumbnail as background for unsupported browsers
+    };
+
+    // Additional fallback: ensure crossfade happens after video starts playing
+    videoEl.onplaying = function() {
+      // Reset resume attempt counter when video is actively playing
+      if (videoEl.dataset.currentBg === bgData.id) {
+        videoEl.dataset.resumeAttempts = '0';
+      }
+      if (videoEl.dataset.crossfadeTriggered !== 'true') {
+        triggerCrossfade();
+      }
+    };
+
+    // Video loaded metadata - ensure proper sizing
+    videoEl.onloadedmetadata = function() {
+      videoEl.onloadedmetadata = null;
+      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        return;
+      }
+
+      // Force video to maintain proper scaling after metadata loads
+      videoEl.style.width = '100%';
+      videoEl.style.height = '100%';
+    };
+
+    // Video playback error - fallback to thumbnail
+    videoEl.onerror = function() {
+      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        return;
+      }
+
+      console.warn('Video background failed to load, falling back to image');
       if (containerEl) {
-        containerEl.classList.add('video-fallback');
+        containerEl.classList.add('video-error');
       }
+      resetBackgroundVideo(videoEl, true);
+      thumbnailEl.classList.remove('hidden');
+      thumbnailEl.classList.remove('clearing');
       thumbnailEl.src = bgData.thumb;
-      // Still load the full image as fallback
       const fullImg = new Image();
       fullImg.onload = function() {
         if (loadVersion !== backgroundLoadVersion) {
@@ -631,233 +834,47 @@ function applyBg() {
 
           fullEl.classList.add('loaded');
           hideBackgroundOverlay();
-          setTimeout(() => {
-            if (loadVersion !== backgroundLoadVersion) {
-              return;
-            }
-
-            thumbnailEl.classList.add('hidden');
-          }, 1200);
         });
       };
-      fullImg.src = bgData.thumb;
-      return;
-    }
-    
-    if (videoEl) {
-      videoEl.classList.remove('hidden');
-      videoEl.dataset.currentBg = bgData.id;
-      
-      // Keep thumbnail visible while video loads (placeholder)
-      // This matches the image background behavior - show blurred thumbnail first
-      thumbnailEl.classList.remove('hidden');
-      thumbnailEl.classList.remove('clearing');
-      
-      // Set thumbnail source for placeholder (show blurred version while video loads)
-      thumbnailEl.src = bgData.thumb;
-      
-      fullEl.classList.remove('loaded');
-      fullEl.src = '';
-      
-      // Apply user playback settings
-      const videoMuted = loadVideoMuted();
-      videoEl.muted = videoMuted;
-      videoEl.autoplay = loadVideoAutoplay();
-
-      // Set video source
-      const sourceEl = videoEl.querySelector('source');
-      sourceEl.src = bgData.url;
-      sourceEl.type = 'video/mp4';
-      safeLoad(videoEl);
-      
-      // Set initial state - video starts hidden (opacity: 0)
-      videoEl.classList.add('loading');
-      videoEl.classList.remove('active');
-      
-      // Start playing immediately while fading in - mimics image loading behavior
-      // This ensures the video starts playback right away without waiting for full buffer
-      const startVideoPlayback = function() {
-        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+      fullImg.onerror = function() {
+        if (loadVersion !== backgroundLoadVersion) {
           return;
         }
 
-        if (!loadVideoAutoplay()) {
-          hideBackgroundOverlay();
-          return;
-        }
-
-        const playPromise = videoEl.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            // Auto-play was prevented, but that's okay for background video
-            console.warn('Video auto-play prevented:', error);
-          });
-        }
-      };
-      
-      // Helper to trigger crossfade between thumbnail and video
-      const triggerCrossfade = function() {
-        if (videoEl.dataset.crossfadeTriggered === 'true' || loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-          return;
-        }
-
-        videoEl.dataset.crossfadeTriggered = 'true';
-
-        // Remove loading class - video is now ready to show
-        videoEl.classList.remove('loading');
-
-        // When autoplay is disabled, keep thumbnail visible and video hidden
-        if (!loadVideoAutoplay()) {
-          hideBackgroundOverlay();
-          return;
-        }
-
-        // When reduced motion is preferred, treat the looping video as
-        // non-essential motion: keep the static thumbnail visible and skip
-        // the crossfade + autoplay. The user still gets the same end state
-        // (a full-bleed background) without any movement.
-        if (window.prefersReducedMotion && window.prefersReducedMotion()) {
-          videoEl.dataset.reducedMotionPaused = 'true';
-          videoEl.classList.add('active', 'ready');
-          hideBackgroundOverlay();
-          return;
-        }
-
-        // Start video playback immediately
-        startVideoPlayback();
-
-        // Add active class to trigger video fade-in (2s ease-in-out)
-        videoEl.classList.add('active');
-        videoEl.classList.add('ready');
         hideBackgroundOverlay();
-
-        // Fade the still-blurred thumbnail out as the video fades in.
-        // The blur stays static: filter is not compositor-animatable, so
-        // animating it re-blurs the viewport every frame (#978).
-        thumbnailEl.classList.add('clearing');
-
-        // After crossfade completes, fully hide the thumbnail
-        // Use 3000ms to ensure video is fully visible before hiding thumbnail
-        // This matches the 2.5s opacity transition in CSS
-        backgroundTransitionTimeout = setTimeout(() => {
-          if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-            return;
-          }
-
-          thumbnailEl.classList.add('hidden');
-          thumbnailEl.classList.remove('clearing');
-          backgroundTransitionTimeout = null;
-          // Belt-and-suspenders: the reduced-motion early return above
-          // normally prevents this timer from being created, but the
-          // wrapper still collapses the duration if the preference
-          // flips between scheduling and firing.
-        }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS opacity transition duration
       };
-      
-      // Video can play through - trigger crossfade
-      videoEl.oncanplaythrough = triggerCrossfade;
-      
-      // Fallback: if canplaythrough takes too long, trigger on loadeddata
-      videoEl.onloadeddata = function() {
-        videoEl.onloadeddata = null;
-        if (videoEl.dataset.crossfadeTriggered !== 'true') {
-          triggerCrossfade();
-        }
-      };
-      
-      // Additional fallback: ensure crossfade happens after video starts playing
-      videoEl.onplaying = function() {
-        // Reset resume attempt counter when video is actively playing
-        if (videoEl.dataset.currentBg === bgData.id) {
-          videoEl.dataset.resumeAttempts = '0';
-        }
-        if (videoEl.dataset.crossfadeTriggered !== 'true') {
-          triggerCrossfade();
-        }
-      };
-      
-      // Video loaded metadata - ensure proper sizing
-      videoEl.onloadedmetadata = function() {
-        videoEl.onloadedmetadata = null;
-        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-          return;
-        }
+      fullImg.src = bgData.thumb;
+    };
 
-        // Force video to maintain proper scaling after metadata loads
-        videoEl.style.width = '100%';
-        videoEl.style.height = '100%';
-      };
-      
-      // Video playback error - fallback to thumbnail
-      videoEl.onerror = function() {
-        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-          return;
-        }
+    // Handle visibility change to pause/resume video for better performance
+    videoEl.onpause = function() {
+      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        return;
+      }
 
-        console.warn('Video background failed to load, falling back to image');
-        if (containerEl) {
-          containerEl.classList.add('video-error');
-        }
-        resetBackgroundVideo(videoEl, true);
-        thumbnailEl.classList.remove('hidden');
-        thumbnailEl.classList.remove('clearing');
-        thumbnailEl.src = bgData.thumb;
-        const fullImg = new Image();
-        fullImg.onload = function() {
-          if (loadVersion !== backgroundLoadVersion) {
-            return;
-          }
+      // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
+      const now = Date.now();
+      const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
+      if (now - lastPause < 2000) return;
+      videoEl.dataset.lastPauseTime = now;
 
-          fullEl.src = bgData.thumb;
-          requestAnimationFrame(() => {
-            if (loadVersion !== backgroundLoadVersion) {
-              return;
-            }
+      // Track consecutive auto-resume attempts to prevent infinite play/pause cycles
+      // that cause high CPU usage when the video cannot sustain playback
+      const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
 
-            fullEl.classList.add('loaded');
-            hideBackgroundOverlay();
-          });
-        };
-        fullImg.onerror = function() {
-          if (loadVersion !== backgroundLoadVersion) {
-            return;
-          }
-
-          hideBackgroundOverlay();
-        };
-        fullImg.src = bgData.thumb;
-      };
-      
-      // Handle visibility change to pause/resume video for better performance
-      videoEl.onpause = function() {
-        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-          return;
-        }
-
-        // Debounce: prevent tight pause/resume loops from buffering or rapid system pauses
-        const now = Date.now();
-        const lastPause = parseInt(videoEl.dataset.lastPauseTime || '0', 10);
-        if (now - lastPause < 2000) return;
-        videoEl.dataset.lastPauseTime = now;
-
-        // Track consecutive auto-resume attempts to prevent infinite play/pause cycles
-        // that cause high CPU usage when the video cannot sustain playback
-        const resumeAttempts = parseInt(videoEl.dataset.resumeAttempts || '0', 10);
-
-        if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
-          if (resumeAttempts >= 3) return;
-          videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
-          videoEl.play().catch(() => {});
-        }
-      };
-
-    }
-    return;
+      if (!document.hidden && videoEl.classList.contains('active') && loadVideoAutoplay() && videoEl.dataset.reducedMotionPaused !== 'true' && videoEl.readyState >= 3) {
+        if (resumeAttempts >= 3) return;
+        videoEl.dataset.resumeAttempts = String(resumeAttempts + 1);
+        videoEl.play().catch(() => {});
+      }
+    };
   }
-  
+}
+
+function applyImageFallback(bgData, loadVersion, thumbnailEl, fullEl) {
   thumbnailEl.classList.remove('hidden');
   thumbnailEl.classList.remove('clearing');
-  
+
   // Immediately show blurred thumbnail
   thumbnailEl.src = bgData.thumb;
   
