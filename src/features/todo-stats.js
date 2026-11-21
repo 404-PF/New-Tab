@@ -18,7 +18,7 @@
   }
 
   function formatDate(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return window.formatLocalDateISO(d);
   }
 
   function getToday() {
@@ -110,7 +110,7 @@
     // Calculate current streak by walking backwards from today
     let current = 0;
     const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayStr = window.formatLocalDateISO(d);
 
     // Grace period: if today has no completions, start checking from yesterday
     if (!allDates.has(todayStr) || stats.days[todayStr] === 0) {
@@ -118,7 +118,7 @@
     }
 
     while (true) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateStr = window.formatLocalDateISO(d);
       if (allDates.has(dateStr) && stats.days[dateStr] > 0) {
         current++;
         d.setDate(d.getDate() - 1);
@@ -190,7 +190,7 @@
     const dayOfWeek = d.getDay();
     d.setDate(d.getDate() - dayOfWeek);
     for (let i = 0; i <= dayOfWeek; i++) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateStr = window.formatLocalDateISO(d);
       count += data.days[dateStr] || 0;
       d.setDate(d.getDate() + 1);
     }
@@ -203,7 +203,7 @@
     const d = new Date();
     d.setDate(d.getDate() - (HEATMAP_DAYS - 1));
     for (let i = 0; i < HEATMAP_DAYS; i++) {
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateStr = window.formatLocalDateISO(d);
       rows.push({ date: dateStr, count: data.days[dateStr] || 0 });
       d.setDate(d.getDate() + 1);
     }

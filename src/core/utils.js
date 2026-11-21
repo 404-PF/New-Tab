@@ -794,7 +794,13 @@
     };
   }
 
+  // Local calendar date as YYYY-MM-DD (not UTC, so it matches the user's day).
+  function formatLocalDateISO(date) {
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+
   // Make utilities available globally
+  window.formatLocalDateISO = formatLocalDateISO;
   window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
