@@ -3,6 +3,13 @@
 // caps at ~5-10MB). Keyed by item id + text hash + model id so edits
 // invalidate and model swaps never collide. Issue #1330 reuses the same
 // factory for todos, each cache in its own database.
+// Issue #1332: keys are generalized to `collection + id + textHash + modelId`
+// (`collection::modelId::id::textHash`). Existing `noteVectors`/`todoVectors`
+// rows written as legacy `modelId::id::textHash` stay readable via a fallback
+// lookup so upgrades never wipe the cache; new writes use the collection key
+// and carry a `collection` field. DB_VERSION stays 1 and no new index is
+// required (deletes filter by the existing id/model indexes with a full-scan
+// fallback), so existing databases open unchanged.
 
 (function () {
   'use strict';
@@ -28,6 +35,10 @@
     return (hash >>> 0).toString(16);
   }
 
+  // Shared alias (issue #1332): the hash is collection-agnostic; the Notes
+  // name stays for backward compatibility.
+  const hashEmbeddingText = hashNoteText;
+
   function hasIndexedDB() {
     try {
       return typeof indexedDB !== 'undefined' && indexedDB !== null && typeof indexedDB.open === 'function';
@@ -42,21 +53,41 @@
     } catch { return false; }
   }
 
-  // config: { dbName, storeName, idField, idIndex, label }. idField is the
-  // record property holding the item id; idIndex is the index over it. The
-  // notes config keeps the original noteId/byNote schema so existing
-  // databases open unchanged.
+  // config: { dbName, storeName, idField, idIndex, label, collection }.
+  // idField is the record property holding the item id; idIndex is the index
+  // over it. The notes config keeps the original noteId/byNote schema so
+  // existing databases open unchanged. `collection` namespaces keys for
+  // shared/reused caches (issue #1332: notes, todos, apps, future AI-history
+  // and RAG collections).
   function createVectorCache(config) {
-    const DB_NAME = config.dbName;
-    const STORE_NAME = config.storeName;
-    const ID_FIELD = config.idField;
-    const ID_INDEX = config.idIndex;
-    const LABEL = config.label;
+    const cfg = config || {};
+    const DB_NAME = cfg.dbName;
+    const STORE_NAME = cfg.storeName;
+    const ID_FIELD = cfg.idField;
+    const ID_INDEX = cfg.idIndex;
+    const LABEL = cfg.label;
+    const COLLECTION = typeof cfg.collection === 'string' && cfg.collection
+      ? cfg.collection
+      : String(cfg.label || 'items');
 
     let dbPromise = null;
 
-    function makeVectorKey(itemId, textHash, modelId) {
+    function makeLegacyVectorKey(itemId, textHash, modelId) {
       return String(modelId) + '::' + String(itemId) + '::' + String(textHash);
+    }
+
+    function makeCollectionVectorKey(collection, itemId, textHash, modelId) {
+      return String(collection) + '::' + String(modelId) + '::' + String(itemId) + '::' + String(textHash);
+    }
+
+    // New signature: makeVectorKey(collection, itemId, textHash, modelId).
+    // Legacy 3-arg form makeVectorKey(itemId, textHash, modelId) is kept so
+    // existing callers/tests keep working; it returns the pre-#1332 key.
+    function makeVectorKey(collectionOrItemId, itemIdOrHash, textHashOrModelId, modelId) {
+      if (modelId !== undefined) {
+        return makeCollectionVectorKey(collectionOrItemId, itemIdOrHash, textHashOrModelId, modelId);
+      }
+      return makeLegacyVectorKey(collectionOrItemId, itemIdOrHash, textHashOrModelId);
     }
 
     function openVectorsDB() {
@@ -155,12 +186,22 @@
     }
 
     function getCachedVector(itemId, text, modelId) {
-      const key = makeVectorKey(itemId, hashNoteText(text), modelId);
+      const textHash = hashNoteText(text);
+      const key = makeCollectionVectorKey(COLLECTION, itemId, textHash, modelId);
+      const legacyKey = makeLegacyVectorKey(itemId, textHash, modelId);
       return runStore('readonly', function (store) {
         return store.get(key);
       }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (record) {
-        if (!record || !Array.isArray(record.vector)) return null;
-        return record;
+        if (record && Array.isArray(record.vector)) return record;
+        // Upgrade path (issue #1332): rows written before the collection key
+        // existed stay readable; the next put migrates them to the new key.
+        if (legacyKey === key) return null;
+        return runStore('readonly', function (store) {
+          return store.get(legacyKey);
+        }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (legacyRecord) {
+          if (!legacyRecord || !Array.isArray(legacyRecord.vector)) return null;
+          return legacyRecord;
+        }).catch(function () { return null; });
       }).catch(function () { return null; });
     }
 
@@ -170,7 +211,8 @@
       }
       const textHash = hashNoteText(text);
       const record = {
-        key: makeVectorKey(itemId, textHash, modelId),
+        key: makeCollectionVectorKey(COLLECTION, itemId, textHash, modelId),
+        collection: COLLECTION,
         textHash,
         modelId: String(modelId),
         vector: Array.from(vector),
@@ -324,8 +366,12 @@
     return {
       DB_NAME,
       STORE_NAME,
+      COLLECTION,
       hashNoteText,
+      hashEmbeddingText,
       makeVectorKey,
+      makeLegacyVectorKey,
+      makeCollectionVectorKey,
       openVectorsDB,
       getCachedVector,
       putCachedVector,
@@ -341,7 +387,8 @@
     storeName: 'noteVectors',
     idField: 'noteId',
     idIndex: 'byNote',
-    label: 'note'
+    label: 'note',
+    collection: 'notes'
   });
   const NotesVectorCache = Object.assign({}, noteCache, {
     deleteCachedVectorsForNote: noteCache.deleteCachedVectorsForItem
@@ -352,12 +399,24 @@
     storeName: 'todoVectors',
     idField: 'todoId',
     idIndex: 'byTodo',
-    label: 'todo'
+    label: 'todo',
+    collection: 'todos'
+  });
+
+  const AppVectorCache = createVectorCache({
+    dbName: 'NewTabAppEmbeddings',
+    storeName: 'appVectors',
+    idField: 'appId',
+    idIndex: 'byApp',
+    label: 'app',
+    collection: 'apps'
   });
 
   try {
     window.NotesVectorCache = NotesVectorCache;
     window.TodoVectorCache = TodoVectorCache;
+    window.AppVectorCache = AppVectorCache;
+    window.createVectorCache = createVectorCache;
   } catch {
     // ignore
   }

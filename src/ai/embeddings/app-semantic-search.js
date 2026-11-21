@@ -1,8 +1,12 @@
 // src/ai/embeddings/app-semantic-search.js - Semantic app-launcher ranking
-// Issue #1329: reuses the Harrier model and the hybrid ranker from
-// notes-semantic-search.js. Vectors are cached by embedding text, so a change
-// to an app's name, URL host, or folder re-embeds that app, and removed apps
-// are pruned on the next ranking pass. No separate invalidation hooks needed.
+// Issue #1329: reuses the Harrier model and the shared hybrid ranker
+// (hybrid-ranker.js via the notes-semantic-search.js backward-compatible
+// re-export). Vectors are cached by embedding text, so a change to an app's
+// name, URL host, or folder re-embeds that app, and removed apps are pruned
+// on the next ranking pass. No separate invalidation hooks needed.
+// Issue #1332: prefers window.HybridRanker, falls back to
+// window.NotesSemanticSearch; both rankNotesForQuery/getNoteVector names keep
+// working through the ranker alias.
 
 (function () {
   'use strict';
@@ -61,9 +65,15 @@
 
   function isSemanticEnabled() {
     try {
+      if (typeof window.loadSemanticEnabled === 'function') {
+        return !!window.loadSemanticEnabled();
+      }
       if (typeof window.loadNotesSemanticEnabled === 'function') {
         return !!window.loadNotesSemanticEnabled();
       }
+      try {
+        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+      } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch {
       return false;
@@ -130,18 +140,19 @@
   // ranking is off or the model is not ready, returns keyword matches in the
   // original order, matching the non-semantic path.
   function rankApps(query, apps, folders) {
-    const ranker = window.NotesSemanticSearch;
+    const ranker = window.HybridRanker || window.NotesSemanticSearch;
     const q = trimmed(query);
     const docs = buildDocuments(apps, folders);
     const appsById = new Map((Array.isArray(apps) ? apps : [])
       .filter(function (a) { return a && a.id; })
       .map(function (a) { return [a.id, a]; }));
     const nameById = new Map(docs.map(function (d) { return [d.id, displayNameOf(appsById.get(d.id))]; }));
-    if (!ranker || typeof ranker.rankNotesForQuery !== 'function') {
+    const rankFn = ranker && (ranker.rankItemsForQuery || ranker.rankNotesForQuery);
+    if (!ranker || typeof rankFn !== 'function') {
       return Promise.resolve([]);
     }
     const keywordOnly = function () {
-      return ranker.rankNotesForQuery(docs, q, null).then(function (ranked) {
+      return rankFn.call(ranker, docs, q, null).then(function (ranked) {
         return toAppResults(ranked, appsById);
       });
     };
@@ -151,9 +162,10 @@
     return ensureVectors(docs, service).then(function () {
       const deps = {
         embedQuery: function (text) { return service.embedQuery(text); },
+        getItemVector: function (doc) { return Promise.resolve(vectorCache.get(doc.embedText) || null); },
         getNoteVector: function (doc) { return Promise.resolve(vectorCache.get(doc.embedText) || null); }
       };
-      return ranker.rankNotesForQuery(docs, q, deps).then(function (ranked) {
+      return rankFn.call(ranker, docs, q, deps).then(function (ranked) {
         return toAppResults(prioritizeNameMatches(ranked, q, nameById), appsById);
       });
     }).catch(keywordOnly);

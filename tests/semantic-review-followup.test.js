@@ -67,6 +67,7 @@ describe('PR #1187 review follow-ups', () => {
     expect(window.EmbeddingScripts.SOURCES).toEqual([
       'src/ai/embeddings/embedding-registry.js',
       'src/ai/embeddings/harrier-provider.js',
+      'src/ai/embeddings/hybrid-ranker.js',
       'src/ai/embeddings/notes-vector-cache.js',
       'src/ai/embeddings/embedding-service.js',
       'src/ai/embeddings/notes-semantic-search.js',

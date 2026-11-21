@@ -259,9 +259,15 @@
 
   function isNotesSemanticEnabled() {
     try {
+      if (typeof window.loadSemanticEnabled === 'function') {
+        return window.loadSemanticEnabled();
+      }
       if (typeof window.loadNotesSemanticEnabled === 'function') {
         return window.loadNotesSemanticEnabled();
       }
+      try {
+        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+      } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch (e) {
       console.warn('Failed to read semantic search flag:', e);
@@ -315,7 +321,15 @@
     const text = typeof note.text === 'string' ? note.text : '';
     // Coarse pre-cap only (bounds hashing/transport); the exact 512-token
     // truncate happens in embedding-service.js via the real tokenizer.
-    return (tag + text).slice(0, 4000);
+    // Issue #1332: length lives in HybridRanker.EMBEDDING_TEXT_PRE_CAP so all
+    // collections share the convention.
+    const raw = tag + text;
+    try {
+      if (window.HybridRanker && typeof window.HybridRanker.capEmbeddingText === 'function') {
+        return window.HybridRanker.capEmbeddingText(raw);
+      }
+    } catch { /* fall through to the local cap */ }
+    return raw.slice(0, 4000);
   }
 
   function hideSemanticStatus(el) {
@@ -363,8 +377,9 @@
     }
     let ranker;
     try {
-      ranker = window.NotesSemanticSearch || null;
+      ranker = window.HybridRanker || window.NotesSemanticSearch || null;
     } catch { ranker = null; }
+    const rankFn = ranker && (ranker.rankItemsForQuery || ranker.rankNotesForQuery);
     let service = null;
     try {
       service = window.EmbeddingService || null;
@@ -373,7 +388,7 @@
     try {
       cache = window.NotesVectorCache || null;
     } catch { cache = null; }
-    if (!ranker || !service || !cache) {
+    if (!ranker || !rankFn || !service || !cache) {
       return Promise.resolve(getFilteredNotes());
     }
     const base = getTagFilteredNotes();
@@ -435,13 +450,49 @@
     }).then(function (vectors) {
       const byId = new Map();
       base.forEach(function (note, i) { byId.set(note.id, vectors[i] || null); });
-      return ranker.rankNotesForQuery(base, query, {
+      const getVector = function (note) { return Promise.resolve(byId.get(note.id) || null); };
+      return rankFn.call(ranker, base, query, {
         embedQuery,
-        getNoteVector: function (note) { return Promise.resolve(byId.get(note.id) || null); }
+        getItemVector: getVector,
+        getNoteVector: getVector
       });
     }).catch(function () {
       return getFilteredNotes();
     });
+  }
+
+  // Idle pre-warm (issue #1332): after the model turns ready, chunked-backfill
+  // uncached notes in the background (requestIdleCallback-style, same
+  // chunk/debounce discipline as search) so the first query rarely embeds.
+  // Best-effort: failures are ignored and the search path re-embeds on demand.
+  let _notesBackfillCancel = null;
+  function scheduleNotesBackfill() {
+    try {
+      if (!isNotesSemanticReady()) return;
+      const ranker = window.HybridRanker || null;
+      if (!ranker || typeof ranker.scheduleIdleBackfill !== 'function') return;
+      const service = window.EmbeddingService || null;
+      const cache = window.NotesVectorCache || null;
+      if (!service || !cache) return;
+      if (typeof _notesBackfillCancel === 'function') {
+        try { _notesBackfillCancel(); } catch { /* ignore */ }
+        _notesBackfillCancel = null;
+      }
+      const list = notes.slice();
+      const liveById = new Map(list.map(function (n) { return [n.id, n]; }));
+      _notesBackfillCancel = ranker.scheduleIdleBackfill({
+        items: list,
+        toText: noteToEmbeddingText,
+        getId: function (note) { return note.id; },
+        cache,
+        service,
+        modelId: getSemanticModelId(),
+        isLive: function (note, text) {
+          const current = liveById.get(note.id);
+          return !!current && noteToEmbeddingText(current) === text && isNotesSemanticReady();
+        }
+      });
+    } catch { /* best-effort only */ }
   }
 
   function invalidateNoteVector(noteId) {
@@ -496,22 +547,38 @@
     }
   }
 
+  function getRanker() {
+    try {
+      return window.HybridRanker || window.NotesSemanticSearch || null;
+    } catch { return null; }
+  }
+
   function isSemanticAvailableForSuggestions() {
     return isNotesSemanticReady()
-      && !!window.NotesSemanticSearch && !!window.NotesVectorCache && !!window.EmbeddingService;
+      && !!getRanker() && !!window.NotesVectorCache && !!window.EmbeddingService;
   }
 
   // Cached vectors for the given notes whose stored hash still matches the
   // current text. Stale or missing rows are skipped, never re-embedded here.
   function getCurrentCachedVectors(modelId, list) {
     const cache = window.NotesVectorCache;
+    function hashText(text) {
+      try {
+        if (cache && typeof cache.hashEmbeddingText === 'function') return cache.hashEmbeddingText(text);
+        if (cache && typeof cache.hashNoteText === 'function') return cache.hashNoteText(text);
+      } catch { /* ignore */ }
+      return null;
+    }
     return cache.getAllCachedVectors(modelId).then(function (records) {
       const byNote = new Map();
-      records.forEach(function (r) { byNote.set(String(r.noteId), r); });
+      records.forEach(function (r) {
+        const key = String((r && (r.noteId !== undefined ? r.noteId : r.id)) || '');
+        if (key) byNote.set(key, r);
+      });
       const out = [];
       list.forEach(function (note) {
         const r = byNote.get(String(note.id));
-        if (r && r.textHash === cache.hashNoteText(noteToEmbeddingText(note))) {
+        if (r && r.textHash === hashText(noteToEmbeddingText(note))) {
           out.push({ id: note.id, vector: r.vector });
         }
       });
@@ -596,7 +663,8 @@
           hideRelatedPanel();
           return;
         }
-        const ranked = window.NotesSemanticSearch.rankSimilarItems(results[0], results[1], { excludeId: noteId });
+        const ranker = getRanker();
+        const ranked = ranker.rankSimilarItems(results[0], results[1], { excludeId: noteId });
         renderRelatedPanel(panel, ranked);
       })
       .catch(function () {
@@ -635,9 +703,11 @@
       const current = notes.find(function (n) { return n.id === noteId; });
       if (!current || current.text !== textAtStart) return null;
       return getCurrentCachedVectors(modelId, others).then(function (candidates) {
-        const best = window.NotesSemanticSearch.rankSimilarItems(subject, candidates, {
+        const ranker = getRanker();
+        const duplicateMin = (ranker && ranker.DEFAULT_DUPLICATE_MIN_SCORE) || 0.9;
+        const best = ranker.rankSimilarItems(subject, candidates, {
           excludeId: noteId,
-          minScore: window.NotesSemanticSearch.DEFAULT_DUPLICATE_MIN_SCORE,
+          minScore: duplicateMin,
           maxResults: 1
         })[0];
         // Revalidate after the async cache read: the note may have been edited or deleted meanwhile.
@@ -680,7 +750,8 @@
     } catch { /* fall through to local check */ }
     try {
       return !!(window.EmbeddingRegistry && window.HarrierProvider
-        && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
+        && (window.HybridRanker || window.NotesSemanticSearch)
+        && window.NotesVectorCache && window.EmbeddingService);
     } catch {
       return false;
     }
@@ -2054,8 +2125,10 @@
       // on the transition: ensureModel re-emits ready when already loaded
       // (re-enable path), and without this the list would stay in keyword
       // order until the next render (PR #1187). Debounced, so repeats are
-      // cheap.
+      // cheap. Idle-backfill uncached notes once per ready transition so the
+      // next query usually hits the cache (issue #1332).
       if (prev !== 'ready' || _activeSearchQuery) scheduleSemanticRerank();
+      if (prev !== 'ready') scheduleNotesBackfill();
       return;
     }
     if (prev === 'ready') {

@@ -1,25 +1,63 @@
 // src/ai/embeddings/notes-semantic-search.js - Hybrid keyword + semantic ranker
 // Issue #1186: single-box #notes-search keeps the keyword fast-path and
 // cosine re-ranks once the model is ready. Tag filter always applies first.
+// Issue #1332: the collection-agnostic implementation lives in
+// hybrid-ranker.js; this module is a backward-compatible re-export so existing
+// imports (`window.NotesSemanticSearch`, `rankNotesForQuery`, `getNoteVector`)
+// and tests keep working. New code should use `window.HybridRanker` directly.
 
 (function () {
   'use strict';
 
+  function getBase() {
+    try {
+      return window.HybridRanker || null;
+    } catch {
+      return null;
+    }
+  }
+
+  const base = getBase();
+  if (base) {
+    const api = {
+      DEFAULT_ALPHA: base.DEFAULT_ALPHA,
+      DEFAULT_MIN_SCORE: base.DEFAULT_MIN_SCORE,
+      DEFAULT_MAX_RESULTS: base.DEFAULT_MAX_RESULTS,
+      DEFAULT_RELATED_MIN_SCORE: base.DEFAULT_RELATED_MIN_SCORE,
+      DEFAULT_RELATED_MAX_RESULTS: base.DEFAULT_RELATED_MAX_RESULTS,
+      DEFAULT_DUPLICATE_MIN_SCORE: base.DEFAULT_DUPLICATE_MIN_SCORE,
+      cosineSimilarity: base.cosineSimilarity,
+      keywordScore: base.keywordScore,
+      hybridScore: base.hybridScore,
+      filterByTag: base.filterByTag,
+      keywordFilter: base.keywordFilter,
+      rankByScores: base.rankByScores,
+      rankNotesForQuery: base.rankItemsForQuery,
+      rankItemsForQuery: base.rankItemsForQuery,
+      rankSimilarItems: base.rankSimilarItems
+    };
+
+    try {
+      window.NotesSemanticSearch = api;
+    } catch {
+      // ignore
+    }
+
+    try {
+      if (typeof module !== 'undefined' && module.exports) {
+        module.exports = api;
+      }
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
+  // Fallback for isolated unit tests that inject only this file without
+  // hybrid-ranker.js: full local implementation (mirrors hybrid-ranker.js).
   const DEFAULT_ALPHA = 0.35;
-  // Scores map cosine [-1,1] to [0,1] before blending, so a note with zero
-  // signal (keyword 0, cosine 0) still scores 0.325. Instruction-tuned
-  // embedding models give unrelated pairs a clearly positive cosine
-  // (~0.3-0.4), so the floor must sit above the 0.455 hybrid that a
-  // cosine-0.4 unrelated note reaches: 0.65 * 0.7 = 0.455. A 0.5 floor
-  // blocks that weak-but-positive case while keeping weak-but-real matches
-  // (cosine 0.5 → 0.4875 is still out; cosine 0.6 → 0.52 stays; any keyword
-  // hit scores higher) and falls back to keyword matches when nothing
-  // passes. Calibrated against Harrier cosine behavior (PR #1187 review);
-  // re-check against real Harrier distributions if the model changes.
   const DEFAULT_MIN_SCORE = 0.5;
   const DEFAULT_MAX_RESULTS = 50;
-  // Related-item and duplicate thresholds (issue #1331) are raw cosine
-  // values, not hybrid scores. Tune against real Harrier distributions.
   const DEFAULT_RELATED_MIN_SCORE = 0.75;
   const DEFAULT_RELATED_MAX_RESULTS = 5;
   const DEFAULT_DUPLICATE_MIN_SCORE = 0.9;
@@ -56,7 +94,6 @@
     const weight = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : DEFAULT_ALPHA;
     const k = Number.isFinite(keyword) ? keyword : 0;
     const c = Number.isFinite(cosine) ? Math.min(1, Math.max(-1, cosine)) : 0;
-    // Cosine maps [-1,1] -> [0,1] so unrelated notes score ~0.5, not 0.
     const normalizedCosine = (c + 1) / 2;
     return (weight * k) + ((1 - weight) * normalizedCosine);
   }
@@ -78,41 +115,32 @@
     });
   }
 
+  function orderOf(entry) {
+    if (entry && entry.note && Number.isFinite(entry.note.order)) return entry.note.order;
+    if (entry && entry.item && Number.isFinite(entry.item.order)) return entry.item.order;
+    return 0;
+  }
+
   function rankByScores(notesWithScores) {
     return notesWithScores.slice().sort(function (a, b) {
       if (b.score !== a.score) return b.score - a.score;
-      const orderA = Number.isFinite(a.note.order) ? a.note.order : 0;
-      const orderB = Number.isFinite(b.note.order) ? b.note.order : 0;
-      return orderA - orderB;
+      return orderOf(a) - orderOf(b);
     });
   }
 
-  // One result shape for every path (PR #1187 review): semantic hits are
-  // copies carrying a numeric _semanticScore; keyword fallbacks are copies
-  // carrying _semanticScore: null so callers never receive stored-note
-  // references they could mutate and never branch on a missing field.
-  // Keyword fallbacks are never capped: the keyword-only path
-  // (getFilteredNotes) shows every match, so truncating fallbacks to 50
-  // would drop matches the user sees when the model is not ready
-  // (PR #1187 human review). Only an explicit maxResults option truncates,
-  // and then only the semantic ranked list.
   function copyWithScore(note, score) {
     const copy = { ...(note || {}) };
     copy._semanticScore = (typeof score === 'number' && Number.isFinite(score)) ? score : null;
     return copy;
   }
 
-  // deps: { embedQuery(query)->Promise<vector>, getNoteVector(note)->Promise<vector|null> }
-  // Returns ranked note array (new array of copies; stored notes never mutated).
-  // Keyword fallbacks return every match (no cap) to match the keyword-only
-  // path. The semantic ranked list is capped only when the caller passes an
-  // explicit maxResults; the score floor applies only to notes with no
-  // keyword match so enabling the model never drops keyword matches the user
-  // otherwise sees (PR #1187 human review). DEFAULT_MAX_RESULTS stays exported for
-  // callers that want an opt-in truncation.
-  // options.keywordScore / options.keywordFilter let other item types (todos,
-  // issue #1330) reuse the ranker with their own keyword rules; they default
-  // to the note rules.
+  function resolveVectorGetter(deps) {
+    if (!deps || typeof deps !== 'object') return null;
+    if (typeof deps.getNoteVector === 'function') return deps.getNoteVector;
+    if (typeof deps.getItemVector === 'function') return deps.getItemVector;
+    return null;
+  }
+
   function rankNotesForQuery(tagFilteredNotes, query, deps, options) {
     const opts = options || {};
     const alpha = opts.alpha !== undefined ? opts.alpha : DEFAULT_ALPHA;
@@ -133,7 +161,8 @@
     if (notes.length === 0) {
       return Promise.resolve([]);
     }
-    if (!deps || typeof deps.embedQuery !== 'function' || typeof deps.getNoteVector !== 'function') {
+    const getVector = resolveVectorGetter(deps);
+    if (!deps || typeof deps.embedQuery !== 'function' || typeof getVector !== 'function') {
       return Promise.resolve(keywordOnly());
     }
 
@@ -142,23 +171,19 @@
         return keywordOnly();
       }
       const jobs = notes.map(function (note) {
-        return deps.getNoteVector(note).then(function (vec) {
+        return getVector(note).then(function (vec) {
           const cosine = Array.isArray(vec) && vec.length === queryVector.length
             ? cosineSimilarity(queryVector, vec)
             : 0;
           const keyword = scoreKeyword(note, q);
           const score = hybridScore(keyword, cosine, alpha);
-          return { note, score, cosine, keyword };
+          return { note, item: note, score, cosine, keyword };
         }).catch(function () {
           const keyword = scoreKeyword(note, q);
-          return { note, score: hybridScore(keyword, 0, alpha), cosine: 0, keyword };
+          return { note, item: note, score: hybridScore(keyword, 0, alpha), cosine: 0, keyword };
         });
       });
       return Promise.all(jobs).then(function (scored) {
-        // Cosine-only signal: keyword matches alone must not count, or a
-        // vector-less search returns numeric _semanticScore values ordered
-        // by keyword score instead of falling back to displayed order
-        // (PR #1187 review).
         const hasSignal = scored.some(function (s) { return s.cosine !== 0; });
         if (!hasSignal) {
           return keywordOnly();
@@ -170,8 +195,6 @@
           copy._semanticScore = s.score;
           return copy;
         });
-        // If semantic filtering is too aggressive (empty), fall back to
-        // keyword matches rather than a surprising empty list.
         if (limited.length === 0) {
           return keywordOnly();
         }
@@ -182,9 +205,6 @@
     });
   }
 
-  // candidates: [{ id, vector }]. Returns [{ id, score }] (raw cosine), best
-  // first, keeping only items at or above minScore. Candidates without a
-  // usable vector and the excluded id are skipped.
   function rankSimilarItems(targetVector, candidates, options) {
     const opts = options || {};
     const minScore = Number.isFinite(opts.minScore) ? opts.minScore : DEFAULT_RELATED_MIN_SCORE;
@@ -216,6 +236,7 @@
     keywordFilter,
     rankByScores,
     rankNotesForQuery,
+    rankItemsForQuery: rankNotesForQuery,
     rankSimilarItems
   };
 

@@ -1856,12 +1856,30 @@ if (notesEnabledSetting) {
   });
 }
 
-// Semantic notes search (issue #1186): lazy opt-in. The ~300MB Harrier INT8
-// model downloads only after the user checks this box, with determinate
-// progress + cancel + delete. Vectors live in IndexedDB, never localStorage.
+// Semantic search (issue #1186 notes, #1332 shared): lazy opt-in. The ~300MB
+// Harrier INT8 model downloads only after the user checks this box, with
+// determinate progress + cancel + delete. Vectors live in IndexedDB, never
+// localStorage.
+// Issue #1332 decision: one global `semanticEnabled` master flag gates the
+// shared model download (all collections reuse the same bytes); per-feature
+// sub-toggles default ON once the master is on. `notesSemanticEnabled` is
+// kept as the persisted master key for upgrades: `loadSemanticEnabled()`
+// reads the new `semanticEnabled` key first, then falls back to the legacy
+// `notesSemanticEnabled` value so existing opt-ins survive.
+function loadSemanticEnabled() {
+  try {
+    const next = localStorage.getItem('semanticEnabled');
+    if (next === 'true' || next === 'false') return next === 'true';
+    return localStorage.getItem('notesSemanticEnabled') === 'true';
+  } catch (e) {
+    console.warn('Failed to read semanticEnabled:', e);
+    return false;
+  }
+}
+
 function loadNotesSemanticEnabled() {
   try {
-    return localStorage.getItem('notesSemanticEnabled') === 'true';
+    return loadSemanticEnabled();
   } catch (e) {
     console.warn('Failed to read notesSemanticEnabled:', e);
     return false;
@@ -2008,7 +2026,7 @@ function applyNotesSemanticEnabled() {
 // before this file); the thin wrappers below delegate to it. No local twin
 // is kept here: duplicating the loader across settings.js/notes.js tripped
 // the Sonar duplication gate and lets the copies drift (PR #1187 review).
-// Isolated unit tests inject embedding-scripts.js (or all five globals, in
+// Isolated unit tests inject embedding-scripts.js (or all globals, in
 // which case embeddingScriptsLoaded short-circuits true).
 function embeddingScriptsLoaded() {
   try {
@@ -2018,7 +2036,8 @@ function embeddingScriptsLoaded() {
   } catch { /* fall through to local check */ }
   try {
     return !!(window.EmbeddingRegistry && window.HarrierProvider
-      && window.NotesVectorCache && window.EmbeddingService && window.NotesSemanticSearch);
+      && (window.HybridRanker || window.NotesSemanticSearch)
+      && window.NotesVectorCache && window.EmbeddingService);
   } catch {
     return false;
   }
@@ -3609,6 +3628,7 @@ window.loadEyeCareReminderState = loadEyeCareReminderState;
 window.saveEyeCareReminderState = saveEyeCareReminderState;
 window.applyEyeCareReminderSettings = applyEyeCareReminderSettings;
 window.applyNotesEnabled = applyNotesEnabled;
+window.loadSemanticEnabled = loadSemanticEnabled;
 window.loadNotesSemanticEnabled = loadNotesSemanticEnabled;
 window.applyNotesSemanticEnabled = applyNotesSemanticEnabled;
 window.initNotesSemanticSetting = initNotesSemanticSetting;
