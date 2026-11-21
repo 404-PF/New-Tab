@@ -532,9 +532,10 @@
         ? (location.country ? `${location.name}, ${location.country}` : location.name)
         : formatCoords(location.lat, location.lon);
 
+      // Persist coordinates at ~1 km precision; the 10 km cache tolerance still holds.
       const newCache = {
-        lat: location.lat,
-        lon: location.lon,
+        lat: Math.round(location.lat * 100) / 100,
+        lon: Math.round(location.lon * 100) / 100,
         data: weatherData,
         timestamp: Date.now(),
         locationMode: locationMode,
