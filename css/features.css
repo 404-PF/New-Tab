@@ -670,7 +670,9 @@ body.light-theme .bg-subsection-desc {
 body.light-theme .upload-bg-btn {
   border-color: rgba(33, 150, 243, 0.3) !important;
   background: rgba(33, 150, 243, 0.05) !important;
-  color: #1976d2 !important;
+  /* #1976d2 is ~4.37:1 on the translucent blue surface; use the darker
+     light-theme link blue so the base state meets WCAG AA 4.5:1 (#1272). */
+  color: #1565c0 !important;
 }
 
 body.light-theme .upload-bg-btn:hover {
@@ -1839,7 +1841,8 @@ body.light-theme .update-settings-group {
 body.light-theme .update-settings-group .setting-btn {
   background: rgba(33, 150, 243, 0.05);
   border-color: rgba(33, 150, 243, 0.2);
-  color: #1976d2;
+  /* #1976d2 is ~4.37:1 here; #1565c0 reaches 4.5:1 on this surface (#1272). */
+  color: #1565c0;
 }
 
 body.light-theme .update-settings-group .setting-btn:hover {
