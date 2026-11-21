@@ -210,7 +210,7 @@
 
   function appLaunchEnabled() {
     try {
-      return localStorage.getItem(APP_SHORTCUTS_KEY) !== 'false';
+      return window.readDefaultOnFlag(APP_SHORTCUTS_KEY);
     } catch (e) {
       console.warn('Failed to read ' + APP_SHORTCUTS_KEY + ':', e);
       return true;
@@ -314,7 +314,7 @@
 
     let openInNewTab = true;
     try {
-      openInNewTab = localStorage.getItem('openAppsInNewTab') !== 'false';
+      openInNewTab = window.readDefaultOnFlag('openAppsInNewTab');
     } catch (err) {
       console.warn('Failed to read openAppsInNewTab:', err);
     }
@@ -482,7 +482,7 @@
   function toggleTodo() {
     let current = true;
     try {
-      current = localStorage.getItem('todoEnabled') !== 'false';
+      current = window.readDefaultOnFlag('todoEnabled');
     } catch (e) {
       console.warn('Failed to read todoEnabled:', e);
     }
@@ -498,7 +498,7 @@
   function toggleNotes() {
     let current = true;
     try {
-      current = localStorage.getItem('notesEnabled') !== 'false';
+      current = window.readDefaultOnFlag('notesEnabled');
     } catch (e) {
       console.warn('Failed to read notesEnabled:', e);
     }

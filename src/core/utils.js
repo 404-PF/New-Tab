@@ -618,6 +618,11 @@
     });
   }
 
+  // Reads a boolean setting that is on unless explicitly stored as 'false'.
+  function readDefaultOnFlag(key) {
+    return localStorage.getItem(key) !== 'false';
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
@@ -852,6 +857,7 @@
   window.clamp = clamp;
   window.getClosestSizeOption = getClosestSizeOption;
   window.syncSizeChoiceButtons = syncSizeChoiceButtons;
+  window.readDefaultOnFlag = readDefaultOnFlag;
   window.translateValidationMessage = translateValidationMessage;
   window.persistSetting = persistSetting;
 

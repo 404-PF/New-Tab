@@ -46,15 +46,15 @@ const VIDEO_MUTED_KEY = 'videoMuted';
 const VIDEO_PAUSE_HIDDEN_KEY = 'videoPauseHidden';
 
 function loadVideoAutoplay() {
-  return localStorage.getItem(VIDEO_AUTOPLAY_KEY) !== 'false';
+  return window.readDefaultOnFlag(VIDEO_AUTOPLAY_KEY);
 }
 
 function loadVideoMuted() {
-  return localStorage.getItem(VIDEO_MUTED_KEY) !== 'false';
+  return window.readDefaultOnFlag(VIDEO_MUTED_KEY);
 }
 
 function loadVideoPauseHidden() {
-  return localStorage.getItem(VIDEO_PAUSE_HIDDEN_KEY) !== 'false';
+  return window.readDefaultOnFlag(VIDEO_PAUSE_HIDDEN_KEY);
 }
 
 function applyVideoPlaybackSettings() {
@@ -1457,7 +1457,7 @@ function loadTheme() {
 // Liquid Glass effect toggle: on unless explicitly stored as 'false'.
 function loadLiquidGlassEnabled() {
   try {
-    return localStorage.getItem('liquidGlassEnabled') !== 'false';
+    return window.readDefaultOnFlag('liquidGlassEnabled');
   } catch (_e) {
     return true;
   }
@@ -1876,7 +1876,7 @@ if (eyeCareBrowserNotificationSetting) {
 
 // Notes enabled
 function loadNotesEnabled() {
-  return localStorage.getItem('notesEnabled') !== 'false';
+  return window.readDefaultOnFlag('notesEnabled');
 }
 function applyNotesEnabled() {
   const enabled = loadNotesEnabled();
@@ -2066,7 +2066,7 @@ function embeddingScriptsLoaded() {
 
 // Motto enabled
 function loadMottoEnabled() {
-  return localStorage.getItem('mottoEnabled') !== 'false';
+  return window.readDefaultOnFlag('mottoEnabled');
 }
 function applyMottoEnabled() {
   const enabled = loadMottoEnabled();
@@ -2511,7 +2511,7 @@ function bindSemanticDelete(els) {
 
 // Search box enabled
 function loadSearchBoxEnabled() {
-  return localStorage.getItem('searchBoxEnabled') !== 'false';
+  return window.readDefaultOnFlag('searchBoxEnabled');
 }
 function applySearchBoxEnabled() {
   const enabled = loadSearchBoxEnabled();
@@ -3043,7 +3043,7 @@ function loadGamesEnabled() {
     return window.gamesHelpers.isEnabled();
   }
   try {
-    return localStorage.getItem('games_enabled') !== 'false';
+    return window.readDefaultOnFlag('games_enabled');
   } catch (_e) {
     // When localStorage is unavailable, use the current checkbox state as fallback
     const checkbox = document.getElementById('games-enabled-setting');

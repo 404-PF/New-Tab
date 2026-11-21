@@ -718,10 +718,8 @@ function featureToggleControlDesynced(key) {
       const activeBtn = bar.querySelector('.search-provider-btn.active');
       return Boolean(activeBtn) && activeBtn.dataset.provider !== stored;
     }
-    case 'searchHistoryEnabled': {
-      const checkbox = document.getElementById('search-history-enabled-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
+    case 'searchHistoryEnabled':
+      return desyncCheckboxControl('search-history-enabled-setting', key, false);
     case 'language': {
       // A missing key is the default English profile (#1089); comparing to
       // it lets a rollback that removed the key still report the desync.
@@ -731,14 +729,10 @@ function featureToggleControlDesynced(key) {
         : document.documentElement.lang;
       return current !== stored;
     }
-    case 'updateCheckEnabled': {
-      const checkbox = document.getElementById('update-check-enabled');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
-    case 'liquidGlassEnabled': {
-      const checkbox = document.getElementById('liquid-glass-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
+    case 'updateCheckEnabled':
+      return desyncCheckboxControl('update-check-enabled', key, false);
+    case 'liquidGlassEnabled':
+      return desyncCheckboxControl('liquid-glass-setting', key, false);
     case 'theme': {
       if (typeof window.applyTheme !== 'function') return false;
       const stored = typeof window.loadTheme === 'function' ? window.loadTheme() : (localStorage.getItem(key) || 'dark');
@@ -760,10 +754,8 @@ function featureToggleControlDesynced(key) {
         (Boolean(longBreak) && longBreak.value !== String(stored.longBreakDuration)) ||
         (Boolean(sessions) && sessions.value !== String(stored.sessionsBeforeLongBreak));
     }
-    case 'openAppsInNewTab': {
-      const checkbox = document.getElementById('open-new-tab-setting');
-      return Boolean(checkbox) && checkbox.checked !== (localStorage.getItem(key) !== 'false');
-    }
+    case 'openAppsInNewTab':
+      return desyncCheckboxControl('open-new-tab-setting', key, false);
     case 'iconSize': {
       // Mirror loadIconSize's default and closest-option snap (app-manager.js)
       // so the comparison matches what the size buttons actually show.
