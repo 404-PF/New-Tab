@@ -5,7 +5,8 @@ import { injectScript } from './helpers/inject-script.js';
 // notes-vector-cache.js (open/upgrade/transaction/objectStore/index/get/put/
 // delete/getAll/clear with onsuccess + tx.oncomplete).
 function makeMockIndexedDB() {
-  const stores = new Map([['noteVectors', new Map()], ['todoVectors', new Map()]]);
+  // Each database name starts empty so onupgradeneeded creates its stores.
+  const databases = new Map();
 
   function makeStoreFacade(records, tx) {
     // Like real IndexedDB, tx.oncomplete fires only after every request in
@@ -54,36 +55,38 @@ function makeMockIndexedDB() {
     };
   }
 
-  const db = {
-    _stores: stores,
-    objectStoreNames: { contains: (name) => stores.has(name) },
-    createObjectStore(name) {
-      if (!stores.has(name)) stores.set(name, new Map());
-      return { createIndex: function () {} };
-    },
-    transaction(names, mode) {
-      void mode;
-      const tx = { oncomplete: null, onabort: null, onerror: null, _pending: 0 };
-      tx.objectStore = (name) => makeStoreFacade(stores.get(name), tx);
-      void names;
-      return tx;
-    },
-    close() {}
-  };
+  function makeDatabase(stores) {
+    return {
+      _stores: stores,
+      objectStoreNames: { contains: (name) => stores.has(name) },
+      createObjectStore(name) {
+        if (!stores.has(name)) stores.set(name, new Map());
+        return { createIndex: function () {} };
+      },
+      transaction(names, mode) {
+        void mode;
+        const tx = { oncomplete: null, onabort: null, onerror: null, _pending: 0 };
+        tx.objectStore = (name) => makeStoreFacade(stores.get(name), tx);
+        void names;
+        return tx;
+      },
+      close() {}
+    };
+  }
 
   return {
-    open() {
+    open(name) {
       const request = { onupgradeneeded: null, onsuccess: null, onerror: null, result: null };
       setTimeout(() => {
-        if (!stores.has('noteVectors')) {
-          const upgradeTx = { objectStore: (name) => makeStoreFacade(stores.get(name), {}) };
-          stores.set('noteVectors', new Map());
-          if (typeof request.onupgradeneeded === 'function') {
-            request.result = db;
-            request.onupgradeneeded({ target: { result: db, transaction: upgradeTx } });
-          }
-        }
+        const isNew = !databases.has(name);
+        if (isNew) databases.set(name, new Map());
+        const stores = databases.get(name);
+        const db = makeDatabase(stores);
         request.result = db;
+        if (isNew && typeof request.onupgradeneeded === 'function') {
+          const upgradeTx = { objectStore: (storeName) => makeStoreFacade(stores.get(storeName), {}) };
+          request.onupgradeneeded({ target: { result: db, transaction: upgradeTx } });
+        }
         if (typeof request.onsuccess === 'function') request.onsuccess({ target: { result: db } });
       }, 0);
       return request;

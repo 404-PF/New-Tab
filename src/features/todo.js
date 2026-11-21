@@ -1167,9 +1167,10 @@
       if (todoSearchQuery) scheduleTodoSemanticRerank();
       return;
     }
-    // Leaving ready (Delete, error) drops the relevance view. Going through
-    // scheduleTodoSemanticRerank here would re-trigger the passive model load.
-    if (todoSemanticRankedView) dropTodoSemanticRankedView();
+    // Leaving ready (Delete, error) drops the relevance view and any deferred
+    // rerank. Going through scheduleTodoSemanticRerank here would re-trigger
+    // the passive model load.
+    if (todoSemanticRankedView || todoSemanticDeferred) dropTodoSemanticRankedView();
   }
 
   // Applies a rerank that was deferred while a row was focused or dragged.
