@@ -48,11 +48,7 @@ const AIService = (function() {
   }
 
   function getTranslation(key) {
-    if (window.i18n && window.i18n.t) {
-      const translated = window.i18n.t(key);
-      if (translated && translated !== key) return translated;
-    }
-    return TRANSLATION_FALLBACKS[key] || key;
+    return AIRenderer.getTranslation(key, TRANSLATION_FALLBACKS);
   }
 
   function cacheElements() {
