@@ -1090,7 +1090,7 @@ const AIService = (function() {
           // embedding-status 'ready' listener reranks once it lands.
           window.requestSemanticModelLoad();
         }
-      }).catch(function () { /* ranking is best-effort; keyword results stay */ });
+      }).catch(function (error) { console.warn('[ai-service] semantic rerank failed:', error); });
     }, SEMANTIC_RERANK_DEBOUNCE_MS);
   }
 
