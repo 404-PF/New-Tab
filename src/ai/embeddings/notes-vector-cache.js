@@ -189,13 +189,16 @@
       const textHash = hashNoteText(text);
       const key = makeCollectionVectorKey(COLLECTION, itemId, textHash, modelId);
       const legacyKey = makeLegacyVectorKey(itemId, textHash, modelId);
+      // Apps never had legacy rows: skip the second IndexedDB round-trip.
+      const hasLegacyRows = COLLECTION === 'notes' || COLLECTION === 'todos';
       return runStore('readonly', function (store) {
         return store.get(key);
       }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (record) {
         if (record && Array.isArray(record.vector)) return record;
         // Upgrade path (issue #1332): rows written before the collection key
-        // existed stay readable; the next put migrates them to the new key.
-        if (legacyKey === key) return null;
+        // existed stay readable and are not rewritten or removed; the next
+        // put writes the new collection key alongside the legacy row.
+        if (!hasLegacyRows || legacyKey === key) return null;
         return runStore('readonly', function (store) {
           return store.get(legacyKey);
         }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (legacyRecord) {
@@ -327,28 +330,43 @@
       });
     }
 
+    // Collection guard for shared stores (issue #1332): production uses one
+    // IndexedDB per collection, but a reused cache must never touch another
+    // collection's rows. Legacy rows carry no collection field and belong to
+    // the notes/todos caches that wrote them before the collection key.
+    function belongsToCollection(record) {
+      if (!record) return false;
+      if (record.collection === COLLECTION) return true;
+      if (!record.collection && (COLLECTION === 'notes' || COLLECTION === 'todos')) return true;
+      return false;
+    }
+
     function deleteCachedVectorsForItem(itemId) {
       const id = String(itemId);
+      // Full scan (not the id index): the index lookup alone cannot enforce
+      // the collection guard for shared stores, so filter by id + collection.
       return deleteInSingleTransaction({
-        index: ID_INDEX,
+        index: null,
         value: id,
-        test: function (r) { return r[ID_FIELD] === id; }
+        test: function (r) { return r && r[ID_FIELD] === id && belongsToCollection(r); }
       }, 'Failed to delete ' + LABEL + ' vectors from IndexedDB:');
     }
 
     function clearCachedVectors(modelId) {
       if (typeof modelId === 'string' && modelId) {
         const expected = String(modelId);
+        // Full scan for the same collection-guard reason as above.
         return deleteInSingleTransaction({
-          index: 'byModel',
+          index: null,
           value: expected,
-          test: function (r) { return r && r.modelId === expected; }
+          test: function (r) { return r && r.modelId === expected && belongsToCollection(r); }
         }, 'Failed to clear ' + LABEL + ' vectors from IndexedDB:');
       }
-      return runStore('readwrite', function (store) {
-        return store.clear();
-      }, 'Failed to clear ' + LABEL + ' vectors from IndexedDB:').then(function () { return true; })
-        .catch(function () { return false; });
+      return deleteInSingleTransaction({
+        index: null,
+        value: null,
+        test: function (r) { return belongsToCollection(r); }
+      }, 'Failed to clear ' + LABEL + ' vectors from IndexedDB:');
     }
 
     function getAllCachedVectors(modelId) {
@@ -357,9 +375,9 @@
       }, 'Failed to read ' + LABEL + ' vectors from IndexedDB:').then(function (all) {
         const records = Array.isArray(all) ? all : [];
         if (typeof modelId === 'string' && modelId) {
-          return records.filter(function (r) { return r && r.modelId === modelId && Array.isArray(r.vector); });
+          return records.filter(function (r) { return r && r.modelId === modelId && Array.isArray(r.vector) && belongsToCollection(r); });
         }
-        return records.filter(function (r) { return r && Array.isArray(r.vector); });
+        return records.filter(function (r) { return r && Array.isArray(r.vector) && belongsToCollection(r); });
       }).catch(function () { return []; });
     }
 

@@ -193,7 +193,7 @@
         return keywordOnly();
       }
       const jobs = items.map(function (item) {
-        return getVector(item).then(function (vec) {
+        return getVector.call(deps, item).then(function (vec) {
           const cosine = Array.isArray(vec) && vec.length === queryVector.length
             ? cosineSimilarity(queryVector, vec)
             : 0;
@@ -281,8 +281,9 @@
     const cache = opts.cache || null;
     const service = opts.service || null;
     const modelId = opts.modelId;
-    const chunkSize = Number.isFinite(opts.chunkSize) && opts.chunkSize > 0 ? Math.floor(opts.chunkSize) : BACKFILL_CHUNK_SIZE;
+    const chunkSize = Number.isFinite(opts.chunkSize) && opts.chunkSize > 0 ? Math.max(1, Math.floor(opts.chunkSize)) : BACKFILL_CHUNK_SIZE;
     const isLive = typeof opts.isLive === 'function' ? opts.isLive : null;
+    const isCancelled = typeof opts.isCancelled === 'function' ? opts.isCancelled : null;
     if (items.length === 0 || !cache || !service || !modelId) {
       return Promise.resolve({ embedded: 0, skipped: 0, total: items.length });
     }
@@ -310,6 +311,9 @@
       for (let start = 0; start < missIndexes.length; start += chunkSize) {
         const chunk = missIndexes.slice(start, start + chunkSize);
         chain = chain.then(function () {
+          try {
+            if (isCancelled && isCancelled()) return null;
+          } catch { /* ignore cancellation check errors */ }
           let texts;
           try {
             texts = chunk.map(function (i) { return inputs[i]; });
@@ -346,8 +350,21 @@
   // is ready without blocking first paint or search. Uses requestIdleCallback
   // when available, otherwise a short delayed task. Returns a cancel function.
   function scheduleIdleBackfill(args, scheduleOptions) {
+    let cancelled = false;
     const task = function () {
-      backfillMissingVectors(args).catch(function () { /* best-effort */ });
+      try {
+        if (cancelled) return;
+      } catch { /* ignore */ }
+      const merged = Object.assign({}, args || {}, {
+        isCancelled: function () {
+          if (cancelled) return true;
+          try {
+            const inner = args && typeof args.isCancelled === 'function' ? args.isCancelled() : false;
+            return !!inner;
+          } catch { return false; }
+        }
+      });
+      backfillMissingVectors(merged).catch(function () { /* best-effort */ });
     };
     const opts = scheduleOptions || {};
     const delay = Number.isFinite(opts.delayMs) ? opts.delayMs : BACKFILL_IDLE_DELAY_MS;
@@ -356,6 +373,7 @@
       if (typeof requestIdleCallback === 'function') {
         const handle = requestIdleCallback(task, { timeout });
         return function () {
+          cancelled = true;
           try {
             if (typeof cancelIdleCallback === 'function') cancelIdleCallback(handle);
           } catch { /* ignore */ }
@@ -367,6 +385,7 @@
       timer = setTimeout(task, delay);
     } catch { /* ignore */ }
     return function () {
+      cancelled = true;
       try {
         if (timer) clearTimeout(timer);
       } catch { /* ignore */ }

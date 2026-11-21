@@ -30,6 +30,7 @@ beforeAll(() => {
   injectScript('src/ai/embeddings/harrier-provider.js');
   injectScript('src/ai/embeddings/notes-vector-cache.js');
   injectScript('src/ai/embeddings/embedding-service.js');
+  injectScript('src/ai/embeddings/hybrid-ranker.js');
   injectScript('src/ai/embeddings/notes-semantic-search.js');
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
@@ -44,6 +45,7 @@ beforeEach(() => {
   // (it restores the snapshot on failure) while removeItem stays reliable:
   // drop the keys this suite asserts on explicitly so a previous test's
   // ready/marker cannot leak into the next test (PR #1187 follow-up).
+  try { localStorage.removeItem('semanticEnabled'); } catch { /* ignore */ }
   try { localStorage.removeItem('notesSemanticEnabled'); } catch { /* ignore */ }
   try { localStorage.removeItem('notesSemanticDownload'); } catch { /* ignore */ }
   try { delete window.EmbeddingService; } catch { /* ignore */ }
@@ -87,8 +89,16 @@ describe('Semantic search settings', () => {
   });
 
   it('reads the persisted flag', () => {
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     expect(window.loadNotesSemanticEnabled()).toBe(true);
+  });
+
+  it('falls back to the legacy flag and honors an explicit false', () => {
+    localStorage.removeItem('semanticEnabled');
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    expect(window.loadSemanticEnabled()).toBe(true);
+    localStorage.setItem('semanticEnabled', 'false');
+    expect(window.loadSemanticEnabled()).toBe(false);
   });
 
   it('starts the model download on opt-in and shows ready state', async () => {
@@ -96,7 +106,7 @@ describe('Semantic search settings', () => {
     const checkbox = document.getElementById('notes-semantic-enabled-setting');
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    expect(localStorage.getItem('semanticEnabled')).toBe('true');
     // ensureModel resolves on a microtask; flush it.
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -117,7 +127,7 @@ describe('Semantic search settings', () => {
       await Promise.resolve();
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(localStorage.getItem('semanticEnabled')).toBe('false');
       expect(checkbox.checked).toBe(false);
     } finally {
       chrome.permissions.request = originalRequest;
@@ -126,7 +136,7 @@ describe('Semantic search settings', () => {
 
   it('shows progress while downloading', () => {
     installMockService({ status: 'loading', progress: 0.42, error: '', modelId: 'test-model' });
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     window.applyNotesSemanticEnabled();
     const progress = document.getElementById('notes-semantic-progress');
     expect(progress.hidden).toBe(false);
@@ -136,10 +146,10 @@ describe('Semantic search settings', () => {
 
   it('cancel resets the flag', () => {
     installMockService({ status: 'loading', progress: 0.5, error: '', modelId: 'test-model' });
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     window.applyNotesSemanticEnabled();
     document.getElementById('notes-semantic-cancel').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+    expect(localStorage.getItem('semanticEnabled')).toBe('false');
   });
 
   it('delete clears the model and resets the flag', async () => {
@@ -150,14 +160,14 @@ describe('Semantic search settings', () => {
       deleteCalled = true;
       return originalDelete.apply(this, arguments);
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     window.applyNotesSemanticEnabled();
     document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(deleteCalled).toBe(true);
     expect(window.EmbeddingService.getStatus().status).toBe('idle');
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+    expect(localStorage.getItem('semanticEnabled')).toBe('false');
   });
 
   it('failed delete keeps the toggle and Delete visible with delete copy', async () => {
@@ -166,7 +176,7 @@ describe('Semantic search settings', () => {
       isReady: function () { return false; },
       deleteModel: function () { return Promise.resolve(false); }
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
     document.getElementById('notes-semantic-delete').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -174,7 +184,7 @@ describe('Semantic search settings', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     // Leftover bytes stay visible/retryable: flag preserved, Delete shown,
     // status uses the delete-specific locale key (PR #1187 human review).
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    expect(localStorage.getItem('semanticEnabled')).toBe('true');
     expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
     expect(document.getElementById('notes-semantic-settings-status').textContent).toContain('delete');
   });
@@ -192,7 +202,7 @@ describe('Semantic search settings', () => {
       cancelLoad: function () {},
       deleteModel: function () { deleteCalled = true; return gate; }
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
     // The race requires the visible Delete control (ready status).
@@ -215,13 +225,13 @@ describe('Semantic search settings', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    expect(localStorage.getItem('semanticEnabled')).toBe('true');
     // Fresh download owns the marker now (stale delete must not clear it).
     expect(localStorage.getItem('notesSemanticDownload')).not.toBeNull();
   });
 
   it('primes a fresh import for resume and leaves settled states alone', () => {
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.removeItem('notesSemanticDownload');
     window.primeNotesSemanticImport();
     // Lazy import (PR #1187 human review): an enabled flag with no marker
@@ -232,21 +242,21 @@ describe('Semantic search settings', () => {
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
-    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('semanticEnabled', 'false');
     localStorage.removeItem('notesSemanticDownload');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
   });
 
   it('clears a leftover loading marker when the import disables the flag', () => {
-    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('semanticEnabled', 'false');
     localStorage.setItem('notesSemanticDownload', 'loading');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
   });
 
   it('keeps a ready marker when the import disables the flag so Delete stays reachable', () => {
-    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('semanticEnabled', 'false');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.primeNotesSemanticImport();
     expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
@@ -254,7 +264,7 @@ describe('Semantic search settings', () => {
 
   it('re-renders the notes list when toggling semantic search off', () => {
     installMockService({ status: 'ready', progress: 1, error: '', modelId: 'test-model' });
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     window.applyNotesSemanticEnabled();
     let renderCalls = 0;
     const originalRender = window.renderNotes;
@@ -263,7 +273,7 @@ describe('Semantic search settings', () => {
       const checkbox = document.getElementById('notes-semantic-enabled-setting');
       checkbox.checked = false;
       checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(localStorage.getItem('semanticEnabled')).toBe('false');
       expect(renderCalls).toBeGreaterThan(0);
     } finally {
       if (originalRender) window.renderNotes = originalRender;
@@ -303,7 +313,7 @@ describe('Semantic search settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('semanticEnabled')).toBe('true');
     } finally {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
     }
@@ -315,7 +325,7 @@ describe('Semantic search settings', () => {
     // of clearing the marker as if cleanup succeeded (PR #1187 review).
     try { delete window.EmbeddingService; } catch { /* ignore */ }
     try { delete window.EmbeddingScripts; } catch { /* ignore */ }
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     let deleteCalled = false;
     window.EmbeddingScripts = {
@@ -340,7 +350,7 @@ describe('Semantic search settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(deleteCalled).toBe(true);
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+      expect(localStorage.getItem('semanticEnabled')).toBe('false');
       expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
     } finally {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
@@ -350,7 +360,7 @@ describe('Semantic search settings', () => {
   it('keeps the marker when script load fails for a deferred-ready delete', async () => {
     try { delete window.EmbeddingService; } catch { /* ignore */ }
     try { delete window.EmbeddingScripts; } catch { /* ignore */ }
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.EmbeddingScripts = {
       scriptsLoaded: function () { return false; },
@@ -362,7 +372,7 @@ describe('Semantic search settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('semanticEnabled')).toBe('true');
       expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
     } finally {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
@@ -414,7 +424,7 @@ describe('Semantic search settings', () => {
       pending[0].reject(new Error('offline'));
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('semanticEnabled')).toBe('true');
       expect(localStorage.getItem('notesSemanticDownload')).toBe('loading');
     } finally {
       try { delete window.EmbeddingScripts; } catch { /* ignore */ }
@@ -427,7 +437,7 @@ describe('Semantic search settings', () => {
     // ~300MB bytes with no Delete control. Only the gestured path resets.
     try { delete window.EmbeddingService; } catch { /* ignore */ }
     try { delete window.EmbeddingScripts; } catch { /* ignore */ }
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
     // Default permissions mock grants nothing, so the passive contains()
@@ -455,7 +465,7 @@ describe('Semantic search settings', () => {
       expect(containsCalls).toBeGreaterThan(0);
       // Permission denied short-circuits before scripts (PR #1187).
       expect(scriptCalls).toBe(0);
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('semanticEnabled')).toBe('true');
       expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
     } finally {
       chrome.permissions.contains = originalContains;
@@ -479,7 +489,7 @@ describe('Semantic search settings', () => {
       ensureScripts: function () { scriptCalls += 1; return Promise.reject(new Error('offline')); }
     };
     await waitForSemanticPassiveIdle();
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'loading');
     try {
       window.resumeSemanticIfNeeded();
@@ -490,7 +500,7 @@ describe('Semantic search settings', () => {
       // marker untouched and pass green without exercising the failure.
       expect(containsCalls).toBeGreaterThan(0);
       expect(scriptCalls).toBeGreaterThan(0);
-      expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+      expect(localStorage.getItem('semanticEnabled')).toBe('true');
       expect(localStorage.getItem('notesSemanticDownload')).toBeNull();
     } finally {
       chrome.permissions.contains = originalContains;

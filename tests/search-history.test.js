@@ -625,6 +625,7 @@ describe('semantic app launcher matches (#1329)', () => {
   }
 
   beforeAll(() => {
+    injectScript('src/ai/embeddings/hybrid-ranker.js');
     injectScript('src/ai/embeddings/notes-semantic-search.js');
     injectScript('src/ai/embeddings/app-semantic-search.js');
     window.EmbeddingScripts = { ensureScripts: () => Promise.resolve() };

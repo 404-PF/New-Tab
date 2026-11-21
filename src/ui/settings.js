@@ -1863,9 +1863,12 @@ if (notesEnabledSetting) {
 // Issue #1332 decision: one global `semanticEnabled` master flag gates the
 // shared model download (all collections reuse the same bytes); per-feature
 // sub-toggles default ON once the master is on. `notesSemanticEnabled` is
-// kept as the persisted master key for upgrades: `loadSemanticEnabled()`
+// kept as a read-only legacy fallback for upgrades: `loadSemanticEnabled()`
 // reads the new `semanticEnabled` key first, then falls back to the legacy
-// `notesSemanticEnabled` value so existing opt-ins survive.
+// `notesSemanticEnabled` value so existing opt-ins survive. Writes always go
+// to `semanticEnabled`; the legacy key is dual-written for backward
+// compatibility so older code and tests reading `notesSemanticEnabled`
+// keep working. Reads prefer the new key when it holds an explicit value.
 function loadSemanticEnabled() {
   try {
     const next = localStorage.getItem('semanticEnabled');
@@ -1875,6 +1878,27 @@ function loadSemanticEnabled() {
     console.warn('Failed to read semanticEnabled:', e);
     return false;
   }
+}
+
+// Master-flag writer (issue #1332): persist under both the new
+// `semanticEnabled` key (takes precedence on read) and the legacy
+// `notesSemanticEnabled` key so pre-#1332 readers stay in sync. Returns true
+// only when both writes settle.
+function persistSemanticEnabled(value) {
+  const next = value ? true : false;
+  let ok = true;
+  try {
+    if (window.persistSetting) {
+      ok = window.persistSetting('semanticEnabled', next) !== false && ok;
+      ok = window.persistSetting('notesSemanticEnabled', next) !== false && ok;
+    } else {
+      try { localStorage.setItem('semanticEnabled', String(next)); } catch { ok = false; }
+      try { localStorage.setItem('notesSemanticEnabled', String(next)); } catch { ok = false; }
+    }
+  } catch {
+    ok = false;
+  }
+  return ok;
 }
 
 function loadNotesSemanticEnabled() {
@@ -2036,7 +2060,7 @@ function embeddingScriptsLoaded() {
   } catch { /* fall through to local check */ }
   try {
     return !!(window.EmbeddingRegistry && window.HarrierProvider
-      && (window.HybridRanker || window.NotesSemanticSearch)
+      && window.HybridRanker && window.NotesSemanticSearch
       && window.NotesVectorCache && window.EmbeddingService);
   } catch {
     return false;
@@ -2137,7 +2161,7 @@ function startSemanticDownload(requestPermission) {
         renderNotesSemanticSettings();
         return;
       }
-      const persisted = window.persistSetting('notesSemanticEnabled', false);
+      const persisted = persistSemanticEnabled(false);
       clearSemanticDownloadState();
       applyNotesSemanticEnabled();
       if (!persisted) {
@@ -2174,7 +2198,7 @@ function startSemanticDownload(requestPermission) {
     }
     // A dead runtime must not strand the toggle on with "Starting…"
     // forever: reset the flag (and toast only on the gestured path).
-    window.persistSetting('notesSemanticEnabled', false);
+    persistSemanticEnabled(false);
     clearSemanticDownloadState();
     applyNotesSemanticEnabled();
     if (!passive && typeof window.showToast === 'function') {
@@ -2290,7 +2314,7 @@ function startSemanticModelDownload(els, passive, startGeneration) {
     if (!window.EmbeddingService || typeof window.EmbeddingService.ensureModel !== 'function') {
       // Modules loaded but the service never materialized: same reset as a
       // load failure so the toggle cannot stick on "Starting…".
-      window.persistSetting('notesSemanticEnabled', false);
+      persistSemanticEnabled(false);
       writeSemanticDownloadState('error');
       renderNotesSemanticSettings();
       if (!silent && typeof window.showToast === 'function') {
@@ -2357,7 +2381,7 @@ function bindSemanticCheckbox(els) {
   if (!els.checkbox || els.checkbox.dataset.semanticBound) return;
   els.checkbox.dataset.semanticBound = 'true';
   els.checkbox.addEventListener('change', function () {
-    const persisted = window.persistSetting('notesSemanticEnabled', this.checked);
+    const persisted = persistSemanticEnabled(this.checked);
     renderNotesSemanticSettings();
     if (!persisted) {
       reportFeatureToggleSaveError();
@@ -2400,7 +2424,7 @@ function bindSemanticCancel(els) {
     try {
       if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
     } catch { clearSemanticDownloadState(); }
-    const persisted = window.persistSetting('notesSemanticEnabled', false);
+    const persisted = persistSemanticEnabled(false);
     applyNotesSemanticEnabled();
     if (!persisted) reportFeatureToggleSaveError();
   });
@@ -2419,7 +2443,7 @@ function bindSemanticDelete(els) {
     const finishDelete = function (ok) {
       if (deleteGeneration !== semanticStartGeneration) return;
       if (ok) clearSemanticDownloadState();
-      const persisted = window.persistSetting('notesSemanticEnabled', ok ? false : loadNotesSemanticEnabled());
+      const persisted = persistSemanticEnabled(ok ? false : loadNotesSemanticEnabled());
       applyNotesSemanticEnabled();
       if (!persisted) reportFeatureToggleSaveError();
     };
@@ -2647,7 +2671,7 @@ function primeNotesSemanticImport() {
     // marker is transient (never exported), so an imported `false` would
     // otherwise strand a stale entry until the next opt-in. 'ready' is kept
     // because the model bytes survive the import.
-    if (localStorage.getItem('notesSemanticEnabled') !== 'true') {
+    if (!loadSemanticEnabled()) {
       if (readSemanticDownloadState() !== 'ready') clearSemanticDownloadState();
       return;
     }

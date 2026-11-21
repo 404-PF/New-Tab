@@ -989,7 +989,9 @@
         return window.loadNotesSemanticEnabled();
       }
       try {
-        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
       } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch {
@@ -1127,7 +1129,6 @@
         todoBackfillCancel = null;
       }
       const list = todos.slice();
-      const liveById = new Map(list.map(t => [t.id, t]));
       todoBackfillCancel = ranker.scheduleIdleBackfill({
         items: list,
         toText: todoToEmbeddingText,
@@ -1136,7 +1137,7 @@
         service,
         modelId: getTodoSemanticModelId(),
         isLive: (todo, text) => {
-          const current = liveById.get(todo.id);
+          const current = todos.find(t => t && t.id === todo.id);
           return !!current && todoToEmbeddingText(current) === text && isTodoSemanticReady();
         }
       });

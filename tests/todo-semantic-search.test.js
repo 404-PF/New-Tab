@@ -32,6 +32,7 @@ beforeAll(() => {
   injectScript('src/core/dom-ready.js');
   injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
+  injectScript('src/ai/embeddings/hybrid-ranker.js');
   injectScript('src/ai/embeddings/notes-semantic-search.js');
   injectScript('src/ai/embeddings/notes-vector-cache.js');
   realTodoVectorCache = window.TodoVectorCache;

@@ -32,7 +32,8 @@
       return !!(
         window.EmbeddingRegistry
         && window.HarrierProvider
-        && (window.HybridRanker || window.NotesSemanticSearch)
+        && window.HybridRanker
+        && window.NotesSemanticSearch
         && window.NotesVectorCache
         && window.EmbeddingService
         && window.AppSemanticSearch

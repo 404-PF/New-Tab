@@ -72,7 +72,9 @@
         return !!window.loadNotesSemanticEnabled();
       }
       try {
-        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
       } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch {
@@ -96,8 +98,18 @@
     }
   }
 
+  function getAppCache() {
+    try {
+      return window.AppVectorCache || null;
+    } catch {
+      return null;
+    }
+  }
+
   // Embeds only texts missing from the cache, in one batch, and prunes
-  // entries whose text no longer matches any current app.
+  // entries whose text no longer matches any current app. The in-memory Map
+  // stays the hot path; window.AppVectorCache (issue #1332) persists vectors
+  // across reloads when the embedding modules are loaded.
   function ensureVectors(docs, service) {
     const modelId = getModelId(service);
     if (cacheModelId !== modelId) {
@@ -108,14 +120,83 @@
     Array.from(vectorCache.keys()).forEach(function (key) {
       if (!wanted.has(key)) vectorCache.delete(key);
     });
+    const appCache = getAppCache();
+    const docByText = new Map();
+    docs.forEach(function (d) {
+      if (!docByText.has(d.embedText)) docByText.set(d.embedText, d);
+    });
     const misses = Array.from(wanted).filter(function (text) { return !vectorCache.has(text); });
-    if (misses.length === 0) return Promise.resolve();
-    return service.embedTexts(misses).then(function (vectors) {
-      misses.forEach(function (text, i) {
-        const vec = Array.isArray(vectors) ? vectors[i] : null;
-        if (Array.isArray(vec) && vec.length > 0) vectorCache.set(text, vec);
+    if (misses.length === 0) {
+      if (appCache) pruneRemovedAppVectors(docs, modelId, appCache);
+      return Promise.resolve();
+    }
+    if (!appCache) {
+      return service.embedTexts(misses).then(function (vectors) {
+        misses.forEach(function (text, i) {
+          const vec = Array.isArray(vectors) ? vectors[i] : null;
+          if (Array.isArray(vec) && vec.length > 0) vectorCache.set(text, vec);
+        });
+      });
+    }
+    // Persistent path: reuse IndexedDB rows before embedding, then write
+    // new vectors to both the memory map and AppVectorCache.
+    const reads = misses.map(function (text) {
+      const doc = docByText.get(text);
+      try {
+        return appCache.getCachedVector(doc.id, text, modelId).catch(function () { return null; });
+      } catch {
+        return Promise.resolve(null);
+      }
+    });
+    return Promise.all(reads).then(function (cached) {
+      const stillMissing = [];
+      cached.forEach(function (record, i) {
+        if (record && Array.isArray(record.vector) && record.vector.length > 0) {
+          vectorCache.set(misses[i], record.vector);
+        } else {
+          stillMissing.push(misses[i]);
+        }
+      });
+      if (stillMissing.length === 0) {
+        pruneRemovedAppVectors(docs, modelId, appCache);
+        return null;
+      }
+      return service.embedTexts(stillMissing).then(function (vectors) {
+        stillMissing.forEach(function (text, i) {
+          const vec = Array.isArray(vectors) ? vectors[i] : null;
+          if (!Array.isArray(vec) || vec.length === 0) return;
+          vectorCache.set(text, vec);
+          const doc = docByText.get(text);
+          if (!doc) return;
+          try {
+            const put = appCache.putCachedVector(doc.id, text, modelId, vec);
+            if (put && typeof put.catch === 'function') put.catch(function () { /* ignore */ });
+          } catch { /* ignore */ }
+        });
+        pruneRemovedAppVectors(docs, modelId, appCache);
+        return null;
       });
     });
+  }
+
+  function pruneRemovedAppVectors(docs, modelId, appCache) {
+    try {
+      const liveIds = new Set(docs.map(function (d) { return String(d.id); }));
+      const all = appCache.getAllCachedVectors(modelId);
+      if (!all || typeof all.then !== 'function') return;
+      all.then(function (records) {
+        (Array.isArray(records) ? records : []).forEach(function (r) {
+          const id = r && (r.appId !== undefined ? r.appId : r.id);
+          if (id === undefined) return;
+          if (!liveIds.has(String(id))) {
+            try {
+              const deleted = appCache.deleteCachedVectorsForItem(id);
+              if (deleted && typeof deleted.catch === 'function') deleted.catch(function () { /* ignore */ });
+            } catch { /* ignore */ }
+          }
+        });
+      }).catch(function () { /* best-effort */ });
+    } catch { /* best-effort */ }
   }
 
   function toAppResults(ranked, appsById) {
@@ -174,6 +255,13 @@
   function clearCache() {
     vectorCache.clear();
     cacheModelId = null;
+    try {
+      const appCache = getAppCache();
+      if (appCache && typeof appCache.clearCachedVectors === 'function') {
+        const cleared = appCache.clearCachedVectors();
+        if (cleared && typeof cleared.catch === 'function') cleared.catch(function () { /* ignore */ });
+      }
+    } catch { /* ignore */ }
   }
 
   const api = {

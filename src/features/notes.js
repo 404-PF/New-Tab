@@ -266,7 +266,9 @@
         return window.loadNotesSemanticEnabled();
       }
       try {
-        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
       } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch (e) {
@@ -479,7 +481,6 @@
         _notesBackfillCancel = null;
       }
       const list = notes.slice();
-      const liveById = new Map(list.map(function (n) { return [n.id, n]; }));
       _notesBackfillCancel = ranker.scheduleIdleBackfill({
         items: list,
         toText: noteToEmbeddingText,
@@ -488,7 +489,7 @@
         service,
         modelId: getSemanticModelId(),
         isLive: function (note, text) {
-          const current = liveById.get(note.id);
+          const current = notes.find(function (n) { return n && n.id === note.id; });
           return !!current && noteToEmbeddingText(current) === text && isNotesSemanticReady();
         }
       });
@@ -750,7 +751,7 @@
     } catch { /* fall through to local check */ }
     try {
       return !!(window.EmbeddingRegistry && window.HarrierProvider
-        && (window.HybridRanker || window.NotesSemanticSearch)
+        && window.HybridRanker && window.NotesSemanticSearch
         && window.NotesVectorCache && window.EmbeddingService);
     } catch {
       return false;

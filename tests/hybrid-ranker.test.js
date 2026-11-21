@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
@@ -94,14 +94,89 @@ describe('HybridRanker (issue #1332)', () => {
     expect(calls).toEqual([['miss one'], ['miss two']]);
   });
 
-  it('scheduleIdleBackfill returns a cancel function', async () => {
-    const cancel = window.HybridRanker.scheduleIdleBackfill({
-      items: [],
-      toText: () => '',
-      cache: null,
-      service: null
+  it('clamps a fractional chunkSize below 1 so the loop advances', async () => {
+    const stored = new Map();
+    const cache = {
+      getCachedVector: () => Promise.resolve(null),
+      putCachedVector: (id, text, modelId, vec) => {
+        stored.set(id, vec);
+        return Promise.resolve(true);
+      }
+    };
+    const service = {
+      embedTexts: (texts) => Promise.resolve(texts.map(() => [0, 1]))
+    };
+    const list = [
+      { id: '1', text: 'hello' },
+      { id: '2', text: 'world' }
+    ];
+    const result = await window.HybridRanker.backfillMissingVectors({
+      items: list,
+      toText: (item) => item.text,
+      getId: (item) => item.id,
+      cache,
+      service,
+      modelId: 'm1',
+      chunkSize: 0.5
     });
-    expect(typeof cancel).toBe('function');
-    cancel();
+    expect(result.embedded).toBe(2);
+    expect(stored.has('1')).toBe(true);
+    expect(stored.has('2')).toBe(true);
+  });
+
+  it('scheduleIdleBackfill runs after the delay when not cancelled', async () => {
+    vi.useFakeTimers();
+    try {
+      const spy = vi.fn((texts) => Promise.resolve(texts.map(() => [1, 0])));
+      const service = { embedTexts: spy };
+      const cache = {
+        getCachedVector: () => Promise.resolve(null),
+        putCachedVector: () => Promise.resolve(true)
+      };
+      const list = [{ id: 'a', text: 'hello world' }];
+      window.HybridRanker.scheduleIdleBackfill({
+        items: list,
+        toText: (item) => item.text,
+        getId: (item) => item.id,
+        cache,
+        service,
+        modelId: 'm1'
+      }, { delayMs: 10 });
+      expect(spy).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(20);
+      // Flush the promise chain (cache read, embed, yield).
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('scheduleIdleBackfill never runs after cancel()', async () => {
+    vi.useFakeTimers();
+    try {
+      const spy = vi.fn((texts) => Promise.resolve(texts.map(() => [1, 0])));
+      const service = { embedTexts: spy };
+      const cache = {
+        getCachedVector: () => Promise.resolve(null),
+        putCachedVector: () => Promise.resolve(true)
+      };
+      const cancel = window.HybridRanker.scheduleIdleBackfill({
+        items: [{ id: 'a', text: 'hello world' }],
+        toText: (item) => item.text,
+        getId: (item) => item.id,
+        cache,
+        service,
+        modelId: 'm1'
+      }, { delayMs: 10 });
+      expect(typeof cancel).toBe('function');
+      cancel();
+      await vi.advanceTimersByTimeAsync(50);
+      await Promise.resolve();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

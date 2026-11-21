@@ -51,12 +51,15 @@
   function isSemanticEnabled() {
     try {
       // Issue #1332: global master flag with legacy fallback. Settings persists
-      // `notesSemanticEnabled`; the newer `semanticEnabled` key wins when set.
+      // `semanticEnabled`; the newer `semanticEnabled` key wins when set.
+      // An explicit 'false' disables even when the legacy key is 'true'.
       if (typeof window !== 'undefined' && typeof window.loadSemanticEnabled === 'function') {
         return !!window.loadSemanticEnabled();
       }
       try {
-        if (localStorage.getItem('semanticEnabled') === 'true') return true;
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
       } catch { /* ignore */ }
       return localStorage.getItem(SEMANTIC_ENABLED_KEY) === 'true';
     } catch (e) {

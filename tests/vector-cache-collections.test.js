@@ -1,75 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
-
-function makeMockIndexedDB() {
-  const databases = new Map();
-  function makeStoreFacade(records, tx) {
-    const req = (getResult) => {
-      tx._pending += 1;
-      const request = { transaction: tx, onsuccess: null, onerror: null, result: undefined, error: null };
-      setTimeout(() => {
-        try {
-          request.result = getResult();
-          if (typeof request.onsuccess === 'function') request.onsuccess();
-        } catch (e) {
-          request.error = e;
-          if (typeof tx.onerror === 'function') tx.onerror();
-        } finally {
-          tx._pending -= 1;
-          if (tx._pending === 0 && typeof tx.oncomplete === 'function') tx.oncomplete();
-        }
-      }, 0);
-      return request;
-    };
-    return {
-      put: (record) => req(() => { records.set(record.key, { ...record }); return record.key; }),
-      get: (key) => req(() => records.get(key)),
-      delete: (key) => req(() => { records.delete(key); return undefined; }),
-      getAll: () => req(() => Array.from(records.values())),
-      clear: () => req(() => { records.clear(); return undefined; }),
-      index: (name) => ({
-        getAllKeys: (key) => req(() => Array.from(records.values())
-          .filter((r) => r[({ byModel: 'modelId', byTodo: 'todoId', byApp: 'appId' })[name] || 'noteId'] === key)
-          .map((r) => r.key))
-      })
-    };
-  }
-  function makeDatabase(stores) {
-    return {
-      _stores: stores,
-      objectStoreNames: { contains: (name) => stores.has(name) },
-      createObjectStore(name) {
-        if (!stores.has(name)) stores.set(name, new Map());
-        return { createIndex: function () {} };
-      },
-      transaction(names, mode) {
-        void mode;
-        const tx = { oncomplete: null, onabort: null, onerror: null, _pending: 0 };
-        tx.objectStore = (name) => makeStoreFacade(stores.get(name), tx);
-        void names;
-        return tx;
-      },
-      close() {}
-    };
-  }
-  return {
-    open(name) {
-      const request = { onupgradeneeded: null, onsuccess: null, onerror: null, result: null };
-      setTimeout(() => {
-        const isNew = !databases.has(name);
-        if (isNew) databases.set(name, new Map());
-        const db = makeDatabase(databases.get(name));
-        request.result = db;
-        if (isNew && typeof request.onupgradeneeded === 'function') {
-          const upgradeTx = { objectStore: (storeName) => makeStoreFacade(databases.get(name).get(storeName), {}) };
-          request.onupgradeneeded({ target: { result: db, transaction: upgradeTx } });
-        }
-        if (typeof request.onsuccess === 'function') request.onsuccess({ target: { result: db } });
-      }, 0);
-      return request;
-    }
-  };
-}
+import { makeMockIndexedDB } from './helpers/mock-indexeddb.js';
 
 beforeAll(() => {
   injectScript('src/ai/embeddings/notes-vector-cache.js');
@@ -126,5 +57,44 @@ describe('Vector cache collections (issue #1332)', () => {
     const noteKey = window.NotesVectorCache.makeVectorKey('notes', 'x', 'h', 'm');
     const todoKey = window.TodoVectorCache.makeVectorKey('todos', 'x', 'h', 'm');
     expect(noteKey).not.toBe(todoKey);
+  });
+
+  it('scopes deletes, clears and enumeration to its own collection', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    const makeCache = window.createVectorCache;
+    const cacheA = makeCache({
+      dbName: 'SharedCollectionDb',
+      storeName: 'vectors',
+      idField: 'itemId',
+      idIndex: 'byItem',
+      label: 'a',
+      collection: 'aaa'
+    });
+    const cacheB = makeCache({
+      dbName: 'SharedCollectionDb',
+      storeName: 'vectors',
+      idField: 'itemId',
+      idIndex: 'byItem',
+      label: 'b',
+      collection: 'bbb'
+    });
+    await cacheA.putCachedVector('shared', 'hello', 'm1', [1, 0]);
+    await cacheB.putCachedVector('shared', 'hello', 'm1', [0, 1]);
+    const allA = await cacheA.getAllCachedVectors('m1');
+    expect(allA).toHaveLength(1);
+    expect(allA[0].collection).toBe('aaa');
+    // Deleting from A must not touch B.
+    expect(await cacheA.deleteCachedVectorsForItem('shared')).toBe(true);
+    expect(await cacheB.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
+    expect(await cacheA.getCachedVector('shared', 'hello', 'm1')).toBeNull();
+    // Re-populate A, then a model-scoped clear must preserve B.
+    await cacheA.putCachedVector('shared', 'hello', 'm1', [1, 0]);
+    expect(await cacheA.clearCachedVectors('m1')).toBe(true);
+    expect(await cacheB.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
+    expect(await cacheA.getAllCachedVectors('m1')).toEqual([]);
+    // No-model clear is collection-scoped too.
+    await cacheA.putCachedVector('shared', 'hello', 'm1', [1, 0]);
+    expect(await cacheA.clearCachedVectors()).toBe(true);
+    expect(await cacheB.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
   });
 });
