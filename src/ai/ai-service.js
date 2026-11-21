@@ -710,27 +710,11 @@ const AIService = (function() {
       return null;
     }
 
-    function syncContentToStore(content) {
-      assistantMsg.content = content;
+    function syncAssistantField(field, value) {
+      assistantMsg[field] = value;
       const live = getLiveStoredMessage();
       if (live && live !== assistantMsg) {
-        live.content = content;
-      }
-    }
-
-    function syncStreamingFlag(flag) {
-      assistantMsg.isStreaming = flag;
-      const live = getLiveStoredMessage();
-      if (live && live !== assistantMsg) {
-        live.isStreaming = flag;
-      }
-    }
-
-    function syncGroundingFlag(flag) {
-      assistantMsg.grounded = flag;
-      const live = getLiveStoredMessage();
-      if (live && live !== assistantMsg) {
-        live.grounded = flag;
+        live[field] = value;
       }
     }
 
@@ -770,7 +754,7 @@ const AIService = (function() {
             }
 
             accumulatedContent += chunks[index];
-            syncContentToStore(accumulatedContent);
+            syncAssistantField('content', accumulatedContent);
 
             const now = Date.now();
             if (now - lastRenderTime >= RENDER_THROTTLE_MS || index === chunks.length - 1) {
@@ -789,7 +773,7 @@ const AIService = (function() {
           }
 
           if (!streamAborted) {
-            syncContentToStore(accumulatedContent);
+            syncAssistantField('content', accumulatedContent);
             const liveEl = getLiveStreamingTextEl();
             if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
           }
@@ -797,7 +781,7 @@ const AIService = (function() {
       } else {
         const handleStreamingChunk = chunk => {
           accumulatedContent += chunk;
-          syncContentToStore(accumulatedContent);
+          syncAssistantField('content', accumulatedContent);
 
           if (groundingEnabled) {
             setLoadingStatus(getTranslation('aiThinking'));
@@ -830,7 +814,7 @@ const AIService = (function() {
           && !accumulatedContent
         ) {
           showError(getTranslation('aiGroundingFallback'));
-          syncGroundingFlag(false);
+          syncAssistantField('grounded', false);
           setLoadingStatus(getTranslation('aiThinking'));
 
           result = await window.OpenRouterAPI.sendMessageStreaming(
@@ -844,11 +828,11 @@ const AIService = (function() {
 
         if (groundingEnabled && result.success && result.grounding === 'unavailable') {
           showError(getTranslation('aiGroundingFallback'));
-          syncGroundingFlag(false);
+          syncAssistantField('grounded', false);
         }
 
         if (accumulatedContent && !result.aborted) {
-          syncContentToStore(accumulatedContent);
+          syncAssistantField('content', accumulatedContent);
           const liveEl = getLiveStreamingTextEl();
           if (liveEl) AIRenderer.updateStreamingContent(liveEl, accumulatedContent);
         }
@@ -867,8 +851,8 @@ const AIService = (function() {
           const finalContent = streamAborted
             ? accumulatedContent || '[Cancelled]'
             : accumulatedContent || result.content || '';
-          syncStreamingFlag(false);
-          syncContentToStore(finalContent);
+          syncAssistantField('isStreaming', false);
+          syncAssistantField('content', finalContent);
         }
 
         {
@@ -880,8 +864,8 @@ const AIService = (function() {
         renderConversationUI();
       } else if (result.aborted) {
         if (assistantMsg?.isStreaming) {
-          syncStreamingFlag(false);
-          syncContentToStore(accumulatedContent || '[Cancelled]');
+          syncAssistantField('isStreaming', false);
+          syncAssistantField('content', accumulatedContent || '[Cancelled]');
         }
 
         rerenderOnSaveFailure(AIStore.saveConversations());
@@ -903,8 +887,8 @@ const AIService = (function() {
           showError(result.error);
 
           if (assistantMsg?.isStreaming) {
-            syncStreamingFlag(false);
-            syncContentToStore(failedPartialContent);
+            syncAssistantField('isStreaming', false);
+            syncAssistantField('content', failedPartialContent);
           }
 
           rerenderOnSaveFailure(AIStore.saveConversations());
@@ -918,8 +902,8 @@ const AIService = (function() {
     } catch (error) {
       if (error.name === 'AbortError' || AIStore.state.abortController === null) {
         if (assistantMsg?.isStreaming) {
-          syncStreamingFlag(false);
-          syncContentToStore(accumulatedContent || '[Cancelled]');
+          syncAssistantField('isStreaming', false);
+          syncAssistantField('content', accumulatedContent || '[Cancelled]');
         }
         rerenderOnSaveFailure(AIStore.saveConversations());
         // Re-render so the '[Cancelled]' marker (or the partial content)
