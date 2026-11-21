@@ -1457,7 +1457,7 @@ function loadTheme() {
 // Liquid Glass effect toggle: on unless explicitly stored as 'false'.
 function loadLiquidGlassEnabled() {
   try {
-    return localStorage.getItem('liquidGlassEnabled') !== 'false';
+    return window.readDefaultOnFlag('liquidGlassEnabled');
   } catch (_e) {
     return true;
   }
