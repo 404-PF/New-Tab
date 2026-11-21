@@ -104,6 +104,22 @@ describe('semantic app ranking', () => {
     const results = await window.AppSemanticSearch.rankApps('  ', APPS, []);
     expect(results.map((r) => r.id)).toEqual(['gmail', 'photos', 'notes']);
   });
+
+  it('keeps an exact-name match ahead of a semantic-only match with higher cosine', async () => {
+    localStorage.setItem('notesSemanticEnabled', 'true');
+    window.EmbeddingService = {
+      isReady: () => true,
+      getStatus: () => ({ modelId: 'harrier-test' }),
+      embedTexts: (texts) => Promise.resolve(texts.map((t) => (t.startsWith('Notes') ? [-1, 0, 0] : [1, 0, 0]))),
+      embedQuery: () => Promise.resolve([1, 0, 0])
+    };
+    const apps = [
+      { id: 'outlook', name: 'Outlook', url: 'https://outlook.example.com' },
+      { id: 'notes', name: 'Notes', url: 'https://notes.example.com' }
+    ];
+    const results = await window.AppSemanticSearch.rankApps('notes', apps, []);
+    expect(results.map((r) => r.id)).toEqual(['notes', 'outlook']);
+  });
 });
 
 describe('app vector cache invalidation', () => {

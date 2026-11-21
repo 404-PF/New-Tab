@@ -58,6 +58,7 @@ const srcGlobals = {
   OfflineMode: 'readonly',
   NetworkDetector: 'readonly',
   AppGridState: 'readonly',
+  AppSemanticSearch: 'readonly',
   AppGridStorage: 'readonly',
   Accessibility: 'readonly',
   AppFolders: 'readonly',

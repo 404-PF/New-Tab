@@ -114,6 +114,17 @@
     });
   }
 
+  // Exact-name and name-prefix matches lead regardless of cosine; the
+  // semantic order is kept within each group (stable partition).
+  function prioritizeNameMatches(ranked, query, nameById) {
+    const q = query.toLowerCase();
+    const isNameMatch = function (doc) {
+      const name = (nameById.get(doc.id) || '').toLowerCase();
+      return name === q || name.startsWith(q);
+    };
+    return ranked.filter(isNameMatch).concat(ranked.filter(function (doc) { return !isNameMatch(doc); }));
+  }
+
   // Resolves to copies of the matching apps, best first. Each copy carries
   // _semanticScore (number, or null for keyword-only results). When semantic
   // ranking is off or the model is not ready, returns keyword matches in the
@@ -125,6 +136,7 @@
     const appsById = new Map((Array.isArray(apps) ? apps : [])
       .filter(function (a) { return a && a.id; })
       .map(function (a) { return [a.id, a]; }));
+    const nameById = new Map(docs.map(function (d) { return [d.id, displayNameOf(appsById.get(d.id))]; }));
     if (!ranker || typeof ranker.rankNotesForQuery !== 'function') {
       return Promise.resolve([]);
     }
@@ -142,7 +154,7 @@
         getNoteVector: function (doc) { return Promise.resolve(vectorCache.get(doc.embedText) || null); }
       };
       return ranker.rankNotesForQuery(docs, q, deps).then(function (ranked) {
-        return toAppResults(ranked, appsById);
+        return toAppResults(prioritizeNameMatches(ranked, q, nameById), appsById);
       });
     }).catch(keywordOnly);
   }
