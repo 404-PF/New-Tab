@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/core/utils.js');
   injectScript('src/core/app-grid-storage.js');
   injectScript('src/core/app-grid-state.js');
 });

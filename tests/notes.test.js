@@ -24,6 +24,7 @@ function setNotes(data) {
 
 beforeAll(() => {
   injectScript('src/core/dom-ready.js');
+  injectScript('src/core/utils.js');
   injectScript('src/features/notes.js');
 });
 
