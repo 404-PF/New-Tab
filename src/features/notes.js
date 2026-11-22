@@ -31,19 +31,7 @@
   const SVG_TAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>';
 
   function loadNotes() {
-    try {
-      const raw = localStorage.getItem('notes');
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        console.warn('Invalid notes data in localStorage: expected array, resetting to empty list');
-        return [];
-      }
-      return migrateNotes(parsed);
-    } catch (e) {
-      console.warn('Failed to parse notes from localStorage, resetting to empty list:', e);
-      return [];
-    }
+    return migrateNotes(window.readJsonArray('notes', [], 'notes', 'empty list'));
   }
 
   function migrateNotes(data, { persist = true } = {}) {

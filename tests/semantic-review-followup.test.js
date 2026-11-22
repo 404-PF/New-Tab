@@ -131,6 +131,7 @@ describe('PR #1187 review follow-ups', () => {
     await new Promise(function (resolve) { setTimeout(resolve, 0); });
     await new Promise(function (resolve) { setTimeout(resolve, 0); });
     if (typeof window.setNotesSearchQuery !== 'function') {
+      injectScript('src/core/app-grid-storage.js');
       injectScript('src/features/notes.js');
     }
     const shared = window.EmbeddingScripts;

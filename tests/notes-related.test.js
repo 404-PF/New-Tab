@@ -73,6 +73,7 @@ beforeAll(() => {
   injectScript('src/ai/embeddings/notes-vector-cache.js');
   injectScript('src/ai/embeddings/hybrid-ranker.js');
   injectScript('src/ai/embeddings/notes-semantic-search.js');
+  injectScript('src/core/app-grid-storage.js');
   injectScript('src/features/notes.js');
 });
 
