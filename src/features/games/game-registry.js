@@ -29,6 +29,8 @@
 
   // Coalesce bursts: several failed writes in quick succession show one toast.
   const TOAST_COALESCE_MS = 2000;
+  // Bounds corrupt-value backups so repeated corruption cannot exhaust quota.
+  const MAX_CORRUPT_BACKUPS = 5;
 
   // A localStorage key holding a plain JSON object, with a private read cache
   // and its own toast coalescing.
@@ -50,27 +52,28 @@
         const existing = localStorage.getItem(backupKey);
         if (existing === null) break;
         if (existing === raw) return Promise.resolve(true);
+        // When every slot is taken, refuse the write rather than overwrite a backup.
+        if (i >= MAX_CORRUPT_BACKUPS) {
+          console.warn(`Not preserving corrupt ${key}: all ${MAX_CORRUPT_BACKUPS} backup slots are in use`);
+          return Promise.resolve(false);
+        }
         backupKey = `${base}_${i}`;
       }
       console.warn(`Preserved corrupt ${key} as ${backupKey}`);
       if (typeof localStorage.setItemAsync === 'function') {
         return Promise.resolve(localStorage.setItemAsync(backupKey, raw)).then((persisted) => persisted === true);
       }
-      localStorage.setItem(backupKey, raw);
-      return Promise.resolve(true);
+      const persisted = localStorage.setItem(backupKey, raw);
+      return Promise.resolve(persisted !== false);
     }
 
-    function preserveCorrupt(raw) {
-      let pending;
+    async function preserveCorrupt(raw) {
       try {
-        pending = Promise.resolve(backupCorrupt(raw));
+        return await backupCorrupt(raw);
       } catch (e) {
-        pending = Promise.reject(e);
-      }
-      return pending.catch((e) => {
         console.warn(`Failed to back up corrupt ${key}:`, e);
         return false;
-      });
+      }
     }
 
     function load() {

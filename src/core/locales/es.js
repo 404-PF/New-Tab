@@ -229,6 +229,8 @@ window.i18n.__registerLocale('es', {
   appsSettings: 'Aplicaciones',
   appGridSaveError: 'No se pudieron guardar los cambios de las aplicaciones. La última acción no se guardó.',
   gameStatsSaveError: 'No se pudieron guardar las estadísticas del juego. Tu última puntuación no se guardó.',
+  gameStatsLoadError: 'No se pudieron leer las estadísticas del juego.',
+  gameSavesLoadError: 'No se pudo leer el progreso guardado del juego.',
   gameSavesSaveError: 'No se pudo guardar el progreso del juego. Tu última partida no se guardó.',
   appsSettingsDesc: 'Personalizar iconos de aplicaciones',
   iconStyle: 'Estilo de icono',

@@ -35,6 +35,14 @@
     "message": "ゲーム統計を保存できませんでした。直前のスコアは保存されていません。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "ゲーム統計を読み込めませんでした。",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "保存されたゲームの進行状況を読み込めませんでした。",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "ゲームの進行状況を保存できませんでした。直前のプレイ内容は保存されていません。",
     "description": "Error shown when a game save cannot be persisted"

@@ -229,6 +229,8 @@ window.i18n.__registerLocale('fr', {
   appsSettings: 'Applications',
   appGridSaveError: 'Impossible d’enregistrer les modifications des applications. Votre dernière action n’a pas été enregistrée.',
   gameStatsSaveError: 'Impossible d’enregistrer les statistiques de jeu. Votre dernier score n’a pas été enregistré.',
+  gameStatsLoadError: 'Impossible de lire les statistiques de jeu.',
+  gameSavesLoadError: 'Impossible de lire la progression enregistrée du jeu.',
   gameSavesSaveError: 'Impossible d’enregistrer la progression du jeu. Votre dernière partie n’a pas été enregistrée.',
   appsSettingsDesc: 'Personnaliser les icônes d\'applications',
   iconStyle: 'Style d\'icône',

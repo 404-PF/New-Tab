@@ -781,6 +781,15 @@ describe('Game saves save error translation (issue #1039)', () => {
   it('includes gameSavesSaveError in every _locales messages.json', () => {
     expectMessagesJsonKey('gameSavesSaveError');
   });
+
+  it('defines localized game load-error messages for every supported language', () => {
+    expectTranslationKeys(['gameStatsLoadError', 'gameSavesLoadError'], { differFromEnglish: true });
+  });
+
+  it('includes game load-error keys in every _locales messages.json', () => {
+    expectMessagesJsonKey('gameStatsLoadError');
+    expectMessagesJsonKey('gameSavesLoadError');
+  });
 });
 
 // Shared feedback string for a focus stats write the bridge rejected

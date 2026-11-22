@@ -35,6 +35,14 @@
     "message": "Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "Spielstatistiken konnten nicht gelesen werden.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "Gespeicherter Spielfortschritt konnte nicht gelesen werden.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "Spielfortschritte konnten nicht gespeichert werden. Dein letzter Spielstand wurde nicht gespeichert.",
     "description": "Error shown when a game save cannot be persisted"

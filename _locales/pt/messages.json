@@ -35,6 +35,14 @@
     "message": "Não foi possível salvar as estatísticas do jogo. Sua última pontuação não foi salva.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "Não foi possível ler as estatísticas do jogo.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "Não foi possível ler o progresso salvo do jogo.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "Não foi possível salvar o progresso do jogo. Sua última partida não foi salva.",
     "description": "Error shown when a game save cannot be persisted"
