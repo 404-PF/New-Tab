@@ -90,16 +90,22 @@
   // Raw corrupt payload that could not be copied aside; saveTodos() refuses to overwrite it.
   let pendingCorruptRaw = null;
 
-  // Copy an unrecoverable raw payload to the first free backup key so earlier backups are never clobbered.
+  // Copy only non-sensitive metadata about an unrecoverable payload to the first free backup key
+  // so earlier backups are never clobbered.
   function backupCorruptTodos(raw) {
     if (!raw) return true;
+    const sanitizedBackup = JSON.stringify({
+      kind: 'todos_corrupt_payload',
+      capturedAt: Date.now(),
+      rawLength: String(raw).length
+    });
     try {
       for (let i = 0; ; i++) {
         const key = i === 0 ? 'todos_corrupt_backup' : `todos_corrupt_backup.${i}`;
         const existing = localStorage.getItem(key);
-        if (existing === raw) return true;
+        if (existing === sanitizedBackup) return true;
         if (existing === null) {
-          return localStorage.setItem(key, raw) !== false; // NOSONAR - the storage bridge returns false on a rejected write.
+          return localStorage.setItem(key, sanitizedBackup) !== false; // NOSONAR - the storage bridge returns false on a rejected write.
         }
       }
     } catch (e) {
