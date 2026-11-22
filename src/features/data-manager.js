@@ -1076,6 +1076,241 @@
       return { merged: merged, added: added };
     };
 
+    // Pure merge helpers for `mode === 'merge'`. Each returns the value to
+    // write for `key`. mergeImportedArray returns null when nothing should be
+    // written (id-merge and appOrder add no new entries).
+    const mergeImportedArray = function (key, current, incoming) {
+      if (key === 'todos' || key === 'notes' || key === 'customApps' ||
+          key === 'appFolders' || key === 'ai_conversations') {
+        const result = mergeItemsById(current, incoming);
+        return result.added > 0 ? result.merged : null;
+      }
+      if (key === 'appOrder') {
+        // Merge appOrder: add new items not already present
+        const currentOrder = Array.isArray(current) ? current.slice() : [];
+        const orderSet = {};
+        currentOrder.forEach(function (id) { orderSet[id] = true; });
+        let addedOrder = 0;
+        incoming.forEach(function (id) {
+          if (!orderSet[id]) {
+            currentOrder.push(id);
+            orderSet[id] = true;
+            addedOrder++;
+          }
+        });
+        return addedOrder > 0 ? currentOrder : null;
+      }
+      if (key === 'extraTimeZones') {
+        // Merge only zones the runtime accepts (any valid IANA id,
+        // #1199) and preserve the five-zone limit.
+        const maxTimeZones = window.MAX_TIMEZONES || 5;
+        const mergedZones = [];
+        const seenZones = Object.create(null);
+        const zonesToMerge = (Array.isArray(current) ? current : []).concat(incoming);
+        zonesToMerge.forEach(function (zoneId) {
+          if (mergedZones.length >= maxTimeZones || typeof zoneId !== 'string' ||
+              typeof window.isValidZoneId !== 'function' || !window.isValidZoneId(zoneId) ||
+              seenZones[zoneId]) return;
+          seenZones[zoneId] = true;
+          mergedZones.push(zoneId);
+        });
+        return mergedZones;
+      }
+      if (key === 'games_recently_played') {
+        // Hub MRU is most-recent-first and capped at 20 by
+        // GameRegistry. Keep the imported ordering, then any
+        // local-only entries, truncated to the same cap.
+        const mruSeen = Object.create(null);
+        const mergedMru = [];
+        incoming.concat(Array.isArray(current) ? current : []).forEach(function (id) {
+          // Skip non-string ids so a malformed local entry is never
+          // written back; the backup's own MRU validator requires
+          // strings, and a merged list with junk would fail re-import.
+          if (mergedMru.length >= 20 || typeof id !== 'string' || mruSeen[id]) return;
+          mruSeen[id] = true;
+          mergedMru.push(id);
+        });
+        return mergedMru;
+      }
+      // Generic array merge (concatenate unique)
+      const existingArr = Array.isArray(current) ? current.slice() : [];
+      const seen = {};
+      existingArr.forEach(function (item) {
+        const id = item && item.id ? item.id : JSON.stringify(item);
+        seen[id] = true;
+      });
+      const merged = existingArr.slice();
+      incoming.forEach(function (item) {
+        const id = item && item.id ? item.id : JSON.stringify(item);
+        if (!seen[id]) {
+          merged.push(item);
+          seen[id] = true;
+        }
+      });
+      return merged;
+    };
+
+    // `currentObj` is already a shallow copy of the stored object and is
+    // updated in place by the stats helpers below.
+    const mergeTodoStats = function (currentObj, incoming) {
+      // days, completedIds, and the scalar fields are merged
+      // independently: the backup validator permits a valid stats
+      // object without `days`, and requiring both `days` maps made
+      // the completedIds union unreachable, so the generic merge
+      // replaced the local map and dropped its ids (issue #1143).
+      if (currentObj.days && incoming.days) {
+        // Deep-merge todoStats.days: take the higher count per date
+        const mergedDays = Object.assign({}, currentObj.days);
+        Object.keys(incoming.days).forEach(function (date) {
+          const localCount = mergedDays[date] || 0;
+          const incomingCount = incoming.days[date] || 0;
+          mergedDays[date] = Math.max(localCount, incomingCount);
+        });
+        currentObj.days = mergedDays;
+      } else if (incoming.days) {
+        // One side has no days map: adopt the backup's as-is, the
+        // same adoption the generic object merge performed.
+        currentObj.days = incoming.days;
+      }
+      // Union completedIds per date so same-day dedupe recorded by
+      // either profile survives the import (issue #1143). The
+      // backup validator already rejects malformed maps; these
+      // guards only keep a bad local entry from poisoning the merge.
+      if (incoming.completedIds && typeof incoming.completedIds === 'object' && !Array.isArray(incoming.completedIds)) {
+        const localIdsRoot = currentObj.completedIds && typeof currentObj.completedIds === 'object' && !Array.isArray(currentObj.completedIds)
+          ? currentObj.completedIds
+          : {};
+        const mergedIds = Object.assign({}, localIdsRoot);
+        // Local storage is never validated, so drop non-string ids
+        // before unioning: a stray number or null would otherwise
+        // survive into the merged backup and fail
+        // isValidTodoCompletedIds when that backup is re-imported.
+        const keepStringIds = function (ids) {
+          const cleaned = [];
+          (Array.isArray(ids) ? ids : []).forEach(function (id) {
+            if (typeof id === 'string' && cleaned.indexOf(id) === -1) cleaned.push(id);
+          });
+          return cleaned;
+        };
+        Object.keys(mergedIds).forEach(function (date) {
+          if (!isValidISODate(date)) {
+            delete mergedIds[date];
+            return;
+          }
+          mergedIds[date] = keepStringIds(mergedIds[date]);
+        });
+        Object.keys(incoming.completedIds).forEach(function (date) {
+          const union = keepStringIds(mergedIds[date]);
+          keepStringIds(incoming.completedIds[date]).forEach(function (id) {
+            if (union.indexOf(id) === -1) union.push(id);
+          });
+          mergedIds[date] = union;
+        });
+        currentObj.completedIds = mergedIds;
+      }
+      // Fold in the remaining incoming fields (currentStreak,
+      // longestStreak, ...) the way the pomodoroStats branch does,
+      // so a backup's stats are not silently discarded (issue #1143).
+      Object.keys(incoming).forEach(function (k) {
+        if (k !== 'days' && k !== 'completedIds') currentObj[k] = incoming[k];
+      });
+      return currentObj;
+    };
+
+    const mergePomodoroStats = function (currentObj, incoming) {
+      const merged = Object.assign({}, currentObj);
+      if (currentObj.days || incoming.days) {
+        const mergedDays = Object.assign({}, currentObj.days || {});
+        const incDays = incoming.days || {};
+        Object.keys(incDays).forEach(function (date) {
+          const curVal = mergedDays[date];
+          const incVal = incDays[date];
+          const curN = typeof curVal === 'number' ? { sessions: curVal, minutes: 0 } : (curVal && typeof curVal === 'object' ? curVal : { sessions: 0, minutes: 0 });
+          const incN = typeof incVal === 'number' ? { sessions: incVal, minutes: 0 } : (incVal && typeof incVal === 'object' ? incVal : { sessions: 0, minutes: 0 });
+          const cs = typeof curN.sessions === 'number' && Number.isFinite(curN.sessions) ? curN.sessions : 0;
+          const cm = typeof curN.minutes === 'number' && Number.isFinite(curN.minutes) ? curN.minutes : 0;
+          const is = typeof incN.sessions === 'number' && Number.isFinite(incN.sessions) ? incN.sessions : 0;
+          const im = typeof incN.minutes === 'number' && Number.isFinite(incN.minutes) ? incN.minutes : 0;
+          mergedDays[date] = { sessions: Math.max(cs, is), minutes: Math.max(cm, im) };
+        });
+        merged.days = mergedDays;
+      }
+      if (incoming.byDateTodos || currentObj.byDateTodos) {
+        const mergedTodos = Object.assign({}, currentObj.byDateTodos || {});
+        const incTodos = incoming.byDateTodos || {};
+        Object.keys(incTodos).forEach(function (date) {
+          const curMap = mergedTodos[date] && typeof mergedTodos[date] === 'object' && !Array.isArray(mergedTodos[date]) ? Object.assign({}, mergedTodos[date]) : {};
+          const incMap = incTodos[date] && typeof incTodos[date] === 'object' && !Array.isArray(incTodos[date]) ? incTodos[date] : {};
+          Object.keys(incMap).forEach(function (tid) {
+            const cv = curMap[tid];
+            const iv = incMap[tid];
+            const cn = typeof cv === 'number' && Number.isFinite(cv) ? cv : 0;
+            const inn = typeof iv === 'number' && Number.isFinite(iv) ? iv : 0;
+            curMap[tid] = Math.max(cn, inn);
+          });
+          mergedTodos[date] = curMap;
+        });
+        merged.byDateTodos = mergedTodos;
+      }
+      if (incoming.days === undefined && currentObj.days !== undefined) merged.days = currentObj.days;
+      if (incoming.byDateTodos === undefined && currentObj.byDateTodos !== undefined) merged.byDateTodos = currentObj.byDateTodos;
+      Object.keys(incoming).forEach(function (k) {
+        if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
+      });
+      return merged;
+    };
+
+    const mergeGamesStats = function (currentObj, incoming) {
+      // Merge per game id so a backup with a lower best score
+      // cannot lower a local high score: keep the higher
+      // highScore and gamesPlayed per game, the same
+      // keep-the-higher pattern as todoStats and pomodoroStats.
+      const mergedStats = Object.assign({}, currentObj);
+      Object.keys(incoming).forEach(function (id) {
+        const localEntry = mergedStats[id];
+        const incEntry = incoming[id];
+        const localOk = localEntry && typeof localEntry === 'object' && !Array.isArray(localEntry);
+        const incOk = incEntry && typeof incEntry === 'object' && !Array.isArray(incEntry);
+        if (!localOk || !incOk) {
+          // Nothing comparable on one side: take a valid imported
+          // value as-is, matching the generic object merge. A
+          // malformed imported entry never erases a valid local one.
+          if (incOk) mergedStats[id] = incEntry;
+          return;
+        }
+        const mergedEntry = Object.assign({}, localEntry, incEntry);
+        ['highScore', 'gamesPlayed'].forEach(function (field) {
+          const localVal = localEntry[field];
+          const incVal = incEntry[field];
+          if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal > incVal)) {
+            mergedEntry[field] = localVal;
+          }
+        });
+        // Memory records bestMoves/bestTime with Math.min (lower is
+        // better), so a worse (higher) imported result must not
+        // replace a local best.
+        ['bestMoves', 'bestTime'].forEach(function (field) {
+          const localVal = localEntry[field];
+          const incVal = incEntry[field];
+          if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal < incVal)) {
+            mergedEntry[field] = localVal;
+          }
+        });
+        mergedStats[id] = mergedEntry;
+      });
+      return mergedStats;
+    };
+
+    // Shallow-merges an imported object onto the stored one, using the
+    // key-specific strategy when one exists.
+    const mergeImportedObject = function (key, current, incoming) {
+      const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
+      if (key === 'todoStats') return mergeTodoStats(currentObj, incoming);
+      if (key === 'pomodoroStats') return mergePomodoroStats(currentObj, incoming);
+      if (key === 'games_stats') return mergeGamesStats(currentObj, incoming);
+      return Object.assign(currentObj, incoming);
+    };
+
     // Writes the settings keys themselves. Runs only after the backup's
     // custom background media has been restored to IndexedDB, so an imported
     // `homepageBg` never references a `custom_*` id whose blob is missing.
@@ -1135,230 +1370,13 @@
             }
             const incoming = importedValue;
             if (Array.isArray(incoming)) {
-              if (key === 'todos' || key === 'notes' || key === 'customApps' ||
-                  key === 'appFolders' || key === 'ai_conversations') {
-                const result = mergeItemsById(current, incoming);
-                if (result.added > 0) {
-                  writeStorage(key, result.merged, pendingWrites);
-                  count++;
-                }
-              } else if (key === 'appOrder') {
-                // Merge appOrder: add new items not already present
-                const currentOrder = Array.isArray(current) ? current.slice() : [];
-                const orderSet = {};
-                currentOrder.forEach(function (id) { orderSet[id] = true; });
-                let addedOrder = 0;
-                incoming.forEach(function (id) {
-                  if (!orderSet[id]) {
-                    currentOrder.push(id);
-                    orderSet[id] = true;
-                    addedOrder++;
-                  }
-                });
-                if (addedOrder > 0) {
-                  writeStorage(key, currentOrder, pendingWrites);
-                  count++;
-                }
-              } else if (key === 'extraTimeZones') {
-                // Merge only zones the runtime accepts (any valid IANA id,
-                // #1199) and preserve the five-zone limit.
-                const maxTimeZones = window.MAX_TIMEZONES || 5;
-                const mergedZones = [];
-                const seenZones = Object.create(null);
-                const zonesToMerge = (Array.isArray(current) ? current : []).concat(incoming);
-                zonesToMerge.forEach(function (zoneId) {
-                  if (mergedZones.length >= maxTimeZones || typeof zoneId !== 'string' ||
-                      typeof window.isValidZoneId !== 'function' || !window.isValidZoneId(zoneId) ||
-                      seenZones[zoneId]) return;
-                  seenZones[zoneId] = true;
-                  mergedZones.push(zoneId);
-                });
-                writeStorage(key, mergedZones, pendingWrites);
-                count++;
-              } else if (key === 'games_recently_played') {
-                // Hub MRU is most-recent-first and capped at 20 by
-                // GameRegistry. Keep the imported ordering, then any
-                // local-only entries, truncated to the same cap.
-                const mruSeen = Object.create(null);
-                const mergedMru = [];
-                incoming.concat(Array.isArray(current) ? current : []).forEach(function (id) {
-                  // Skip non-string ids so a malformed local entry is never
-                  // written back; the backup's own MRU validator requires
-                  // strings, and a merged list with junk would fail re-import.
-                  if (mergedMru.length >= 20 || typeof id !== 'string' || mruSeen[id]) return;
-                  mruSeen[id] = true;
-                  mergedMru.push(id);
-                });
-                writeStorage(key, mergedMru, pendingWrites);
-                count++;
-              } else {
-                // Generic array merge (concatenate unique)
-                const existingArr = Array.isArray(current) ? current.slice() : [];
-                const seen = {};
-                existingArr.forEach(function (item) {
-                  const id = item && item.id ? item.id : JSON.stringify(item);
-                  seen[id] = true;
-                });
-                const merged = existingArr.slice();
-                incoming.forEach(function (item) {
-                  const id = item && item.id ? item.id : JSON.stringify(item);
-                  if (!seen[id]) {
-                    merged.push(item);
-                    seen[id] = true;
-                  }
-                });
-                writeStorage(key, merged, pendingWrites);
+              const mergedArr = mergeImportedArray(key, current, incoming);
+              if (mergedArr !== null) {
+                writeStorage(key, mergedArr, pendingWrites);
                 count++;
               }
             } else if (incoming && typeof incoming === 'object' && !Array.isArray(incoming)) {
-              // Object: shallow merge
-              const currentObj = (typeof current === 'object' && current !== null && !Array.isArray(current)) ? Object.assign({}, current) : {};
-              if (key === 'todoStats') {
-                // days, completedIds, and the scalar fields are merged
-                // independently: the backup validator permits a valid stats
-                // object without `days`, and requiring both `days` maps made
-                // the completedIds union unreachable, so the generic merge
-                // replaced the local map and dropped its ids (issue #1143).
-                if (currentObj.days && incoming.days) {
-                  // Deep-merge todoStats.days: take the higher count per date
-                  const mergedDays = Object.assign({}, currentObj.days);
-                  Object.keys(incoming.days).forEach(function (date) {
-                    const localCount = mergedDays[date] || 0;
-                    const incomingCount = incoming.days[date] || 0;
-                    mergedDays[date] = Math.max(localCount, incomingCount);
-                  });
-                  currentObj.days = mergedDays;
-                } else if (incoming.days) {
-                  // One side has no days map: adopt the backup's as-is, the
-                  // same adoption the generic object merge performed.
-                  currentObj.days = incoming.days;
-                }
-                // Union completedIds per date so same-day dedupe recorded by
-                // either profile survives the import (issue #1143). The
-                // backup validator already rejects malformed maps; these
-                // guards only keep a bad local entry from poisoning the merge.
-                if (incoming.completedIds && typeof incoming.completedIds === 'object' && !Array.isArray(incoming.completedIds)) {
-                  const localIdsRoot = currentObj.completedIds && typeof currentObj.completedIds === 'object' && !Array.isArray(currentObj.completedIds)
-                    ? currentObj.completedIds
-                    : {};
-                  const mergedIds = Object.assign({}, localIdsRoot);
-                  // Local storage is never validated, so drop non-string ids
-                  // before unioning: a stray number or null would otherwise
-                  // survive into the merged backup and fail
-                  // isValidTodoCompletedIds when that backup is re-imported.
-                  const keepStringIds = function (ids) {
-                    const cleaned = [];
-                    (Array.isArray(ids) ? ids : []).forEach(function (id) {
-                      if (typeof id === 'string' && cleaned.indexOf(id) === -1) cleaned.push(id);
-                    });
-                    return cleaned;
-                  };
-                  Object.keys(mergedIds).forEach(function (date) {
-                    if (!isValidISODate(date)) {
-                      delete mergedIds[date];
-                      return;
-                    }
-                    mergedIds[date] = keepStringIds(mergedIds[date]);
-                  });
-                  Object.keys(incoming.completedIds).forEach(function (date) {
-                    const union = keepStringIds(mergedIds[date]);
-                    keepStringIds(incoming.completedIds[date]).forEach(function (id) {
-                      if (union.indexOf(id) === -1) union.push(id);
-                    });
-                    mergedIds[date] = union;
-                  });
-                  currentObj.completedIds = mergedIds;
-                }
-                // Fold in the remaining incoming fields (currentStreak,
-                // longestStreak, ...) the way the pomodoroStats branch does,
-                // so a backup's stats are not silently discarded (issue #1143).
-                Object.keys(incoming).forEach(function (k) {
-                  if (k !== 'days' && k !== 'completedIds') currentObj[k] = incoming[k];
-                });
-                writeStorage(key, currentObj, pendingWrites);
-              } else if (key === 'pomodoroStats') {
-                const merged = Object.assign({}, currentObj);
-                if (currentObj.days || incoming.days) {
-                  const mergedDays = Object.assign({}, currentObj.days || {});
-                  const incDays = incoming.days || {};
-                  Object.keys(incDays).forEach(function (date) {
-                    const curVal = mergedDays[date];
-                    const incVal = incDays[date];
-                    const curN = typeof curVal === 'number' ? { sessions: curVal, minutes: 0 } : (curVal && typeof curVal === 'object' ? curVal : { sessions: 0, minutes: 0 });
-                    const incN = typeof incVal === 'number' ? { sessions: incVal, minutes: 0 } : (incVal && typeof incVal === 'object' ? incVal : { sessions: 0, minutes: 0 });
-                    const cs = typeof curN.sessions === 'number' && Number.isFinite(curN.sessions) ? curN.sessions : 0;
-                    const cm = typeof curN.minutes === 'number' && Number.isFinite(curN.minutes) ? curN.minutes : 0;
-                    const is = typeof incN.sessions === 'number' && Number.isFinite(incN.sessions) ? incN.sessions : 0;
-                    const im = typeof incN.minutes === 'number' && Number.isFinite(incN.minutes) ? incN.minutes : 0;
-                    mergedDays[date] = { sessions: Math.max(cs, is), minutes: Math.max(cm, im) };
-                  });
-                  merged.days = mergedDays;
-                }
-                if (incoming.byDateTodos || currentObj.byDateTodos) {
-                  const mergedTodos = Object.assign({}, currentObj.byDateTodos || {});
-                  const incTodos = incoming.byDateTodos || {};
-                  Object.keys(incTodos).forEach(function (date) {
-                    const curMap = mergedTodos[date] && typeof mergedTodos[date] === 'object' && !Array.isArray(mergedTodos[date]) ? Object.assign({}, mergedTodos[date]) : {};
-                    const incMap = incTodos[date] && typeof incTodos[date] === 'object' && !Array.isArray(incTodos[date]) ? incTodos[date] : {};
-                    Object.keys(incMap).forEach(function (tid) {
-                      const cv = curMap[tid];
-                      const iv = incMap[tid];
-                      const cn = typeof cv === 'number' && Number.isFinite(cv) ? cv : 0;
-                      const inn = typeof iv === 'number' && Number.isFinite(iv) ? iv : 0;
-                      curMap[tid] = Math.max(cn, inn);
-                    });
-                    mergedTodos[date] = curMap;
-                  });
-                  merged.byDateTodos = mergedTodos;
-                }
-                if (incoming.days === undefined && currentObj.days !== undefined) merged.days = currentObj.days;
-                if (incoming.byDateTodos === undefined && currentObj.byDateTodos !== undefined) merged.byDateTodos = currentObj.byDateTodos;
-                Object.keys(incoming).forEach(function (k) {
-                  if (k !== 'days' && k !== 'byDateTodos') merged[k] = incoming[k];
-                });
-                writeStorage(key, merged, pendingWrites);
-              } else if (key === 'games_stats') {
-                // Merge per game id so a backup with a lower best score
-                // cannot lower a local high score: keep the higher
-                // highScore and gamesPlayed per game, the same
-                // keep-the-higher pattern as todoStats and pomodoroStats.
-                const mergedStats = Object.assign({}, currentObj);
-                Object.keys(incoming).forEach(function (id) {
-                  const localEntry = mergedStats[id];
-                  const incEntry = incoming[id];
-                  const localOk = localEntry && typeof localEntry === 'object' && !Array.isArray(localEntry);
-                  const incOk = incEntry && typeof incEntry === 'object' && !Array.isArray(incEntry);
-                  if (!localOk || !incOk) {
-                    // Nothing comparable on one side: take a valid imported
-                    // value as-is, matching the generic object merge. A
-                    // malformed imported entry never erases a valid local one.
-                    if (incOk) mergedStats[id] = incEntry;
-                    return;
-                  }
-                  const mergedEntry = Object.assign({}, localEntry, incEntry);
-                  ['highScore', 'gamesPlayed'].forEach(function (field) {
-                    const localVal = localEntry[field];
-                    const incVal = incEntry[field];
-                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal > incVal)) {
-                      mergedEntry[field] = localVal;
-                    }
-                  });
-                  // Memory records bestMoves/bestTime with Math.min (lower is
-                  // better), so a worse (higher) imported result must not
-                  // replace a local best.
-                  ['bestMoves', 'bestTime'].forEach(function (field) {
-                    const localVal = localEntry[field];
-                    const incVal = incEntry[field];
-                    if (Number.isFinite(localVal) && (!Number.isFinite(incVal) || localVal < incVal)) {
-                      mergedEntry[field] = localVal;
-                    }
-                  });
-                  mergedStats[id] = mergedEntry;
-                });
-                writeStorage(key, mergedStats, pendingWrites);
-              } else {
-                writeStorage(key, Object.assign(currentObj, incoming), pendingWrites);
-              }
+              writeStorage(key, mergeImportedObject(key, current, incoming), pendingWrites);
               count++;
             } else {
               // Scalar: overwrite
