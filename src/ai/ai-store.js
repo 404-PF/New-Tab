@@ -1261,42 +1261,22 @@ const AIStore = (function() {
     return !!current && semanticCacheText(current) === text;
   }
 
-  function cacheConversationVector(conversation, text, modelId, vector, cache) {
-    const noteId = SEMANTIC_KEY_PREFIX + conversation.id;
-    // Skip obsolete revisions before touching rows, so a late write-back
-    // cannot erase the vector of a newer revision.
-    if (!isConversationRevisionCurrent(conversation.id, text)) return;
-    // Drop rows for earlier revisions first, so each conversation keeps one vector.
-    cache.deleteCachedVectorsForNote(noteId).then(function () {
-      if (!isConversationRevisionCurrent(conversation.id, text)) return null;
-      return cache.putCachedVector(noteId, text, modelId, vector);
-    }).catch(function () { /* cache is best-effort */ });
-  }
-
   function loadConversationVectors(conversations, modelId, cache, service) {
     const texts = conversations.map(semanticCacheText);
-    return Promise.all(conversations.map((conversation, i) =>
-      cache.getCachedVector(SEMANTIC_KEY_PREFIX + conversation.id, texts[i], modelId).catch(() => null)
-    )).then(function (cached) {
-      const vectors = new Map();
-      const misses = [];
-      cached.forEach(function (record, i) {
-        if (record && Array.isArray(record.vector) && record.vector.length > 0) {
-          vectors.set(conversations[i].id, record.vector);
-        } else {
-          misses.push(i);
-        }
+    const items = conversations.map((conversation, i) => ({
+      key: SEMANTIC_KEY_PREFIX + conversation.id,
+      cacheText: texts[i],
+      embedText: conversationToEmbeddingText(conversation),
+      // Skip obsolete revisions so a late write-back cannot erase the vector of a newer one.
+      isCurrent: () => isConversationRevisionCurrent(conversation.id, texts[i]),
+      replaceStale: true
+    }));
+    return window.HybridRanker.loadItemVectors(items, { cache, service, modelId }).then(function (vectors) {
+      const byId = new Map();
+      conversations.forEach((conversation, i) => {
+        if (vectors[i]) byId.set(conversation.id, vectors[i]);
       });
-      if (misses.length === 0) return vectors;
-      return service.embedTexts(misses.map(i => conversationToEmbeddingText(conversations[i]))).then(function (embedded) {
-        misses.forEach(function (convIndex, j) {
-          const vector = Array.isArray(embedded) && Array.isArray(embedded[j]) ? embedded[j] : null;
-          if (!vector || vector.length === 0) return;
-          vectors.set(conversations[convIndex].id, vector);
-          cacheConversationVector(conversations[convIndex], texts[convIndex], modelId, vector, cache);
-        });
-        return vectors;
-      }).catch(() => vectors);
+      return byId;
     });
   }
 
