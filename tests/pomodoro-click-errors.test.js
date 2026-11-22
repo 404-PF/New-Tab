@@ -25,6 +25,7 @@ beforeAll(() => {
     constructor() {}
     destroy() {}
   };
+  injectScript('src/core/utils.js');
   injectScript('src/features/pomodoro.js');
 });
 

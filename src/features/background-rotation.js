@@ -70,21 +70,14 @@
     }
   }
 
+  // Keep an empty array distinct from "never configured" (null): an
+  // explicit empty selection means rotate nothing, not rotate everything.
   function loadStoredSelection(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      // Keep an empty array distinct from "never configured" (null): an
-      // explicit empty selection means rotate nothing, not rotate everything.
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-      return null;
-    } catch (err) {
-      console.warn('loadSelection parse error:', err);
-      return null;
-    }
+    return window.readStoredJson(key, {
+      fallback: () => null,
+      isValid: Array.isArray,
+      warnLabel: 'loadSelection parse error:'
+    });
   }
 
   function loadSelection() {

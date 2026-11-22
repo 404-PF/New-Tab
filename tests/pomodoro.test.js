@@ -23,6 +23,7 @@ beforeAll(() => {
     destroy() {}
   };
 
+  injectScript('src/core/utils.js');
   injectScript('src/features/pomodoro.js');
 });
 
@@ -233,6 +234,7 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
       url: 'https://new-tab.test/'
     });
     const { window } = dom;
+    injectScript('src/core/utils.js', dom.getInternalVMContext());
     const header = window.document.createElement('div');
     header.className = 'todo-header';
     window.document.body.appendChild(header);

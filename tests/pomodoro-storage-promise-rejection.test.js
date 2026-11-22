@@ -76,6 +76,7 @@ function createHarness({ mode }) {
   };
 
   dom.window.translate = (key, fallback, args) => dom.window.i18n.t(key, args);
+  injectScript('src/core/utils.js', dom.getInternalVMContext());
   injectScript('src/features/pomodoro.js', dom.getInternalVMContext());
 
   // The timer is disabled by default, so enable it before any start attempt.

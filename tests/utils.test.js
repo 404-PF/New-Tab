@@ -1,4 +1,4 @@
-/* global validateIconUrl */
+/* global validateIconUrl, readStoredJson */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -721,5 +721,28 @@ describe('icon URL validation', () => {
     expect(validateIconUrl('data:image/png;base64,AAA')).toBe('data:image/png;base64,AAA');
     expect(validateIconUrl('javascript:alert(1)')).toBeNull();
     expect(validateIconUrl('data:text/html,alert(1)')).toBeNull();
+  });
+});
+
+describe('readStoredJson', () => {
+  it('returns the parsed value when it passes isValid', () => {
+    localStorage.setItem('json-key', '[1,2]');
+    expect(readStoredJson('json-key', { fallback: () => null, isValid: Array.isArray })).toEqual([1, 2]);
+  });
+
+  it('returns a fresh fallback for missing, invalid, and unparseable values', () => {
+    const fallback = () => ({ a: 1 });
+    expect(readStoredJson('missing-key', { fallback })).toEqual({ a: 1 });
+
+    localStorage.setItem('json-key', '"text"');
+    const invalid = readStoredJson('json-key', { fallback, isValid: Array.isArray });
+    expect(invalid).toEqual({ a: 1 });
+    expect(invalid).not.toBe(readStoredJson('json-key', { fallback, isValid: Array.isArray }));
+
+    localStorage.setItem('json-key', '{bad');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(readStoredJson('json-key', { fallback: () => [], warnLabel: 'bad json' })).toEqual([]);
+    expect(warn).toHaveBeenCalledWith('bad json', expect.any(Error));
+    warn.mockRestore();
   });
 });

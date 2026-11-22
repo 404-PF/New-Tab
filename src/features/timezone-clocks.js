@@ -46,23 +46,19 @@
   ];
 
   function loadTimeZones() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      const seen = {};
-      return parsed.filter(function (tz) {
-        if (typeof tz !== 'string' || tz.length === 0 || !isValidZoneId(tz) || seen[tz]) {
-          return false;
-        }
-        seen[tz] = true;
-        return true;
-      }).slice(0, MAX_TIMEZONES);
-    } catch (_e) {
-      console.warn('Failed to load extra time zones');
-      return [];
-    }
+    const parsed = window.readStoredJson(STORAGE_KEY, {
+      fallback: () => [],
+      isValid: Array.isArray,
+      warnLabel: 'Failed to load extra time zones'
+    });
+    const seen = {};
+    return parsed.filter(function (tz) {
+      if (typeof tz !== 'string' || tz.length === 0 || !isValidZoneId(tz) || seen[tz]) {
+        return false;
+      }
+      seen[tz] = true;
+      return true;
+    }).slice(0, MAX_TIMEZONES);
   }
 
   // True only while saveTimeZones is inside the bridge's setItem call. A
