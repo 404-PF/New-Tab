@@ -89,54 +89,16 @@ function writeJson(key, value) {
   }
 }
 
-// Fallback copy of utils.js's normalizeCustomAppUrl. It only runs when this
-// file is injected in isolation without utils.js (some tests do that);
-// bootstrap.js loads utils.js first, but Promise.allSettled still runs this file if utils.js fails to load.
-// Keep in sync with src/core/utils.js normalizeCustomAppUrl.
-function normalizeCustomAppUrlFallback(url) {
-  if (typeof url !== 'string') return null;
-
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-  if (trimmed === '#' || trimmed.startsWith('#')) return trimmed;
-  if (trimmed.startsWith('//') || trimmed.startsWith('\\')) return null;
-  if (trimmed.startsWith('/\\')) return null;
-  if (trimmed.startsWith('/')) return trimmed;
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    try {
-      const parsed = new URL(trimmed);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmed : null;
-    } catch {
-      return null;
-    }
-  }
-
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
-
-  try {
-    const parsed = new URL('https://' + trimmed);
-    if (!parsed.hostname) return null;
-    if (parsed.hostname.includes(' ') || parsed.hostname.includes('/')) return null;
-    if (
-      !parsed.hostname.includes('.') &&
-      !/^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) &&
-      !/^localhost$/i.test(parsed.hostname) &&
-      !/^[a-zA-Z0-9-]+:\d+/.test(trimmed)
-    ) {
-      return null;
-    }
-    return 'https://' + trimmed;
-  } catch {
-    return null;
-  }
+// Relies on utils.js being loaded first (bootstrap.js guarantees this).
+function isCustomAppUrlNormalizerAvailable() {
+  return typeof window.normalizeCustomAppUrl === 'function';
 }
 
+// Returns null for both invalid URLs and an unavailable normalizer; callers
+// that must not mistake the latter for the former check availability first.
 function normalizeCustomAppUrlLocal(url) {
-  if (typeof window.normalizeCustomAppUrl === 'function') {
-    return window.normalizeCustomAppUrl(url);
-  }
-  return normalizeCustomAppUrlFallback(url);
+  if (!isCustomAppUrlNormalizerAvailable()) return null;
+  return window.normalizeCustomAppUrl(url);
 }
 
 window.__normalizeAppUrlForCheck = function (trimmed) {
@@ -150,6 +112,10 @@ window.__normalizeAppUrlForCheck = function (trimmed) {
  * @returns {boolean} True when one or more records were normalized or sanitized.
  */
 function migrateCustomAppUrls(apps) {
+  // Without utils.js every URL would look invalid and be replaced with '#'
+  // and persisted, so leave stored records untouched until the helper loads.
+  if (!isCustomAppUrlNormalizerAvailable()) return false;
+
   let mutated = false;
   for (const app of apps) {
     if (!app || typeof app !== 'object' || !Object.prototype.hasOwnProperty.call(app, 'url')) continue;
