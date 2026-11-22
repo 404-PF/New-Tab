@@ -64,9 +64,7 @@ function setFocusMode(enabled) {
   // the value back, so this restores the checkbox/indicator to the persisted
   // state instead of leaving the UI desynced.
   applyFocusMode();
-  if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
-  }
+  if (!persisted) window.reportFeatureToggleSaveError();
 }
 
 function toggleFocusMode() {

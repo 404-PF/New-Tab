@@ -483,9 +483,7 @@ function resetAppGridSetting(key, done) {
 
 // Shared failure feedback for a rejected Settings > Apps write (#1142).
 function reportAppGridSaveError() {
-  if (typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
-  }
+  window.reportFeatureToggleSaveError();
 }
 
 // Load and apply open in new tab setting

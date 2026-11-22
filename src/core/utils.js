@@ -923,6 +923,15 @@
     return window.i18n ? window.i18n.t(key, args) : fallback;
   }
 
+  // toast.js may fail to load, so the reporter is resolved through window.
+  // Returns false when it is unavailable so callers can fall back to a log.
+  function reportFeatureToggleSaveError() {
+    if (typeof window.showFeatureToggleSaveError !== 'function') return false;
+    window.showFeatureToggleSaveError();
+    return true;
+  }
+
+  window.reportFeatureToggleSaveError = reportFeatureToggleSaveError;
   window.translateValidationMessage = translateValidationMessage;
   window.translate = translate;
   window.persistSetting = persistSetting;

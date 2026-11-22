@@ -1586,9 +1586,7 @@ function applyLanguage(lang) {
     // persisted) falls back to the default 'en'.
     const stored = localStorage.getItem('language') || 'en';
     if (stored !== lang) {
-      if (typeof window.showFeatureToggleSaveError === 'function') {
-        window.showFeatureToggleSaveError();
-      }
+      window.reportFeatureToggleSaveError();
       lang = stored;
     }
     // A rejected redundant re-save of the already-persisted value (the

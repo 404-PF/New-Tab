@@ -51,9 +51,7 @@
 
   // Guard the shared helper: toast.js may fail to load (#969, #1081).
   function reportSettingsSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    window.reportFeatureToggleSaveError();
   }
 
   // ===================== Storage =====================

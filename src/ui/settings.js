@@ -1762,14 +1762,6 @@ function applyEyeCareReminderSettings() {
   if (browserNotificationOption) browserNotificationOption.style.display = state.enabled ? '' : 'none';
 }
 
-// Guarded reporter: toast.js may fail to load, so resolve through window
-// instead of assuming the helper exists (#969 review thread).
-function reportFeatureToggleSaveError() {
-  if (typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
-  }
-}
-
 const eyeCareEnabledSetting = document.getElementById('eye-care-enabled-setting');
 if (eyeCareEnabledSetting) {
   eyeCareEnabledSetting.addEventListener('change', function () {
@@ -3407,9 +3399,7 @@ function initAboutSection() {
           // The bridge rejected the write: snap the checkbox back to the
           // persisted value and surface the shared save error (#1089).
           this.checked = updateChecker.isEnabled();
-          if (typeof window.showFeatureToggleSaveError === 'function') {
-            window.showFeatureToggleSaveError();
-          }
+          window.reportFeatureToggleSaveError();
         }
         // Refresh the about section to show updated status
         setTimeout(() => initAboutSection(), 100);
