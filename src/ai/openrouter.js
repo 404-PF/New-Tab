@@ -24,6 +24,8 @@ const OpenRouterAPI = (function() {
     maxTokens: 4096,
     maxRetries: 2,
     retryDelay: 1000,
+    // Longest server-requested Retry-After we will wait for; longer values fail fast.
+    maxRetryAfterSeconds: 30,
     requestTimeout: 15000,
     maxStreamDuration: 300000
   };
@@ -572,10 +574,13 @@ const OpenRouterAPI = (function() {
           const errorInfo = await handleError(response, signal);
           const retryableStatus = response.status === 429 || response.status >= 500;
 
-          if (retryableStatus && attempt < CONFIG.maxRetries) {
+          const serverWaitSeconds = errorInfo.retryAfterSeconds > 0 ? errorInfo.retryAfterSeconds : 0;
+          const serverWaitAcceptable = serverWaitSeconds <= CONFIG.maxRetryAfterSeconds;
+
+          if (retryableStatus && attempt < CONFIG.maxRetries && serverWaitAcceptable) {
             retryableFailure = true;
             // Honour a longer server-requested Retry-After for the wait below.
-            retryAfterMs = errorInfo.retryAfterSeconds > 0 ? errorInfo.retryAfterSeconds * 1000 : 0;
+            retryAfterMs = serverWaitSeconds * 1000;
           } else {
             return { success: false, error: errorInfo.message, code: errorInfo.code };
           }
