@@ -188,7 +188,7 @@
       const all = appCache.getAllCachedVectors(modelId);
       if (!all || typeof all.then !== 'function') return;
       all.then(function (records) {
-        if (expectedGeneration !== undefined && expectedGeneration !== _pruneGeneration) return;
+        if (typeof expectedGeneration === 'number' && expectedGeneration !== _pruneGeneration) return;
         pruneStaleRecords(records, liveTextById, appCache);
       }).catch(function () { /* best-effort */ });
     } catch { /* best-effort */ }

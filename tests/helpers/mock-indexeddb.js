@@ -81,7 +81,7 @@ export function makeMockIndexedDB() {
           if (typeof reportError === 'function') reportError(handlerError);
           else if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'
             && typeof ErrorEvent !== 'undefined') {
-            window.dispatchEvent(new ErrorEvent('error', { error: handlerError, message: handlerError && handlerError.message }));
+            window.dispatchEvent(new ErrorEvent('error', { error: handlerError, message: handlerError.message ?? String(handlerError) }));
           } else throw handlerError;
         } catch { /* reporting must never trigger request.onerror */ }
       }
