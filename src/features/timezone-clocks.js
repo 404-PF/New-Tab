@@ -97,9 +97,7 @@
   // Shared failure feedback: toast.js may fail to load, so resolve the
   // reporter through window instead of assuming the helper exists.
   function reportSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    window.reportFeatureToggleSaveError();
   }
 
   function getZoneInfo(zoneId) {

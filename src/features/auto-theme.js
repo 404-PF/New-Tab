@@ -25,9 +25,7 @@
   }
 
   function reportSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    window.reportFeatureToggleSaveError();
   }
 
   // Snap the toggle, time inputs, radios, and times visibility back to the

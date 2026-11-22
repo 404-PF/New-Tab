@@ -132,9 +132,7 @@
   // ===================== Settings persistence =====================
 
   function reportToggleSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    window.reportFeatureToggleSaveError();
   }
 
   // ===================== Event listeners =====================

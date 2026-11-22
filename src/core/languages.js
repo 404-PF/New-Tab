@@ -1586,8 +1586,8 @@ function applyLanguage(lang) {
     // persisted) falls back to the default 'en'.
     const stored = localStorage.getItem('language') || 'en';
     if (stored !== lang) {
-      if (typeof window.showFeatureToggleSaveError === 'function') {
-        window.showFeatureToggleSaveError();
+      if (typeof window.reportFeatureToggleSaveError === 'function') {
+        window.reportFeatureToggleSaveError();
       }
       lang = stored;
     }

@@ -436,9 +436,7 @@
   }
 
   function reportToggleSaveError() {
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    } else {
+    if (!window.reportFeatureToggleSaveError()) {
       console.warn('Failed to save a feature setting. Your last action was not saved.');
     }
   }

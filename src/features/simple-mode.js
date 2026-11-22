@@ -36,9 +36,7 @@ function initSimpleMode() {
     // Re-apply either way: after a rejected write it restores the checkbox to
     // the rolled-back value instead of leaving it desynced.
     applySimpleMode();
-    if (!persisted && typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    if (!persisted) window.reportFeatureToggleSaveError();
   });
   
   applySimpleMode();

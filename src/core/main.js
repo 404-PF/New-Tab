@@ -571,9 +571,7 @@ function saveActiveProvider(providerId) {
     // Keep the in-memory selection on the value that actually persisted so
     // the bar cannot silently snap back on reload (#1089).
     activeProviderId = loadActiveProvider();
-    if (typeof window.showFeatureToggleSaveError === 'function') {
-      window.showFeatureToggleSaveError();
-    }
+    window.reportFeatureToggleSaveError();
     return false;
   }
   activeProviderId = providerId;
@@ -1545,9 +1543,7 @@ function initSearchEngine() {
       }
       if (!persisted) {
         this.checked = isSearchHistoryEnabled();
-        if (typeof window.showFeatureToggleSaveError === 'function') {
-          window.showFeatureToggleSaveError();
-        }
+        window.reportFeatureToggleSaveError();
         return;
       }
       if (this.checked) {

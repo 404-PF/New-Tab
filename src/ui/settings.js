@@ -166,7 +166,7 @@ function bindBgOverlayInput(input, key) {
     const persisted = window.persistSetting(key, input.value);
     applyBgOverlaySettings();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -897,7 +897,7 @@ document.addEventListener('click', function (e) {
     const persisted = window.persistSetting('homepageBg', bgId);
     applyBg();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   }
 });
@@ -977,7 +977,7 @@ if (clockColorPicker) {
     const persisted = window.persistSetting('clockColor', this.value);
     applyClockStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -986,7 +986,7 @@ if (clockFontPicker) {
     const persisted = window.persistSetting('clockFont', this.value);
     applyClockStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1000,7 +1000,7 @@ if (clockSizeGroup) {
     const persisted = window.persistSetting('clockSize', size);
     applyClockStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1033,7 +1033,7 @@ if (clockFormatPicker) {
     if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1123,7 +1123,7 @@ if (dateColorPicker) {
     const persisted = window.persistSetting('dateColor', this.value);
     applyDateStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1132,7 +1132,7 @@ if (dateFontPicker) {
     const persisted = window.persistSetting('dateFont', this.value);
     applyDateStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1146,7 +1146,7 @@ if (dateSizeGroup) {
     const persisted = window.persistSetting('dateSize', size);
     applyDateStyle();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1179,7 +1179,7 @@ if (dateFormatPicker) {
     if (window.refreshClockSettings) window.refreshClockSettings();
     if (window.updateTime) updateTime();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1358,7 +1358,7 @@ function initTimezoneSettings() {
     const added = window.addTimeZone ? window.addTimeZone(zoneId) : true;
     renderCurrentTimezones();
     if (added === false) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 
@@ -1370,7 +1370,7 @@ function initTimezoneSettings() {
       const removed = window.removeTimeZone ? window.removeTimeZone(zoneId) : true;
       renderCurrentTimezones();
       if (removed === false && wasSaved) {
-        reportFeatureToggleSaveError();
+        window.reportFeatureToggleSaveError();
       }
     }
   });
@@ -1541,7 +1541,7 @@ function commitTheme(selectedTheme) {
   // 'system' is resolved so listeners always receive a concrete theme.
   window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolveTheme(loadTheme()) } }));
   if (!persisted) {
-    reportFeatureToggleSaveError();
+    window.reportFeatureToggleSaveError();
   }
   return persisted;
 }
@@ -1552,7 +1552,7 @@ if (liquidGlassSetting) {
     const persisted = window.persistSetting('liquidGlassEnabled', this.checked);
     applyLiquidGlassEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1589,7 +1589,7 @@ document.addEventListener('change', function (e) {
     const persisted = window.persistSetting(VIDEO_AUTOPLAY_KEY, videoAutoplaySetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     const videoEl = document.getElementById('bg-video');
@@ -1638,7 +1638,7 @@ document.addEventListener('change', function (e) {
     const persisted = window.persistSetting(VIDEO_MUTED_KEY, videoMutedSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     // Apply mute state immediately to active video
@@ -1650,7 +1650,7 @@ document.addEventListener('change', function (e) {
     const persisted = window.persistSetting(VIDEO_PAUSE_HIDDEN_KEY, videoPauseHiddenSetting.checked);
     if (!persisted) {
       applyVideoPlaybackSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     // No immediate action needed — takes effect on next visibility change
@@ -1677,7 +1677,7 @@ if (pomodoroStatsEnabledSetting) {
     const persisted = window.persistSetting('pomodoroStatsEnabled', this.checked);
     applyPomodoroStatsEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -1762,14 +1762,6 @@ function applyEyeCareReminderSettings() {
   if (browserNotificationOption) browserNotificationOption.style.display = state.enabled ? '' : 'none';
 }
 
-// Guarded reporter: toast.js may fail to load, so resolve through window
-// instead of assuming the helper exists (#969 review thread).
-function reportFeatureToggleSaveError() {
-  if (typeof window.showFeatureToggleSaveError === 'function') {
-    window.showFeatureToggleSaveError();
-  }
-}
-
 const eyeCareEnabledSetting = document.getElementById('eye-care-enabled-setting');
 if (eyeCareEnabledSetting) {
   eyeCareEnabledSetting.addEventListener('change', function () {
@@ -1788,7 +1780,7 @@ if (eyeCareEnabledSetting) {
     // the rolled-back state instead of leaving them desynced.
     applyEyeCareReminderSettings();
     if (saved === false) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1805,7 +1797,7 @@ if (eyeCareIntervalSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1822,7 +1814,7 @@ if (eyeCareBrowserNotificationSetting) {
     });
     if (saved === false) {
       applyEyeCareReminderSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     if (typeof window.refreshEyeCareReminder === 'function') {
@@ -1851,7 +1843,7 @@ if (notesEnabledSetting) {
     const persisted = window.persistSetting('notesEnabled', this.checked);
     applyNotesEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -2092,7 +2084,7 @@ if (mottoEnabledSetting) {
     const persisted = window.persistSetting('mottoEnabled', this.checked);
     applyMottoEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -2165,7 +2157,7 @@ function startSemanticDownload(requestPermission) {
       clearSemanticDownloadState();
       applyNotesSemanticEnabled();
       if (!persisted) {
-        reportFeatureToggleSaveError();
+        window.reportFeatureToggleSaveError();
       }
       if (!passive && typeof window.showToast === 'function') {
         window.showToast(
@@ -2384,7 +2376,7 @@ function bindSemanticCheckbox(els) {
     const persisted = persistSemanticEnabled(this.checked);
     renderNotesSemanticSettings();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     if (this.checked) {
@@ -2426,7 +2418,7 @@ function bindSemanticCancel(els) {
     } catch { clearSemanticDownloadState(); }
     const persisted = persistSemanticEnabled(false);
     applyNotesSemanticEnabled();
-    if (!persisted) reportFeatureToggleSaveError();
+    if (!persisted) window.reportFeatureToggleSaveError();
   });
 }
 
@@ -2445,7 +2437,7 @@ function bindSemanticDelete(els) {
       if (ok) clearSemanticDownloadState();
       const persisted = persistSemanticEnabled(ok ? false : loadNotesSemanticEnabled());
       applyNotesSemanticEnabled();
-      if (!persisted) reportFeatureToggleSaveError();
+      if (!persisted) window.reportFeatureToggleSaveError();
     };
     const runDelete = function () {
       try {
@@ -2532,7 +2524,7 @@ if (searchBoxEnabledSetting) {
     const persisted = window.persistSetting('searchBoxEnabled', this.checked);
     applySearchBoxEnabled();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -2727,7 +2719,7 @@ function initPomodoroEnabledSetting(enabledCheckbox, durationSettings) {
       : true;
     if (!persisted) {
       resyncPomodoroSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     } else {
       updatePomodoroDurationSettingsVisibility(durationSettings, this.checked);
     }
@@ -2748,7 +2740,7 @@ function initPomodoroDurationInput(input, setting, min, max, defaultValue) {
       : true;
     if (!persisted) {
       resyncPomodoroSettings();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -3111,7 +3103,7 @@ if (gamesEnabledSetting) {
     const persisted = window.persistSetting('games_enabled', enabled);
     if (!persisted) {
       applyGamesEnabled();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     if (!enabled && typeof localStorage.whenWriteSettled === 'function') {
@@ -3197,7 +3189,7 @@ if (gamesKeymapSetting) {
     }
     if (!persisted) {
       applyGamesKeymap();
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
       return;
     }
     // Success: the write path above already applied the live map (helpers)
@@ -3235,7 +3227,7 @@ if (gamesFpsSetting) {
     const persisted = window.persistSetting('games_fps_enabled', this.checked);
     applyGamesFps();
     if (!persisted) {
-      reportFeatureToggleSaveError();
+      window.reportFeatureToggleSaveError();
     }
   });
 }
@@ -3450,9 +3442,7 @@ function initAboutSection() {
           // The bridge rejected the write: snap the checkbox back to the
           // persisted value and surface the shared save error (#1089).
           this.checked = updateChecker.isEnabled();
-          if (typeof window.showFeatureToggleSaveError === 'function') {
-            window.showFeatureToggleSaveError();
-          }
+          window.reportFeatureToggleSaveError();
         }
         // Refresh the about section to show updated status
         setTimeout(() => initAboutSection(), 100);
