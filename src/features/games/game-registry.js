@@ -73,7 +73,7 @@
         return pending;
       }
       const persisted = localStorage.setItem(backupKey, raw);
-      return Promise.resolve(persisted !== false);
+      return Promise.resolve(persisted !== false); // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
     }
 
     async function preserveCorrupt(raw) {
