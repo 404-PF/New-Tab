@@ -562,7 +562,7 @@ function saveActiveProvider(providerId) {
     // unavailable.
     persisted = typeof window.persistFeatureToggle === 'function'
       ? window.persistFeatureToggle(SEARCH_PROVIDER_STORAGE_KEY, providerId)
-      : isWriteAccepted(localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId));
+      : window.isStorageWriteAccepted(localStorage.setItem(SEARCH_PROVIDER_STORAGE_KEY, providerId));
   } catch (e) {
     console.warn('Failed to save search provider:', e);
     persisted = false;
@@ -638,16 +638,9 @@ function loadCustomProviders() {
   }
 }
 
-// The storage bridge's setItem returns false when it rejects a write; the
-// native Storage API returns undefined. Treat only an explicit false as
-// failure.
-function isWriteAccepted(result) {
-  return result !== false;
-}
-
 function saveCustomProviders(providers) {
   try {
-    return isWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers)));
+    return window.isStorageWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, JSON.stringify(providers)));
   } catch (e) {
     console.warn('Failed to save custom providers:', e);
     return false;
@@ -659,13 +652,13 @@ function saveCustomProvidersAsync(providers) {
   try {
     if (typeof localStorage.setItemAsync === 'function') {
       return localStorage.setItemAsync(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)
-        .then(isWriteAccepted)
+        .then(window.isStorageWriteAccepted)
         .catch(function (e) {
           console.warn('Failed to save custom providers:', e);
           return false;
         });
     }
-    return Promise.resolve(isWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)));
+    return Promise.resolve(window.isStorageWriteAccepted(localStorage.setItem(CUSTOM_PROVIDERS_STORAGE_KEY, serialized)));
   } catch (e) {
     console.warn('Failed to save custom providers:', e);
     return Promise.resolve(false);
@@ -1545,7 +1538,7 @@ function initSearchEngine() {
         // from storage (#1089).
         persisted = typeof window.persistFeatureToggle === 'function'
           ? window.persistFeatureToggle(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked)
-          : isWriteAccepted(localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked));
+          : window.isStorageWriteAccepted(localStorage.setItem(SEARCH_HISTORY_ENABLED_STORAGE_KEY, this.checked));
       } catch (e) {
         console.warn('Failed to save search history enabled setting:', e);
         persisted = false;

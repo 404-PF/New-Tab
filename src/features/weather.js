@@ -33,6 +33,12 @@
   let isRefreshing = false;
   let widgetHasBeenShown = false;
   let pendingRefresh = false;
+  // Coordinates of the last cache write. Kept in memory only so precise
+  // location is never persisted to localStorage (CodeQL: clear-text storage).
+  let lastCacheCoords = null;
+  // Identifies the most recently started cache write so an older write that
+  // resolves late cannot overwrite coordinates from a newer one.
+  let cacheWriteGeneration = 0;
 
   // ===================== Utility Functions =====================
 
@@ -179,17 +185,25 @@
       && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
   }
 
+  // Persisted caches carry no coordinates, so auto-location matching only works
+  // for a cache written during this page session.
+  function getCacheCoords(cache) {
+    if (!cache || !lastCacheCoords || lastCacheCoords.timestamp !== cache.timestamp) return null;
+    return lastCacheCoords;
+  }
+
   function isCacheMatchingSettings(cache, currentLocation = null) {
     if (!cache) return false;
     const locationMode = WeatherStorage.loadLocationMode();
     const manualCity = WeatherStorage.loadManualCity();
     if (cache.locationMode !== locationMode) return false;
     if (locationMode === 'auto') {
-      if (!isValidCoordinates(cache.lat, cache.lon)) return false;
+      const coords = getCacheCoords(cache);
+      if (!coords || !isValidCoordinates(coords.lat, coords.lon)) return false;
       if (!currentLocation || !isValidCoordinates(currentLocation.lat, currentLocation.lon)) {
         return false;
       }
-      return getDistanceKm(cache.lat, cache.lon, currentLocation.lat, currentLocation.lon)
+      return getDistanceKm(coords.lat, coords.lon, currentLocation.lat, currentLocation.lon)
         <= CACHE_LOCATION_TOLERANCE_KM;
     }
     if (locationMode === 'manual' && cache.manualCity !== manualCity.trim()) return false;
@@ -413,6 +427,14 @@
     return `${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew}`;
   }
 
+  // Auto-location labels are coordinates and are not persisted, so they are
+  // rebuilt from the in-session coordinates when a cache entry is rendered.
+  function getCacheLocationName(cache) {
+    if (cache.locationName) return cache.locationName;
+    const coords = getCacheCoords(cache);
+    return coords ? formatCoords(coords.lat, coords.lon) : null;
+  }
+
   // Fire-and-forget refresh for UI event handlers, which cannot await. Network and
   // storage errors are caught inside refreshWeather; this logs anything that escapes it.
   function refreshWeatherSafely(force = false) {
@@ -485,8 +507,8 @@
           }
         }
         if (isCacheMatchingSettings(cache, location)) {
-          renderWeather(cache.data, cache.locationName, unit);
-          return { ok: true, data: cache.data, locationName: cache.locationName };
+          renderWeather(cache.data, getCacheLocationName(cache), unit);
+          return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
         }
       }
 
@@ -502,8 +524,8 @@
           // Fall back to the cache only while it is within its TTL; older data
           // must not be rendered as current (#1264).
           if (isCacheValid(cache) && isCacheMatchingSettings(cache)) {
-            renderWeather(cache.data, cache.locationName, unit);
-            return { ok: true, data: cache.data, locationName: cache.locationName };
+            renderWeather(cache.data, getCacheLocationName(cache), unit);
+            return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
           }
           if (e.code === 'NETWORK_ERROR' || e.code === 'GEOCODING_TIMEOUT' || e.code === 'GEOCODING_FAILED' || e.code === 'GEOCODING_INVALID') {
             renderError(t('weatherError'));
@@ -533,32 +555,36 @@
         : formatCoords(location.lat, location.lon);
 
       const newCache = {
-        lat: location.lat,
-        lon: location.lon,
         data: weatherData,
         timestamp: Date.now(),
         locationMode: locationMode,
         manualCity: manualCity.trim(),
-        locationName: locationDisplay
+        locationName: locationMode === 'auto' ? null : locationDisplay
       };
+      const newCacheCoords = { timestamp: newCache.timestamp, lat: location.lat, lon: location.lon };
 
       // Persistence can outlive this refresh. Render the fetched data now so a
       // chrome.storage callback that never arrives cannot leave the widget
       // loading or hold isRefreshing. saveCache still dispatches
       // weatherCacheUpdated only after the write is known to have succeeded.
-      WeatherStorage.saveCache(newCache).catch((error) => {
+      // Coordinates replace the previous record only once the write succeeds,
+      // so a failed write keeps the prior cache's coordinates valid.
+      const writeGeneration = ++cacheWriteGeneration;
+      WeatherStorage.saveCache(newCache).then((saved) => {
+        if (writeGeneration === cacheWriteGeneration && saved) lastCacheCoords = newCacheCoords;
+      }).catch((error) => {
         console.warn('Failed to write weather cache:', error);
       });
-      renderWeather(weatherData, newCache.locationName, unit);
-      return { ok: true, data: weatherData, locationName: newCache.locationName };
+      renderWeather(weatherData, locationDisplay, unit);
+      return { ok: true, data: weatherData, locationName: locationDisplay };
     } catch (e) {
       console.error('Weather refresh failed:', e);
       // A cached auto-location result is only a safe fallback while it is
       // within its TTL and the current geolocation has been confirmed to be
       // within the tolerance (#1264).
       if (isCacheValid(cache) && isCacheMatchingSettings(cache, location)) {
-        renderWeather(cache.data, cache.locationName, unit);
-        return { ok: true, data: cache.data, locationName: cache.locationName };
+        renderWeather(cache.data, getCacheLocationName(cache), unit);
+        return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
       }
       renderError(t('weatherError'));
       return { ok: false, message: t('weatherError') };
