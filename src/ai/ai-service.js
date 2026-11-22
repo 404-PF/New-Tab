@@ -1089,7 +1089,33 @@ const AIService = (function() {
     renderConversationUI();
   }
 
+  // Debounced so fast typing runs one semantic pass per pause (matches notes.js).
+  const SEMANTIC_RERANK_DEBOUNCE_MS = 200;
+  let semanticRerankTimer = null;
+
+  function scheduleSemanticRerank() {
+    clearTimeout(semanticRerankTimer);
+    semanticRerankTimer = setTimeout(function () {
+      semanticRerankTimer = null;
+      const query = AIStore.state.searchQuery.trim();
+      AIStore.rankConversationsSemantically().then(function (applied) {
+        if (applied) {
+          renderConversationUI({ renderMessages: false });
+        } else if (query && typeof window.requestSemanticModelLoad === 'function') {
+          // Passive warm-up for a query typed before the model is ready; the
+          // embedding-status 'ready' listener reranks once it lands.
+          window.requestSemanticModelLoad();
+        }
+      }).catch(function (error) { console.warn('[ai-service] semantic rerank failed:', error); });
+    }, SEMANTIC_RERANK_DEBOUNCE_MS);
+  }
+
   function initEventListeners() {
+    document.addEventListener('embedding-status', function (event) {
+      const status = event?.detail ? event.detail.status : null;
+      if (status === 'ready' && AIStore.state.searchQuery.trim()) scheduleSemanticRerank();
+    });
+
     if (elements.sendBtn) {
       elements.sendBtn.addEventListener('click', handleSend);
     }
@@ -1138,6 +1164,7 @@ const AIService = (function() {
       elements.topicsSearch.addEventListener('input', event => {
         AIStore.setSearchQuery(event.target.value);
         renderConversationUI({ renderMessages: false });
+        scheduleSemanticRerank();
       });
 
       elements.topicsSearch.addEventListener('keydown', event => {

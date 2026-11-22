@@ -373,57 +373,32 @@
   }
 
   // Batch: one cache pass for all notes, then a single embedTexts call for
-  // every cache miss — not N inferences. Partial failures keep the cached
-  // vectors and null the rest (cosine 0) instead of dropping to keyword.
-  // Resolves to one vector (or null) per note in base, in the same order.
+  // every cache miss. Partial failures keep cached vectors (cosine 0 for the rest).
   function gatherNoteVectors(base, service, cache) {
     const modelId = getSemanticModelId();
     const inputs = base.map(noteToEmbeddingText);
-    return Promise.all(base.map(function (note, i) {
-      return cache.getCachedVector(note.id, inputs[i], modelId).catch(function () { return null; });
-    })).then(function (cached) {
-      const vectors = new Array(base.length);
-      const missIndexes = [];
-      cached.forEach(function (record, i) {
-        if (record && Array.isArray(record.vector) && record.vector.length > 0) {
-          vectors[i] = record.vector;
-        } else if (!inputs[i].trim()) {
-          vectors[i] = null;
-        } else {
-          vectors[i] = null;
-          missIndexes.push(i);
+    // Built lazily: the first liveness check runs after inference, so a note
+    // deleted mid-inference is not in the map. O(1) per lookup (PR #1187 review).
+    let liveById = null;
+    const liveNote = function (id) {
+      if (!liveById) liveById = new Map(notes.map(function (n) { return [n.id, n]; }));
+      return liveById.get(id);
+    };
+    const items = base.map(function (note, i) {
+      return {
+        key: note.id,
+        cacheText: inputs[i],
+        embedText: inputs[i],
+        replaceStale: false,
+        // Write-back only while the note still exists with unchanged text and
+        // the model is live; delete/disable mid-inference must not resurrect rows.
+        isCurrent: function () {
+          const current = liveNote(note.id);
+          return !!current && noteToEmbeddingText(current) === inputs[i] && isNotesSemanticReady();
         }
-      });
-      if (missIndexes.length === 0) return vectors;
-      // O(1) live-note lookup for the write-back guard below: a per-miss
-      // Array.find over notes would be O(N*M) on the UI thread for an
-      // uncached search (PR #1187 review).
-      return service.embedTexts(missIndexes.map(function (i) { return inputs[i]; })).then(function (missed) {
-        const liveById = new Map(notes.map(function (n) { return [n.id, n]; }));
-        missIndexes.forEach(function (noteIndex, j) {
-          const vec = Array.isArray(missed) && Array.isArray(missed[j]) ? missed[j] : null;
-          if (vec && vec.length > 0) {
-            vectors[noteIndex] = vec;
-            // The note may have been deleted (or edited) while the batch
-            // inference was in flight: deleteNote already invalidated its
-            // vectors, so writing them back would orphan rows until the
-            // model is cleared (PR #1187 human review). Only cache when
-            // the note still exists with unchanged embedding text.
-            const current = liveById.get(base[noteIndex].id);
-            if (!current || noteToEmbeddingText(current) !== inputs[noteIndex]) return;
-            // Delete/disable during inference must not resurrect vectors:
-            // deleteModel() clears rows for this modelId, so an
-            // unguarded put would write them back and break the Delete
-            // purge promise (PR #1187 human review). Skip when the model
-            // is no longer live.
-            if (!isNotesSemanticReady()) return;
-            cache.putCachedVector(base[noteIndex].id, inputs[noteIndex], modelId, vec)
-              .catch(function () { /* ignore */ });
-          }
-        });
-        return vectors;
-      }).catch(function () { return vectors; });
+      };
     });
+    return window.HybridRanker.loadItemVectors(items, { cache, service, modelId });
   }
 
   function getFilteredNotesRanked() {

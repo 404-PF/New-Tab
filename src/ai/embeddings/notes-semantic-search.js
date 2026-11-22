@@ -42,7 +42,8 @@
     rankItemsForQuery: base.rankItemsForQuery,
     rankSimilarItems: base.rankSimilarItems,
     selectContextNotes: base.selectContextNotes,
-    selectContextItems: base.selectContextItems || base.selectContextNotes
+    selectContextItems: base.selectContextItems || base.selectContextNotes,
+    loadItemVectors: base.loadItemVectors
   };
 
   try {

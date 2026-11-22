@@ -429,6 +429,52 @@
     };
   }
 
+  // Write-back is guarded by item.isCurrent() so a late batch cannot repopulate
+  // rows for a revision that has changed. replaceStale drops earlier revisions
+  // first, so each item keeps a single vector.
+  function writeBackVector(item, vector, cache, modelId) {
+    if (!item.isCurrent()) return;
+    if (!item.replaceStale) {
+      cache.putCachedVector(item.key, item.cacheText, modelId, vector).catch(function () { /* cache is best-effort */ });
+      return;
+    }
+    cache.deleteCachedVectorsForNote(item.key).then(function () {
+      if (!item.isCurrent()) return null;
+      return cache.putCachedVector(item.key, item.cacheText, modelId, vector);
+    }).catch(function () { /* cache is best-effort */ });
+  }
+
+  // Shared by notes and AI conversations. items: [{ key, cacheText, embedText, isCurrent(), replaceStale? }].
+  // deps: { cache, service, modelId }. Resolves an index-aligned vector (or null) per item:
+  // one cache read per item, one batched embedTexts call for the misses, then write-back.
+  function loadItemVectors(items, deps) {
+    const list = Array.isArray(items) ? items : [];
+    const cache = deps.cache;
+    const service = deps.service;
+    const modelId = deps.modelId;
+    return Promise.all(list.map(function (item) {
+      return cache.getCachedVector(item.key, item.cacheText, modelId).catch(function () { return null; });
+    })).then(function (cached) {
+      const vectors = cached.map(function (record) {
+        return record && Array.isArray(record.vector) && record.vector.length > 0 ? record.vector : null;
+      });
+      const misses = [];
+      list.forEach(function (item, i) {
+        if (!vectors[i] && String(item.embedText || '').trim()) misses.push(i);
+      });
+      if (misses.length === 0) return vectors;
+      return service.embedTexts(misses.map(function (i) { return list[i].embedText; })).then(function (embedded) {
+        misses.forEach(function (itemIndex, j) {
+          const vector = Array.isArray(embedded) && Array.isArray(embedded[j]) ? embedded[j] : null;
+          if (!vector || vector.length === 0) return;
+          vectors[itemIndex] = vector;
+          writeBackVector(list[itemIndex], vector, cache, modelId);
+        });
+        return vectors;
+      }).catch(function () { return vectors; });
+    });
+  }
+
   const api = {
     DEFAULT_ALPHA,
     DEFAULT_MIN_SCORE,
@@ -453,6 +499,7 @@
     rankSimilarItems,
     selectContextNotes,
     backfillMissingVectors,
+    loadItemVectors,
     scheduleIdleBackfill
   };
 
