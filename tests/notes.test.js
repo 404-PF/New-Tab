@@ -53,6 +53,14 @@ describe('Notes persistence', () => {
     expect(document.getElementById('notes-empty').style.display).toBe('block');
   });
 
+  it('preserves a corrupt notes payload in a backup key before a later save', () => {
+    localStorage.setItem('notes', 'not-json');
+    initNotes();
+    addNote();
+    expect(localStorage.getItem('notes_corrupt_backup')).toBe('not-json');
+    expect(getNotes()).toHaveLength(1);
+  });
+
   it('resets non-array data on init', () => {
     localStorage.setItem('notes', '{"foo":"bar"}');
     initNotes();

@@ -30,18 +30,33 @@
   const SVG_GRIP = '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><circle cx="8" cy="5" r="1.5"/><circle cx="16" cy="5" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="16" cy="12" r="1.5"/><circle cx="8" cy="19" r="1.5"/><circle cx="16" cy="19" r="1.5"/></svg>';
   const SVG_TAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>';
 
-  function loadNotes() {
+  function backupCorruptNotes(raw) {
     try {
-      const raw = localStorage.getItem('notes');
+      const existing = localStorage.getItem('notes_corrupt_backup');
+      if (existing === raw) return;
+      // Keep any earlier backup intact by using a unique key when it differs.
+      const key = existing === null ? 'notes_corrupt_backup' : `notes_corrupt_backup_${Date.now()}`;
+      localStorage.setItem(key, raw);
+    } catch (error) {
+      console.warn('Failed to back up corrupt notes data:', error);
+    }
+  }
+
+  function loadNotes() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem('notes');
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
         console.warn('Invalid notes data in localStorage: expected array, resetting to empty list');
+        backupCorruptNotes(raw);
         return [];
       }
       return migrateNotes(parsed);
     } catch (e) {
       console.warn('Failed to parse notes from localStorage, resetting to empty list:', e);
+      if (raw) backupCorruptNotes(raw);
       return [];
     }
   }
