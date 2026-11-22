@@ -444,6 +444,16 @@
     });
   }
 
+  function serveCachedWeather(cache, unit) {
+    renderWeather(cache.data, getCacheLocationName(cache), unit);
+    return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
+  }
+
+  function failWeather(key) {
+    renderError(t(key));
+    return { ok: false, message: t(key) };
+  }
+
   // ignoreWidgetToggle lets callers (the standalone Weather app modal) run the
   // fetch/cache pipeline while the widget toggle is off. The widget DOM still
   // stays hidden: renderLoading/renderWeather/renderError keep their own
@@ -508,16 +518,14 @@
           }
         }
         if (isCacheMatchingSettings(cache, location)) {
-          renderWeather(cache.data, getCacheLocationName(cache), unit);
-          return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
+          return serveCachedWeather(cache, unit);
         }
       }
 
       renderLoading();
       if (locationMode === 'manual') {
         if (!manualCity.trim()) {
-          renderError(t('weatherEnterCity'));
-          return { ok: false, message: t('weatherEnterCity') };
+          return failWeather('weatherEnterCity');
         }
         try {
           location = await geocodeCity(manualCity.trim());
@@ -525,15 +533,12 @@
           // Fall back to the cache only while it is within its TTL; older data
           // must not be rendered as current (#1264).
           if (isCacheValid(cache) && isCacheMatchingSettings(cache)) {
-            renderWeather(cache.data, getCacheLocationName(cache), unit);
-            return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
+            return serveCachedWeather(cache, unit);
           }
           if (e.code === 'NETWORK_ERROR' || e.code === 'GEOCODING_TIMEOUT' || e.code === 'GEOCODING_FAILED' || e.code === 'GEOCODING_INVALID') {
-            renderError(t('weatherError'));
-            return { ok: false, message: t('weatherError') };
+            return failWeather('weatherError');
           }
-          renderError(t('weatherLocationNotFound'));
-          return { ok: false, message: t('weatherLocationNotFound') };
+          return failWeather('weatherLocationNotFound');
         }
       } else {
         try {
@@ -544,8 +549,7 @@
         } catch {
           // Auto-location cache is not safe to use without a successful
           // current geolocation check.
-          renderError(t('weatherLocationUnavailable'));
-          return { ok: false, message: t('weatherLocationUnavailable') };
+          return failWeather('weatherLocationUnavailable');
         }
       }
 
@@ -595,11 +599,9 @@
       // within its TTL and the current geolocation has been confirmed to be
       // within the tolerance (#1264).
       if (isCacheValid(cache) && isCacheMatchingSettings(cache, location)) {
-        renderWeather(cache.data, getCacheLocationName(cache), unit);
-        return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
+        return serveCachedWeather(cache, unit);
       }
-      renderError(t('weatherError'));
-      return { ok: false, message: t('weatherError') };
+      return failWeather('weatherError');
     } finally {
       isRefreshing = false;
       if (pendingRefresh) {
