@@ -141,7 +141,7 @@ class OnboardingTour {
 
   // Define all onboarding steps
   defineSteps() {
-    const steps = [
+    return [
       {
         id: 'language',
         titleKey: 'onboardingLanguageTitle',
@@ -253,11 +253,6 @@ class OnboardingTour {
         waitForAction: false
       }
     ];
-    return steps.map(({ titleKey, contentKey, ...step }) => ({
-      ...step,
-      title: window.translate(titleKey, step.title),
-      content: window.translate(contentKey, step.content)
-    }));
   }
 
   // Initialize and start the tour (optionally from a saved step)
@@ -360,56 +355,10 @@ class OnboardingTour {
     const prevBtn = this.overlay.querySelector('#onboarding-prev');
     const nextBtn = this.overlay.querySelector('#onboarding-next');
 
-    // Update content
-    let translatedTitle = step.title;
-    let translatedContent = step.content;
-    
-    // Use translations if available
-    if (window.i18n) {
-      switch (step.id) {
-        case 'language':
-          translatedTitle = window.i18n.t('onboardingLanguageTitle');
-          translatedContent = window.i18n.t('onboardingLanguageContent');
-          break;
-        case 'theme':
-          translatedTitle = window.i18n.t('onboardingThemeTitle');
-          translatedContent = window.i18n.t('onboardingThemeContent');
-          break;
-        case 'welcome':
-          translatedTitle = window.i18n.t('onboardingWelcomeTitle');
-          translatedContent = window.i18n.t('onboardingWelcomeContent');
-          break;
-        case 'clock':
-          translatedTitle = window.i18n.t('onboardingClockTitle');
-          translatedContent = window.i18n.t('onboardingClockContent');
-          break;
-        case 'search':
-          translatedTitle = window.i18n.t('onboardingSearchTitle');
-          translatedContent = window.i18n.t('onboardingSearchContent');
-          break;
-        case 'apps':
-          translatedTitle = window.i18n.t('onboardingAppsTitle');
-          translatedContent = window.i18n.t('onboardingAppsContent');
-          break;
-        case 'background':
-          translatedTitle = window.i18n.t('onboardingBackgroundTitle');
-          translatedContent = window.i18n.t('onboardingBackgroundContent');
-          break;
-        case 'motto':
-          translatedTitle = window.i18n.t('onboardingMottoTitle');
-          translatedContent = window.i18n.t('onboardingMottoContent');
-          break;
-        case 'settings':
-          translatedTitle = window.i18n.t('onboardingSettingsTitle');
-          translatedContent = window.i18n.t('onboardingSettingsContent');
-          break;
-        case 'complete':
-          translatedTitle = window.i18n.t('onboardingCompleteTitle');
-          translatedContent = window.i18n.t('onboardingCompleteContent');
-          break;
-      }
-    }
-    
+    // Update content (titles/content resolve at show time so language changes apply)
+    const translatedTitle = step.titleKey ? window.translate(step.titleKey, step.title) : step.title;
+    const translatedContent = step.contentKey ? window.translate(step.contentKey, step.content) : step.content;
+
     title.textContent = translatedTitle;
     
     if (step.id === 'language') {
