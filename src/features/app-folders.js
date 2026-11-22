@@ -40,7 +40,8 @@
       const offsetY = i * 3;
       const size = count === 1 ? '100%' : '70%';
       const zIndex = 3 - i;
-      return `<img src="${escapeHtml(safeIconUrl || '')}" alt="" class="folder-preview-icon" data-app-icon style="position:absolute;top:${offsetY}px;left:${offsetX}px;width:${size};height:${size};object-fit:contain;border-radius:4px;z-index:${zIndex}">`;
+      const builtInClass = app.className === 'default-app' ? ' default-app-icon' : '';
+      return `<img src="${escapeHtml(safeIconUrl || '')}" alt="" class="folder-preview-icon${builtInClass}" data-app-icon style="position:absolute;top:${offsetY}px;left:${offsetX}px;width:${size};height:${size};object-fit:contain;border-radius:4px;z-index:${zIndex}">`;
     }).join('');
 
     const badge = count > 3 ? `<span class="folder-count-badge">+${count - 3}</span>` : '';
