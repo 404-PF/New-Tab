@@ -42,6 +42,7 @@ beforeAll(() => {
   injectScript('src/ai/embeddings/harrier-provider.js');
   injectScript('src/ai/embeddings/notes-vector-cache.js');
   injectScript('src/ai/embeddings/embedding-service.js');
+  injectScript('src/ai/embeddings/hybrid-ranker.js');
   injectScript('src/ai/embeddings/notes-semantic-search.js');
   injectScript('src/ai/embeddings/app-semantic-search.js');
   injectScript('src/ui/color-picker.js');
@@ -57,7 +58,8 @@ beforeEach(() => {
     { id: '1', text: 'alpha apple', tag: '', order: 0, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
     { id: '2', text: 'beta', tag: '', order: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
   ]));
-  localStorage.setItem('notesSemanticEnabled', 'false');
+  localStorage.setItem('semanticEnabled', 'false');
+  try { localStorage.removeItem('notesSemanticEnabled'); } catch { /* ignore */ }
   localStorage.removeItem('notesSemanticDownload');
   try { window.setNotesSearchQuery(''); } catch { /* ignore */ }
   window.initNotes();
@@ -79,14 +81,14 @@ describe('PR #1187 latest review resolutions', () => {
       cancelLoad: function () {},
       deleteModel: function () { return Promise.resolve(true); }
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.applyNotesSemanticEnabled();
     expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
     const checkbox = document.getElementById('notes-semantic-enabled-setting');
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(localStorage.getItem('notesSemanticEnabled')).toBe('false');
+    expect(localStorage.getItem('semanticEnabled')).toBe('false');
     // Ready bytes are still on disk: marker preserved, Delete still shown.
     expect(localStorage.getItem('notesSemanticDownload')).toBe('ready');
     expect(document.getElementById('notes-semantic-delete').hidden).toBe(false);
@@ -98,7 +100,7 @@ describe('PR #1187 latest review resolutions', () => {
       isReady: function () { return false; },
       cancelLoad: function () {}
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'loading');
     window.applyNotesSemanticEnabled();
     const checkbox = document.getElementById('notes-semantic-enabled-setting');
@@ -111,7 +113,7 @@ describe('PR #1187 latest review resolutions', () => {
     grantModelHosts();
     // Ready marker: first query warms.
     let tracker = installCountingService();
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.setItem('notesSemanticDownload', 'ready');
     window.initNotesSemanticSetting();
     await flush(2);
@@ -123,7 +125,7 @@ describe('PR #1187 latest review resolutions', () => {
 
     // Null marker (e.g. after import on a fresh device): no silent download.
     tracker = installCountingService();
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     localStorage.removeItem('notesSemanticDownload');
     window.initNotesSemanticSetting();
     await flush(2);
@@ -148,7 +150,7 @@ describe('PR #1187 latest review resolutions', () => {
     ]));
     window.initNotes();
     // Start disabled with an active query: keyword order [A, D].
-    localStorage.setItem('notesSemanticEnabled', 'false');
+    localStorage.setItem('semanticEnabled', 'false');
     try { delete window.EmbeddingService; } catch { /* ignore */ }
     window.setNotesSearchQuery('apple');
     window.renderNotes();
@@ -175,7 +177,7 @@ describe('PR #1187 latest review resolutions', () => {
         }));
       }
     };
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     try {
       document.dispatchEvent(new CustomEvent('embedding-status', { detail: { status: 'ready', progress: 1, error: '', modelId: 't' } }));
     } catch { /* ignore */ }
@@ -220,7 +222,7 @@ describe('PR #1187 latest review resolutions', () => {
   });
 
   it('preserves grip focus when a rerank resolves mid-focus', async () => {
-    localStorage.setItem('notesSemanticEnabled', 'true');
+    localStorage.setItem('semanticEnabled', 'true');
     let resolveEmbed = null;
     window.EmbeddingService = {
       isReady: function () { return true; },

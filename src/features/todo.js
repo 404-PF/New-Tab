@@ -971,9 +971,17 @@
 
   function isTodoSemanticEnabled() {
     try {
+      if (typeof window.loadSemanticEnabled === 'function') {
+        return window.loadSemanticEnabled();
+      }
       if (typeof window.loadNotesSemanticEnabled === 'function') {
         return window.loadNotesSemanticEnabled();
       }
+      try {
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
+      } catch { /* ignore */ }
       return localStorage.getItem('notesSemanticEnabled') === 'true';
     } catch {
       return false;
@@ -1001,7 +1009,8 @@
   }
 
   // Pre-cap only (bounds hashing and transport); the exact 512-token truncate
-  // happens in embedding-service.js.
+  // happens in embedding-service.js. Issue #1332: length lives in
+  // HybridRanker.EMBEDDING_TEXT_PRE_CAP so all collections share it.
   function todoToEmbeddingText(todo) {
     const parts = [];
     if (typeof todo.text === 'string' && todo.text) parts.push(todo.text);
@@ -1011,7 +1020,13 @@
       });
     }
     if (typeof todo.details === 'string' && todo.details) parts.push(todo.details);
-    return parts.join('\n').slice(0, TODO_EMBEDDING_TEXT_CAP);
+    const raw = parts.join('\n');
+    try {
+      if (window.HybridRanker && typeof window.HybridRanker.capEmbeddingText === 'function') {
+        return window.HybridRanker.capEmbeddingText(raw);
+      }
+    } catch { /* fall through */ }
+    return raw.slice(0, TODO_EMBEDDING_TEXT_CAP);
   }
 
   // Same guard as Notes: with no download marker no vectors were ever written,
@@ -1028,12 +1043,15 @@
   // Keyword-first results with cosine re-rank when the model is ready. Falls
   // back to the keyword pass whenever the model, loader or cache is missing.
   // Batched like Notes: one cache pass, then one embedTexts call for all misses.
+  // Issue #1332: prefers the shared HybridRanker, falls back to the
+  // Notes-era alias; both dep names (getItemVector/getNoteVector) are sent.
   function getFilteredTodosRanked() {
     const query = todoSearchQuery;
-    const ranker = window.NotesSemanticSearch;
+    const ranker = window.HybridRanker || window.NotesSemanticSearch;
+    const rankFn = ranker && (ranker.rankItemsForQuery || ranker.rankNotesForQuery);
     const service = window.EmbeddingService;
     const cache = window.TodoVectorCache;
-    if (!query || !isTodoSemanticReady() || !ranker || !service || !cache) {
+    if (!query || !isTodoSemanticReady() || !ranker || !rankFn || !service || !cache) {
       return Promise.resolve(buildFilteredTodos());
     }
     const base = sortTodosForDisplay(getPillFilteredTodos());
@@ -1075,12 +1093,44 @@
       })
       .then(vectors => {
         const byId = new Map(base.map((todo, i) => [todo.id, vectors[i]]));
-        return ranker.rankNotesForQuery(ordered, query, {
+        const getVector = todo => Promise.resolve(byId.get(todo.id) || null);
+        return rankFn.call(ranker, ordered, query, {
           embedQuery: q => service.embedQuery(q),
-          getNoteVector: todo => Promise.resolve(byId.get(todo.id) || null)
+          getItemVector: getVector,
+          getNoteVector: getVector
         }, { keywordScore: todoKeywordScore, keywordFilter: todoKeywordFilter });
       })
       .catch(() => buildFilteredTodos());
+  }
+
+  // Idle pre-warm (issue #1332): same chunked backfill discipline as Notes.
+  let todoBackfillCancel = null;
+  function scheduleTodoBackfill() {
+    try {
+      if (!isTodoSemanticReady()) return;
+      const ranker = window.HybridRanker || null;
+      if (!ranker || typeof ranker.scheduleIdleBackfill !== 'function') return;
+      const service = window.EmbeddingService || null;
+      const cache = window.TodoVectorCache || null;
+      if (!service || !cache) return;
+      if (typeof todoBackfillCancel === 'function') {
+        try { todoBackfillCancel(); } catch { /* ignore */ }
+        todoBackfillCancel = null;
+      }
+      const list = todos.slice();
+      todoBackfillCancel = ranker.scheduleIdleBackfill({
+        items: list,
+        toText: todoToEmbeddingText,
+        getId: todo => todo.id,
+        cache,
+        service,
+        modelId: getTodoSemanticModelId(),
+        isLive: (todo, text) => {
+          const current = todos.find(t => t && t.id === todo.id);
+          return !!current && todoToEmbeddingText(current) === text && isTodoSemanticReady();
+        }
+      });
+    } catch { /* best-effort only */ }
   }
 
   function clearTodoSemanticDebounce() {
@@ -1154,6 +1204,7 @@
     if (status === 'loading') return;
     if (status === 'ready') {
       if (todoSearchQuery) scheduleTodoSemanticRerank();
+      else scheduleTodoBackfill();
       return;
     }
     // Leaving ready (Delete, error) drops the relevance view and any deferred

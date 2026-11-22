@@ -1,7 +1,7 @@
 // src/ai/embeddings/embedding-scripts.js - shared lazy loader for embedding modules (issue #1186)
 //
 // src/ui/settings.js and src/features/notes.js both need the embedding
-// modules on demand (lazy opt-in; the five modules below are never in the
+// modules on demand (lazy opt-in; the seven modules below are never in the
 // bootstrap bundle). This file is the single canonical implementation;
 // both callers delegate to it when present and fall back to their local
 // twin only when this file has not been loaded (e.g. unit tests that
@@ -18,6 +18,7 @@
   const SOURCES = [
     'src/ai/embeddings/embedding-registry.js',
     'src/ai/embeddings/harrier-provider.js',
+    'src/ai/embeddings/hybrid-ranker.js',
     'src/ai/embeddings/notes-vector-cache.js',
     'src/ai/embeddings/embedding-service.js',
     'src/ai/embeddings/notes-semantic-search.js',
@@ -31,9 +32,10 @@
       return !!(
         window.EmbeddingRegistry
         && window.HarrierProvider
+        && window.HybridRanker
+        && window.NotesSemanticSearch
         && window.NotesVectorCache
         && window.EmbeddingService
-        && window.NotesSemanticSearch
         && window.AppSemanticSearch
       );
     } catch {

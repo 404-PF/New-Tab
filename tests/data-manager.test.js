@@ -2053,3 +2053,52 @@ describe('DataManager todoStats merge (issue #1143)', () => {
     expect(window.DataManager.EXPECTED_SHAPES.todoStats(merged)).toBe(true);
   });
 });
+
+describe('DataManager semantic flag backup (issue #1332)', () => {
+  it('includes semanticEnabled in the export allowlist', () => {
+    expect(window.DataManager.EXPORT_KEYS).toContain('semanticEnabled');
+    expect(window.DataManager.EXPORT_KEYS).toContain('notesSemanticEnabled');
+  });
+
+  it('validates semanticEnabled as a boolean', () => {
+    const shape = window.DataManager.EXPECTED_SHAPES.semanticEnabled;
+    expect(shape(true)).toBe(true);
+    expect(shape(false)).toBe(true);
+    expect(shape('true')).toBe(false);
+    expect(shape(1)).toBe(false);
+    expect(shape(null)).toBe(false);
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      semanticEnabled: false
+    } })).toEqual({ valid: true });
+
+    expect(window.DataManager.validateImportData({ version: 1, data: {
+      semanticEnabled: 'false'
+    } }).valid).toBe(false);
+  });
+
+  it('honors an old backup (legacy key only) over a stale local master flag in merge mode', async () => {
+    localStorage.setItem('semanticEnabled', 'false');
+    localStorage.setItem('notesSemanticEnabled', 'false');
+
+    const result = await importBackup({ notesSemanticEnabled: true }, 'merge');
+
+    expect(result.type).toBe('success');
+    expect(localStorage.getItem('notesSemanticEnabled')).toBe('true');
+    // A stale local `false` must not override the imported opt-in: the
+    // new-key-first read would otherwise ignore the backup.
+    expect(localStorage.getItem('semanticEnabled')).toBe('true');
+  });
+
+  it('clears both semantic keys in replace mode when the backup omits them', async () => {
+    localStorage.setItem('semanticEnabled', 'true');
+    localStorage.setItem('notesSemanticEnabled', 'true');
+
+    const replaced = await importBackup({ theme: 'dark' }, 'replace');
+
+    expect(replaced.type).toBe('success');
+    expect(localStorage.getItem('semanticEnabled')).toBeNull();
+    expect(localStorage.getItem('notesSemanticEnabled')).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+  });
+});

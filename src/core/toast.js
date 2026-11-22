@@ -255,6 +255,59 @@ function resyncBgOverlaySafe() {
   }
 }
 
+// Shared semantic-search resync (issue #1332): the Settings checkbox reads
+// the `semanticEnabled` master flag first with a `notesSemanticEnabled`
+// legacy fallback, so the rollback check must compare against that same
+// effective value — not either key alone. Used for both keys because a
+// persistSemanticEnabled dual-write can roll back on either one.
+function readEffectiveSemanticEnabled() {
+  try {
+    if (typeof window.loadSemanticEnabled === 'function') {
+      return !!window.loadSemanticEnabled();
+    }
+  } catch { /* ignore */ }
+  try {
+    const next = localStorage.getItem('semanticEnabled');
+    if (next === 'true' || next === 'false') return next === 'true';
+  } catch { /* ignore */ }
+  try {
+    return localStorage.getItem('notesSemanticEnabled') === 'true';
+  } catch { /* ignore */ }
+  return false;
+}
+
+function resyncSemanticEnabledSetting() {
+  const enabled = readEffectiveSemanticEnabled();
+  try {
+    if (!enabled
+      && window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
+      window.EmbeddingService.cancelLoad();
+    }
+  } catch { /* ignore */ }
+  if (typeof window.applyNotesSemanticEnabled === 'function') {
+    window.applyNotesSemanticEnabled();
+  }
+  // Rollback-to-enabled (a toggle-off write was rejected): the optimistic
+  // toggle-off cancelled the in-flight load and cleared its marker, so
+  // re-rendering alone strands the UI with no worker. initNotesSemanticSetting
+  // only resumes an interrupted ('loading') marker, but cancel cleared it
+  // to null: also kick the first-query lazy starter so a deferred
+  // ('ready'/null) marker warms the model instead of stalling with no
+  // download and no status text until the next search (PR #1187 review).
+  if (enabled) {
+    try {
+      if (typeof window.initNotesSemanticSetting === 'function') {
+        window.initNotesSemanticSetting();
+      }
+    } catch { /* ignore */ }
+    try {
+      if (typeof window.requestSemanticModelLoad === 'function') {
+        window.requestSemanticModelLoad();
+      }
+    } catch { /* ignore */ }
+  }
+}
+
 // Controls that must resync when the bridge rolls a rejected write back after
 // setItem already returned true (the async runtime.lastError path, #969).
 const FEATURE_TOGGLE_RESYNC = {
@@ -285,40 +338,11 @@ const FEATURE_TOGGLE_RESYNC = {
       window.applyNotesEnabled();
     }
   },
-  notesSemanticEnabled: function () {
-    let enabled = false;
-    try {
-      enabled = localStorage.getItem('notesSemanticEnabled') === 'true';
-    } catch { /* ignore */ }
-    try {
-      if (!enabled
-        && window.EmbeddingService && typeof window.EmbeddingService.cancelLoad === 'function') {
-        window.EmbeddingService.cancelLoad();
-      }
-    } catch { /* ignore */ }
-    if (typeof window.applyNotesSemanticEnabled === 'function') {
-      window.applyNotesSemanticEnabled();
-    }
-    // Rollback-to-enabled (a toggle-off write was rejected): the optimistic
-    // toggle-off cancelled the in-flight load and cleared its marker, so
-    // re-rendering alone strands the UI with no worker. initNotesSemanticSetting
-    // only resumes an interrupted ('loading') marker, but cancel cleared it
-    // to null: also kick the first-query lazy starter so a deferred
-    // ('ready'/null) marker warms the model instead of stalling with no
-    // download and no status text until the next search (PR #1187 review).
-    if (enabled) {
-      try {
-        if (typeof window.initNotesSemanticSetting === 'function') {
-          window.initNotesSemanticSetting();
-        }
-      } catch { /* ignore */ }
-      try {
-        if (typeof window.requestSemanticModelLoad === 'function') {
-          window.requestSemanticModelLoad();
-        }
-      } catch { /* ignore */ }
-    }
-  },
+  notesSemanticEnabled: resyncSemanticEnabledSetting,
+  // Issue #1332: the shared `semanticEnabled` master flag is written through
+  // the same checkbox, so an async runtime.lastError rollback of either key
+  // must resync the same control.
+  semanticEnabled: resyncSemanticEnabledSetting,
   mottoEnabled: function () {
     if (typeof window.applyMottoEnabled === 'function') {
       window.applyMottoEnabled();
@@ -643,6 +667,15 @@ function checkRecentSettingsDesynced(key) {
   return checkMediaSettingsDesynced(key);
 }
 
+// The semantic checkbox reflects the shared master flag (issue #1332), not
+// the legacy key alone: a dual-write that lands on one key and rolls back
+// on the other must still compare against the effective value.
+function desyncSemanticEnabledControl() {
+  const checkbox = document.getElementById('notes-semantic-enabled-setting');
+  if (!checkbox) return false;
+  return checkbox.checked !== readEffectiveSemanticEnabled();
+}
+
 // True when a control still shows the rejected value the bridge has already
 // rolled back. The synchronous-failure path re-applies the control and toasts
 // before this runs, so comparing first keeps that path from reporting twice.
@@ -664,7 +697,8 @@ function featureToggleControlDesynced(key) {
       return Boolean(select) && select.value !== expected;
     }
     case 'notesEnabled': return desyncCheckboxControl('notes-enabled-setting', key, false);
-    case 'notesSemanticEnabled': return desyncCheckboxControl('notes-semantic-enabled-setting', key, true);
+    case 'notesSemanticEnabled':
+    case 'semanticEnabled': return desyncSemanticEnabledControl();
     case 'mottoEnabled': return desyncCheckboxControl('motto-enabled-setting', key, false);
     case 'searchBoxEnabled': return desyncCheckboxControl('search-box-enabled-setting', key, false);
     case 'eyeCareReminder': {

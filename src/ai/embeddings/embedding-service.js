@@ -50,6 +50,17 @@
 
   function isSemanticEnabled() {
     try {
+      // Issue #1332: global master flag with legacy fallback. Settings persists
+      // `semanticEnabled`; the newer `semanticEnabled` key wins when set.
+      // An explicit 'false' disables even when the legacy key is 'true'.
+      if (typeof window !== 'undefined' && typeof window.loadSemanticEnabled === 'function') {
+        return !!window.loadSemanticEnabled();
+      }
+      try {
+        const next = localStorage.getItem('semanticEnabled');
+        if (next === 'true') return true;
+        if (next === 'false') return false;
+      } catch { /* ignore */ }
       return localStorage.getItem(SEMANTIC_ENABLED_KEY) === 'true';
     } catch (e) {
       console.warn('Failed to read semantic search flag:', e);
@@ -350,6 +361,8 @@
     // OWN extractor call (never one batched call): with padding enabled, a
     // batched call right-pads short sequences and last_token pooling would
     // read pad embeddings for every note but the longest.
+    // Issue #1332: callers pre-cap to HybridRanker.EMBEDDING_TEXT_PRE_CAP
+    // (4000 chars); this tokenizer truncation is the exact, shared budget.
     function truncateText(text) {
       const input = String(text || '');
       try {
@@ -591,17 +604,19 @@
     const consts = getHarrierConsts();
     let notesCache = null;
     let todoCache = null;
+    let appCache = null;
     try {
       notesCache = window.NotesVectorCache || null;
       todoCache = window.TodoVectorCache || null;
-    } catch { /* leave both caches unset: nothing to purge */ }
+      appCache = window.AppVectorCache || null;
+    } catch { /* leave caches unset: nothing to purge */ }
     // Wrap each call so a synchronous throw becomes a rejection instead of
     // escaping deleteModel synchronously (no try/catch return, per S4822).
     const clearVectorCache = function (cache) {
       if (!cache || typeof cache.clearCachedVectors !== 'function') return Promise.resolve(true);
       return new Promise(function (resolve) { resolve(cache.clearCachedVectors.call(cache, consts.modelId)); });
     };
-    const clearVectors = Promise.all([clearVectorCache(notesCache), clearVectorCache(todoCache)])
+    const clearVectors = Promise.all([clearVectorCache(notesCache), clearVectorCache(todoCache), clearVectorCache(appCache)])
       .then(function (results) { return results.every(function (r) { return r !== false; }); });
     let cacheDeleteFn = null;
     try {

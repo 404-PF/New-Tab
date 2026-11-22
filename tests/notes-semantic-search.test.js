@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
 beforeAll(() => {
+  injectScript('src/ai/embeddings/hybrid-ranker.js');
   injectScript('src/ai/embeddings/notes-semantic-search.js');
 });
 
