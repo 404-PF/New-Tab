@@ -28,6 +28,9 @@
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   const CACHE_LOCATION_TOLERANCE_KM = 10;
   const GEO_TIMEOUT_MS = 10000; // 10 seconds
+  // Upper bound for a pending cache write's coordinates. A stalled storage write
+  // must not pin its entry in memory for the rest of the page session.
+  const CACHE_COORDS_PENDING_MS = 60 * 1000;
 
   // State
   let isRefreshing = false;
@@ -569,7 +572,9 @@
       // discard the coordinates of an older write that storage still holds.
       cacheCoordsByTimestamp.set(newCache.timestamp, newCacheCoords);
       const forgetCoords = () => cacheCoordsByTimestamp.delete(newCache.timestamp);
+      const pendingTimer = setTimeout(forgetCoords, CACHE_COORDS_PENDING_MS);
       WeatherStorage.saveCache(newCache).then((saved) => {
+        clearTimeout(pendingTimer);
         if (!saved) {
           forgetCoords();
           return;
@@ -578,6 +583,7 @@
           if (ts < newCache.timestamp) cacheCoordsByTimestamp.delete(ts);
         }
       }).catch((error) => {
+        clearTimeout(pendingTimer);
         forgetCoords();
         console.warn('Failed to write weather cache:', error);
       });
