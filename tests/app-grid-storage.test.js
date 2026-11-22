@@ -4,6 +4,7 @@ import { failStorageWritesFor, flushDeferredFailureSync } from './helpers/storag
 beforeAll(() => {
   // toast.js provides window.showToast for app-grid-storage's save errors.
   injectScript('src/core/toast.js');
+  injectScript('src/core/utils.js');
   injectScript('src/core/app-grid-storage.js');
 });
 

@@ -10,7 +10,7 @@ import { injectScript } from './helpers/inject-script.js';
 //
 // NOTE: describe blocks run in declaration order and share one jsdom
 // global, so the app-grid-storage block must run before utils.js is
-// injected to exercise its isolated-injection fallback.
+// injected to exercise its behavior without utils.js.
 
 describe('dead code cleanup (#1093)', () => {
   it('New-Tab.html has no #filter-status element; status filtering ships as pills', () => {
@@ -32,10 +32,9 @@ describe('dead code cleanup (#1093)', () => {
       expect(window.__fallbackIsCustomScheme).toBeUndefined();
     });
 
-    it('still normalizes app URLs via the documented test-injection fallback', () => {
+    it('rejects app URLs when utils.js is absent instead of using a drifted copy', () => {
       expect(window.normalizeCustomAppUrl).toBeUndefined();
-      expect(AppGridStorage.saveCustomApps([{ id: 'a', url: 'example.com' }])).toBe(true);
-      expect(AppGridStorage.loadCustomApps()[0].url).toBe('https://example.com');
+      expect(AppGridStorage.saveCustomApps([{ id: 'a', url: 'example.com' }])).toBe(false);
     });
   });
 
