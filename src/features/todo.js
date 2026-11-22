@@ -337,7 +337,7 @@
   }
 
   function showTodoSaveError() {
-    showToast(window.i18n ? window.i18n.t('todoSaveError') : 'Failed to save todo changes. Your last action was not saved.', 'error');
+    showToast(window.translate('todoSaveError', 'Failed to save todo changes. Your last action was not saved.'), 'error');
   }
 
   // Format date as local ISO string (YYYY-MM-DD)
@@ -1253,7 +1253,7 @@
     if (paragraph) {
       const key = noResults ? 'todoNoResults' : 'emptyStateTitle';
       const fallback = noResults ? 'No matching todos.' : 'No todos yet. Add one above!';
-      paragraph.textContent = window.i18n ? window.i18n.t(key) : fallback;
+      paragraph.textContent = window.translate(key, fallback);
       // Keeps the language sweep pointed at the variant that is on screen.
       paragraph.dataset.i18n = key;
     }
@@ -1324,7 +1324,7 @@
       selectBox.dataset.id = todo.id;
       selectBox.draggable = false;
       const selectLabel = todo.text ?? '';
-      selectBox.setAttribute('aria-label', window.i18n ? window.i18n.t('todoSelectAria', { text: selectLabel }) : `Select todo: ${selectLabel}`);
+      selectBox.setAttribute('aria-label', window.translate('todoSelectAria', `Select todo: ${selectLabel}`, { text: selectLabel }));
       todoItemRow.appendChild(selectBox);
 
       const bullet = document.createElement('div');
@@ -1403,7 +1403,7 @@
 
       const dueDateText = document.createElement('span');
       dueDateText.className = 'due-date-text';
-      let dueDateLabel = window.i18n ? window.i18n.t('todoSetDate') : 'Set date';
+      let dueDateLabel = window.translate('todoSetDate', 'Set date');
       if (todo.dueDate) {
         dueDateLabel = formatDate(todo.dueDate, todo.dueTime);
       }
@@ -1413,7 +1413,7 @@
       if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
         const recurrenceBadge = document.createElement('span');
         recurrenceBadge.className = 'todo-recurrence-badge recurrence-' + todo.recurrence;
-        recurrenceBadge.title = window.i18n ? window.i18n.t('recurrence' + todo.recurrence.charAt(0).toUpperCase() + todo.recurrence.slice(1)) : todo.recurrence;
+        recurrenceBadge.title = window.translate('recurrence' + todo.recurrence.charAt(0).toUpperCase() + todo.recurrence.slice(1), todo.recurrence);
         recurrenceBadge.setAttribute('aria-label', recurrenceBadge.title);
         const badgeSvg = createSvgElement('svg', {
           viewBox: '0 0 24 24',
@@ -1438,11 +1438,11 @@
 
       const todoActions = document.createElement('div');
       todoActions.className = 'todo-actions';
-      todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.i18n ? window.i18n.t('todoEditTooltip') : 'Edit Todo', todo.id, [
+      todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.translate('todoEditTooltip', 'Edit Todo'), todo.id, [
         { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
         { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
       ]));
-      todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.i18n ? window.i18n.t('todoDeleteTooltip') : 'Delete Todo', todo.id, [
+      todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.translate('todoDeleteTooltip', 'Delete Todo'), todo.id, [
         { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
         { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
         { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
@@ -1472,7 +1472,7 @@
         detailsToggle.dataset.todoId = todo.id;
         const detailsExpanded = expandedDetailsIds.has(todo.id);
         detailsToggle.setAttribute('aria-expanded', detailsExpanded ? 'true' : 'false');
-        detailsToggle.textContent = window.i18n ? window.i18n.t('todoDetailsToggle') : 'Details';
+        detailsToggle.textContent = window.translate('todoDetailsToggle', 'Details');
 
         const detailsBody = document.createElement('div');
         detailsBody.className = 'todo-details-body';
@@ -1501,7 +1501,7 @@
           stCheckbox.type = 'button';
           stCheckbox.setAttribute('role', 'checkbox');
           stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
-          stCheckbox.setAttribute('aria-label', window.i18n ? window.i18n.t('todoSubtaskToggleAria', { text: subtask.text }) : `Toggle subtask: ${subtask.text}`);
+          stCheckbox.setAttribute('aria-label', window.translate('todoSubtaskToggleAria', `Toggle subtask: ${subtask.text}`, { text: subtask.text }));
           stCheckbox.setAttribute('draggable', 'false');
           stCheckbox.dataset.todoId = todo.id;
           stCheckbox.dataset.subtaskId = subtask.id;
@@ -1517,7 +1517,7 @@
           stDelete.setAttribute('draggable', 'false');
           stDelete.dataset.todoId = todo.id;
           stDelete.dataset.subtaskId = subtask.id;
-          stDelete.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+          stDelete.title = window.translate('todoSubtaskDelete', 'Delete subtask');
           const delSvg = createSvgElement('svg', {
             viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
             'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
@@ -1594,7 +1594,7 @@
     const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
     const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const monthKey = monthKeys[monthIndex];
-    return window.i18n ? window.i18n.t(monthKey) : monthLabels[monthIndex];
+    return window.translate(monthKey, monthLabels[monthIndex]);
   }
 
   // Free-form context on a task (issue #1228). Blank or non-string input
@@ -1905,9 +1905,9 @@
     }
 
     const message = items.length === 1
-      ? (window.i18n ? window.i18n.t('todoDeletedUndo') : 'Todo deleted.')
-      : (window.i18n ? window.i18n.t('todosDeletedUndo', { count: items.length }) : items.length + ' todos deleted.');
-    const label = window.i18n ? window.i18n.t('todoUndo') : 'Undo';
+      ? window.translate('todoDeletedUndo', 'Todo deleted.')
+      : window.translate('todosDeletedUndo', items.length + ' todos deleted.', { count: items.length });
+    const label = window.translate('todoUndo', 'Undo');
     const handle = window.showToast(message, 'info', {
       duration: TODO_UNDO_WINDOW_MS,
       action: { label, onClick: restorePendingTodoUndo },
@@ -2160,7 +2160,7 @@ function updateLabelControls() {
     const allOption = document.createElement('option');
     allOption.value = '';
     allOption.dataset.i18n = 'todoLabelFilterAll';
-    allOption.textContent = window.i18n ? window.i18n.t('todoLabelFilterAll') : 'All labels';
+    allOption.textContent = window.translate('todoLabelFilterAll', 'All labels');
     const options = [allOption, ...labels.map(label => {
       const option = document.createElement('option');
       option.value = label;
@@ -2269,7 +2269,7 @@ function updateBulkActions() {
   if (bar) bar.classList.toggle('active', hasSelection);
   if (count) {
     count.textContent = hasSelection
-      ? (window.i18n ? window.i18n.t('selectedCount', { count: selectedIds.size }) : `${selectedIds.size} selected`)
+      ? window.translate('selectedCount', `${selectedIds.size} selected`, { count: selectedIds.size })
       : '';
   }
 }
@@ -3004,7 +3004,7 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
   const timeDisabled = !selectedDateString ? 'disabled' : '';
   return `
     <div class="inline-calendar-header">
-      <button type="button" class="inline-prev-month" aria-label="${window.i18n ? window.i18n.t('todoInlinePrevMonth') : 'Previous month'}">
+      <button type="button" class="inline-prev-month" aria-label="${window.translate('todoInlinePrevMonth', 'Previous month')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15,18 9,12 15,6"></polyline>
         </svg>
@@ -3013,31 +3013,31 @@ function createCalendarHtml(currentDate, selectedDateString, selectedDueTime) {
         <span class="inline-calendar-month">${getInlineMonthLabel(month)}</span>
         <span class="inline-calendar-year">${year}</span>
       </div>
-      <button type="button" class="inline-next-month" aria-label="${window.i18n ? window.i18n.t('todoInlineNextMonth') : 'Next month'}">
+      <button type="button" class="inline-next-month" aria-label="${window.translate('todoInlineNextMonth', 'Next month')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="9,18 15,12 9,6"></polyline>
         </svg>
       </button>
     </div>
     <div class="inline-calendar-weekdays">
-      <span>${window.i18n ? window.i18n.t('sunday') : 'Su'}</span>
-      <span>${window.i18n ? window.i18n.t('monday') : 'Mo'}</span>
-      <span>${window.i18n ? window.i18n.t('tuesday') : 'Tu'}</span>
-      <span>${window.i18n ? window.i18n.t('wednesday') : 'We'}</span>
-      <span>${window.i18n ? window.i18n.t('thursday') : 'Th'}</span>
-      <span>${window.i18n ? window.i18n.t('friday') : 'Fr'}</span>
-      <span>${window.i18n ? window.i18n.t('saturday') : 'Sa'}</span>
+      <span>${window.translate('sunday', 'Su')}</span>
+      <span>${window.translate('monday', 'Mo')}</span>
+      <span>${window.translate('tuesday', 'Tu')}</span>
+      <span>${window.translate('wednesday', 'We')}</span>
+      <span>${window.translate('thursday', 'Th')}</span>
+      <span>${window.translate('friday', 'Fr')}</span>
+      <span>${window.translate('saturday', 'Sa')}</span>
     </div>
     <div class="inline-calendar-days">
       ${daysHtml}
     </div>
     <div class="inline-time-row">
-      <label for="inline-due-time-${year}-${month}" class="inline-time-label">${window.i18n ? window.i18n.t('dueTime') : 'Time'}</label>
-      <input type="time" id="inline-due-time-${year}-${month}" class="inline-due-time" value="${timeValue}" ${timeDisabled} aria-label="${window.i18n ? window.i18n.t('dueTime') : 'Due time'}" />
+      <label for="inline-due-time-${year}-${month}" class="inline-time-label">${window.translate('dueTime', 'Time')}</label>
+      <input type="time" id="inline-due-time-${year}-${month}" class="inline-due-time" value="${timeValue}" ${timeDisabled} aria-label="${window.translate('dueTime', 'Due time')}" />
     </div>
     <div class="inline-calendar-footer">
-      <button type="button" class="inline-clear-date">${window.i18n ? window.i18n.t('clearDate') : 'Clear'}</button>
-      <button type="button" class="inline-today-date">${window.i18n ? window.i18n.t('todayDate') : 'Today'}</button>
+      <button type="button" class="inline-clear-date">${window.translate('clearDate', 'Clear')}</button>
+      <button type="button" class="inline-today-date">${window.translate('todayDate', 'Today')}</button>
     </div>
   `;
 }
@@ -3252,7 +3252,7 @@ function updateDueDateDisplay(dueDateElement, dueDate, dueTime) {
     dueDateElement.classList.remove('empty');
     dueDateElement.classList.toggle('overdue', isOverdue(dueDate, dueTime));
   } else {
-    textElement.textContent = window.i18n ? window.i18n.t('todoSetDate') : 'Set date';
+    textElement.textContent = window.translate('todoSetDate', 'Set date');
     dueDateElement.classList.add('empty');
     dueDateElement.classList.remove('overdue');
   }
@@ -3357,7 +3357,7 @@ function renderEditModalSubtasks(todo) {
     deleteBtn.className = 'edit-subtask-delete';
     deleteBtn.dataset.todoId = todo.id;
     deleteBtn.dataset.subtaskId = subtask.id;
-    deleteBtn.title = window.i18n ? window.i18n.t('todoSubtaskDelete') : 'Delete subtask';
+    deleteBtn.title = window.translate('todoSubtaskDelete', 'Delete subtask');
     const delSvg = createSvgElement('svg', {
       viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
       'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
@@ -3628,7 +3628,7 @@ function initTodo() {
   // a settings import) never leaves the box out of step with the filter.
   if (elements.todoSearch) {
     elements.todoSearch.addEventListener('input', handleTodoSearchInput);
-    elements.todoSearch.placeholder = window.i18n ? window.i18n.t('todoSearchPlaceholder') : 'Search todos...';
+    elements.todoSearch.placeholder = window.translate('todoSearchPlaceholder', 'Search todos...');
     if (elements.todoSearch.value !== todoSearchQuery) {
       elements.todoSearch.value = todoSearchQuery;
     }
@@ -3865,19 +3865,19 @@ function handleImportFile(event) {
   const reader = new FileReader();
   reader.onerror = function() {
     console.error('Failed to read import file');
-    showToast(window.i18n ? window.i18n.t('importReadError') : 'Failed to read file.', 'error');
+    showToast(window.translate('importReadError', 'Failed to read file.'), 'error');
   };
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
       if (!validateTodoData(data)) {
-        showToast(window.i18n ? window.i18n.t('importInvalidData') : 'Invalid todo data.', 'error');
+        showToast(window.translate('importInvalidData', 'Invalid todo data.'), 'error');
         return;
       }
       showImportDialog(data.todos);
     } catch (err) {
       console.error('Failed to parse import file:', err);
-      showToast(window.i18n ? window.i18n.t('importInvalidData') : 'Invalid todo data.', 'error');
+      showToast(window.translate('importInvalidData', 'Invalid todo data.'), 'error');
     }
   };
   reader.readAsText(file);
@@ -3983,10 +3983,10 @@ function showImportDialog(importedTodos) {
     closeEditModal(false);
     scheduleTodoReminderCheck();
     if (addedCount > 0) {
-      const msg = window.i18n ? window.i18n.t('importSuccess', { count: addedCount }) : 'Imported ' + addedCount + ' todos successfully.';
+      const msg = window.translate('importSuccess', 'Imported ' + addedCount + ' todos successfully.', { count: addedCount });
       showToast(msg, 'success');
     } else {
-      showToast(window.i18n ? window.i18n.t('importNoNewTodos') : 'No new todos to import.', 'info');
+      showToast(window.translate('importNoNewTodos', 'No new todos to import.'), 'info');
     }
     hideDialog();
   };
@@ -4005,7 +4005,7 @@ function showImportDialog(importedTodos) {
     applyFilters();
     closeEditModal(false);
     scheduleTodoReminderCheck();
-    const msg = window.i18n ? window.i18n.t('importSuccess', { count: newTodos.length }) : 'Imported ' + newTodos.length + ' todos successfully.';
+    const msg = window.translate('importSuccess', 'Imported ' + newTodos.length + ' todos successfully.', { count: newTodos.length });
     showToast(msg, 'success');
     hideDialog();
   };
@@ -4150,7 +4150,7 @@ class CustomDatePicker {
 
   updateTriggerDisplay() {
     if (this.selectedDateText) {
-      this.selectedDateText.textContent = this.selectedDate ? this.formatDateForDisplay(this.selectedDate) : (window.i18n ? window.i18n.t('dueDate') : 'Due Date');
+      this.selectedDateText.textContent = this.selectedDate ? this.formatDateForDisplay(this.selectedDate) : window.translate('dueDate', 'Due Date');
     }
     if (this.trigger) {
       this.trigger.classList.toggle('selected', !!this.selectedDate);
@@ -4177,7 +4177,7 @@ class CustomDatePicker {
     const monthIndex = this.currentDate.getMonth();
     const monthKey = ['january', 'february', 'march', 'april', 'may', 'june',
                       'july', 'august', 'september', 'october', 'november', 'december'][monthIndex];
-    const monthName = window.i18n ? window.i18n.t(monthKey) : monthKey;
+    const monthName = window.translate(monthKey, monthKey);
     this.monthElement.textContent = monthName;
     this.yearElement.textContent = this.currentDate.getFullYear();
 

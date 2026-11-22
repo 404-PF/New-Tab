@@ -117,7 +117,7 @@
   }
 
   function t(key, fallback) {
-    return window.i18n ? window.i18n.t(key) : (fallback || key);
+    return window.translate(key, fallback || key);
   }
 
   function formatDateISO(date) {

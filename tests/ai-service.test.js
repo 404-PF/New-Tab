@@ -53,6 +53,7 @@ beforeAll(() => {
   injectScript('src/ai/network-detector.js');
   injectScript('src/ai/offline-mode.js');
   injectScript('src/ai/openrouter.js');
+  injectScript('src/core/utils.js');
   injectScript('src/ai/ai-renderer.js');
   injectScript('src/ai/conversation-validator.js');
   injectScript('src/ai/ai-store.js');
@@ -1538,5 +1539,74 @@ describe('AI chat multi-line composer (#1047)', () => {
 
     expect(input.value).toBe('');
     expect(input.style.height).toBe('42px');
+  });
+});
+
+describe('AIService local notes context (#1333)', () => {
+  const originalRetrieve = window.retrieveNotesForAI;
+
+  function seedConversation(id) {
+    const conversation = { id, title: 'Context', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+    AIStore.state.conversations = [conversation];
+    AIStore.state.currentConversationId = conversation.id;
+    return conversation;
+  }
+
+  beforeEach(() => {
+    OpenRouterAPI.sendMessageStreaming = vi.fn(async (message, history, onChunk) => {
+      onChunk('answer');
+      return { success: true, content: 'answer' };
+    });
+  });
+
+  afterEach(() => {
+    window.retrieveNotesForAI = originalRetrieve;
+    localStorage.removeItem('aiIncludeLocalContext');
+  });
+
+  it('opt-out: off by default, so retrieval is skipped and no notes are sent', async () => {
+    seedConversation('conv-ctx-off');
+    window.retrieveNotesForAI = vi.fn(async () => [{ id: '1', title: 'x', text: 'x' }]);
+
+    await AIService.sendMessage('hello');
+
+    expect(window.retrieveNotesForAI).not.toHaveBeenCalled();
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).toEqual({ grounding: true });
+  });
+
+  it('empty retrieval: sends no context and shows no notes caption', async () => {
+    const conversation = seedConversation('conv-ctx-empty');
+    localStorage.setItem('aiIncludeLocalContext', 'true');
+    window.retrieveNotesForAI = vi.fn(async () => []);
+
+    await AIService.sendMessage('hello');
+
+    expect(window.retrieveNotesForAI).toHaveBeenCalledWith('hello');
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).not.toHaveProperty('localContext');
+    expect(conversation.messages[1].contextSources).toBeUndefined();
+    expect(document.querySelector('.ai-message-context')).toBeNull();
+  });
+
+  it('passes retrieved notes to the request and records their titles on the answer', async () => {
+    const conversation = seedConversation('conv-ctx-hit');
+    localStorage.setItem('aiIncludeLocalContext', 'true');
+    const notesForPrompt = [{ id: 'trip', title: 'Trip packing', text: 'Trip packing: passport' }];
+    window.retrieveNotesForAI = vi.fn(async () => notesForPrompt);
+
+    await AIService.sendMessage('what do I need?');
+
+    expect(OpenRouterAPI.sendMessageStreaming.mock.calls[0][4]).toMatchObject({ localContext: notesForPrompt });
+    expect(conversation.messages[1].contextSources).toEqual(['Trip packing']);
+  });
+
+  it('still sends the message when retrieval fails', async () => {
+    const conversation = seedConversation('conv-ctx-throw');
+    localStorage.setItem('aiIncludeLocalContext', 'true');
+    window.retrieveNotesForAI = vi.fn(async () => { throw new Error('embedding failed'); });
+
+    await AIService.sendMessage('hello');
+
+    expect(OpenRouterAPI.sendMessageStreaming).toHaveBeenCalledTimes(1);
+    expect(conversation.messages[1].content).toBe('answer');
   });
 });

@@ -29,6 +29,9 @@
     DEFAULT_RELATED_MIN_SCORE: base.DEFAULT_RELATED_MIN_SCORE,
     DEFAULT_RELATED_MAX_RESULTS: base.DEFAULT_RELATED_MAX_RESULTS,
     DEFAULT_DUPLICATE_MIN_SCORE: base.DEFAULT_DUPLICATE_MIN_SCORE,
+    DEFAULT_CONTEXT_MIN_COSINE: base.DEFAULT_CONTEXT_MIN_COSINE,
+    DEFAULT_CONTEXT_MAX_ITEMS: base.DEFAULT_CONTEXT_MAX_ITEMS,
+    DEFAULT_CONTEXT_MAX_CHARS: base.DEFAULT_CONTEXT_MAX_CHARS,
     cosineSimilarity: base.cosineSimilarity,
     keywordScore: base.keywordScore,
     hybridScore: base.hybridScore,
@@ -37,7 +40,9 @@
     rankByScores: base.rankByScores,
     rankNotesForQuery: base.rankItemsForQuery,
     rankItemsForQuery: base.rankItemsForQuery,
-    rankSimilarItems: base.rankSimilarItems
+    rankSimilarItems: base.rankSimilarItems,
+    selectContextNotes: base.selectContextNotes,
+    selectContextItems: base.selectContextItems || base.selectContextNotes
   };
 
   try {

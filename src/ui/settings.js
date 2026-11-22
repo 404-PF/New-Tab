@@ -1517,7 +1517,7 @@ function renderLanguageOptions() {
         <span class="language-code">${lang.nativeName}</span>
       </div>
       <input type="radio" name="language" value="${lang.code}" ${currentLang === lang.code ? 'checked' : ''} />
-      <span class="label">${window.i18n ? window.i18n.t(lang.nameKey) : lang.nativeName}</span>
+      <span class="label">${window.translate(lang.nameKey, lang.nativeName)}</span>
     </label>
   `).join('');
 }

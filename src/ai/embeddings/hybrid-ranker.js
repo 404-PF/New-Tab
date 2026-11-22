@@ -41,6 +41,12 @@
   const DEFAULT_RELATED_MIN_SCORE = 0.75;
   const DEFAULT_RELATED_MAX_RESULTS = 5;
   const DEFAULT_DUPLICATE_MIN_SCORE = 0.9;
+  // AI context retrieval (issue #1333) has no keyword signal, so it uses the
+  // hybrid floor directly: with alpha 0.35, a 0.5 hybrid needs cosine >= 0.54.
+  const DEFAULT_CONTEXT_MIN_COSINE = 0.54;
+  const DEFAULT_CONTEXT_MAX_ITEMS = 4;
+  const DEFAULT_CONTEXT_MAX_CHARS = 1500;
+  const CONTEXT_TITLE_MAX_CHARS = 60;
 
   // Shared pre-cap (bounds hashing/transport only). The exact 512-token
   // truncate lives in embedding-service.js.
@@ -253,6 +259,36 @@
     return scored.slice(0, maxResults);
   }
 
+  // Picks the items to inject into an AI prompt (issue #1333). scored is
+  // [{ item|note, cosine }]. Keeps the best cosines at or above minCosine,
+  // at most maxItems, and stops once the summed text reaches maxChars (the
+  // last item is cut to fit). Returns copies shaped { id, title, text }.
+  function selectContextNotes(scored, options) {
+    const opts = options || {};
+    const minCosine = Number.isFinite(opts.minCosine) ? opts.minCosine : DEFAULT_CONTEXT_MIN_COSINE;
+    const maxItems = Number.isFinite(opts.maxItems) ? opts.maxItems : DEFAULT_CONTEXT_MAX_ITEMS;
+    const maxChars = Number.isFinite(opts.maxChars) ? opts.maxChars : DEFAULT_CONTEXT_MAX_CHARS;
+    const candidates = (Array.isArray(scored) ? scored : [])
+      .filter(function (s) {
+        const src = s && (s.note || s.item);
+        return src && Number.isFinite(s.cosine) && s.cosine >= minCosine;
+      })
+      .sort(function (a, b) { return b.cosine - a.cosine; });
+    const picked = [];
+    let used = 0;
+    for (let i = 0; i < candidates.length && picked.length < maxItems && used < maxChars; i += 1) {
+      const src = candidates[i].note || candidates[i].item;
+      const text = typeof src.text === 'string' ? src.text.trim() : '';
+      if (!text) continue;
+      const room = maxChars - used;
+      const clipped = text.slice(0, room);
+      used += clipped.length;
+      const title = clipped.split('\n')[0].slice(0, CONTEXT_TITLE_MAX_CHARS).trim();
+      picked.push({ id: src.id, title: title || clipped.slice(0, CONTEXT_TITLE_MAX_CHARS), text: clipped });
+    }
+    return picked;
+  }
+
   function yieldToUI() {
     return new Promise(function (resolve) {
       try {
@@ -400,6 +436,9 @@
     DEFAULT_RELATED_MIN_SCORE,
     DEFAULT_RELATED_MAX_RESULTS,
     DEFAULT_DUPLICATE_MIN_SCORE,
+    DEFAULT_CONTEXT_MIN_COSINE,
+    DEFAULT_CONTEXT_MAX_ITEMS,
+    DEFAULT_CONTEXT_MAX_CHARS,
     EMBEDDING_TEXT_PRE_CAP,
     BACKFILL_CHUNK_SIZE,
     BACKFILL_IDLE_DELAY_MS,
@@ -412,13 +451,16 @@
     rankByScores,
     rankItemsForQuery,
     rankSimilarItems,
+    selectContextNotes,
     backfillMissingVectors,
     scheduleIdleBackfill
   };
 
-  // Backward-compatible Notes-era alias: rankNotesForQuery(item, ...) and the
+  // Backward-compatible Notes-era aliases: rankNotesForQuery(item, ...) and the
   // getNoteVector dep name keep working for existing callers/tests.
+  // selectContextItems is the collection-agnostic alias of selectContextNotes.
   api.rankNotesForQuery = rankItemsForQuery;
+  api.selectContextItems = selectContextNotes;
 
   try {
     window.HybridRanker = api;

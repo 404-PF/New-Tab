@@ -84,7 +84,7 @@
   }
 
   function showNotesSaveError() {
-    const message = window.i18n ? window.i18n.t('notesSaveError') : 'Failed to save note. Your changes were not saved.';
+    const message = translateOr('notesSaveError', 'Failed to save note. Your changes were not saved.');
     if (typeof showToast === 'function') {
       showToast(message, 'error');
     } else {
@@ -180,7 +180,7 @@
     const allBtn = document.createElement('button');
     allBtn.type = 'button';
     allBtn.className = 'note-tag-filter-btn' + (_activeTagFilter === null ? ' active' : '');
-    allBtn.textContent = window.i18n ? window.i18n.t('notesFilterAll') : 'All';
+    allBtn.textContent = translateOr('notesFilterAll', 'All');
     allBtn.dataset.tag = '';
     filterBar.appendChild(allBtn);
 
@@ -365,46 +365,20 @@
     }
     el.hidden = false;
     try {
-      el.textContent = window.i18n ? window.i18n.t(key) : fallback;
+      el.textContent = translateOr(key, fallback);
     } catch {
       el.textContent = fallback;
     }
     el.dataset.i18n = key;
   }
 
-  function getFilteredNotesRanked() {
-    const query = _activeSearchQuery;
-    if (!query || !isNotesSemanticEnabled() || !isNotesSemanticReady()) {
-      return Promise.resolve(getFilteredNotes());
-    }
-    let ranker;
-    try {
-      ranker = window.HybridRanker || window.NotesSemanticSearch || null;
-    } catch { ranker = null; }
-    const rankFn = ranker && (ranker.rankItemsForQuery || ranker.rankNotesForQuery);
-    let service = null;
-    try {
-      service = window.EmbeddingService || null;
-    } catch { service = null; }
-    let cache = null;
-    try {
-      cache = window.NotesVectorCache || null;
-    } catch { cache = null; }
-    if (!ranker || !rankFn || !service || !cache) {
-      return Promise.resolve(getFilteredNotes());
-    }
-    const base = getTagFilteredNotes();
-    if (base.length === 0) return Promise.resolve([]);
+  // Batch: one cache pass for all notes, then a single embedTexts call for
+  // every cache miss — not N inferences. Partial failures keep the cached
+  // vectors and null the rest (cosine 0) instead of dropping to keyword.
+  // Resolves to one vector (or null) per note in base, in the same order.
+  function gatherNoteVectors(base, service, cache) {
     const modelId = getSemanticModelId();
     const inputs = base.map(noteToEmbeddingText);
-
-    function embedQuery(q) {
-      return service.embedQuery(q);
-    }
-
-    // Batch: one cache pass for all notes, then a single embedTexts call for
-    // every cache miss — not N inferences. Partial failures keep the cached
-    // vectors and null the rest (cosine 0) instead of dropping to keyword.
     return Promise.all(base.map(function (note, i) {
       return cache.getCachedVector(note.id, inputs[i], modelId).catch(function () { return null; });
     })).then(function (cached) {
@@ -449,7 +423,38 @@
         });
         return vectors;
       }).catch(function () { return vectors; });
-    }).then(function (vectors) {
+    });
+  }
+
+  function getFilteredNotesRanked() {
+    const query = _activeSearchQuery;
+    if (!query || !isNotesSemanticEnabled() || !isNotesSemanticReady()) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    let ranker;
+    try {
+      ranker = window.HybridRanker || window.NotesSemanticSearch || null;
+    } catch { ranker = null; }
+    const rankFn = ranker && (ranker.rankItemsForQuery || ranker.rankNotesForQuery);
+    let service = null;
+    try {
+      service = window.EmbeddingService || null;
+    } catch { service = null; }
+    let cache;
+    try {
+      cache = window.NotesVectorCache || null;
+    } catch { cache = null; }
+    if (!ranker || !rankFn || !service || !cache) {
+      return Promise.resolve(getFilteredNotes());
+    }
+    const base = getTagFilteredNotes();
+    if (base.length === 0) return Promise.resolve([]);
+
+    function embedQuery(q) {
+      return service.embedQuery(q);
+    }
+
+    return gatherNoteVectors(base, service, cache).then(function (vectors) {
       const byId = new Map();
       base.forEach(function (note, i) { byId.set(note.id, vectors[i] || null); });
       const getVector = function (note) { return Promise.resolve(byId.get(note.id) || null); };
@@ -496,6 +501,43 @@
     } catch { /* best-effort only */ }
   }
 
+  // AI chat context (issue #1333): the notes most similar to the prompt, as
+  // { id, title, text } copies, capped by selectContextNotes. Resolves to []
+  // unless semantic search is on and the model is ready, so the chat path
+  // never changes when the model is absent. Vectors are checked against the
+  // live notes after the await: a note deleted or edited mid-flight is
+  // dropped rather than sent with stale text.
+  function retrieveNotesForAI(query) {
+    const q = typeof query === 'string' ? query.trim() : '';
+    if (!q || !isNotesSemanticReady()) return Promise.resolve([]);
+    const ranker = window.HybridRanker || window.NotesSemanticSearch || null;
+    const service = window.EmbeddingService || null;
+    const cache = window.NotesVectorCache || null;
+    if (!ranker || !service || !cache || typeof ranker.selectContextNotes !== 'function') {
+      return Promise.resolve([]);
+    }
+    const base = notes.slice();
+    if (base.length === 0) return Promise.resolve([]);
+    const inputs = base.map(noteToEmbeddingText);
+    return Promise.all([
+      service.embedQuery(q),
+      gatherNoteVectors(base, service, cache)
+    ]).then(function (results) {
+      const queryVector = results[0];
+      const vectors = results[1];
+      if (!Array.isArray(queryVector) || queryVector.length === 0) return [];
+      const liveById = new Map(notes.map(function (n) { return [n.id, n]; }));
+      const scored = [];
+      base.forEach(function (note, i) {
+        const current = liveById.get(note.id);
+        if (!current || noteToEmbeddingText(current) !== inputs[i]) return;
+        scored.push({ note: current, cosine: ranker.cosineSimilarity(queryVector, vectors[i]) });
+      });
+      if (!isNotesSemanticReady()) return [];
+      return ranker.selectContextNotes(scored);
+    }).catch(function () { return []; });
+  }
+
   function invalidateNoteVector(noteId) {
     try {
       // Vectors are only written while a model is ready, so with no download
@@ -524,7 +566,7 @@
 
   function translateOr(key, fallback) {
     try {
-      return window.i18n ? window.i18n.t(key) : fallback;
+      return window.translate(key, fallback);
     } catch {
       return fallback;
     }
@@ -948,7 +990,7 @@
     if (!emptyParagraph) return;
     const key = isEmpty ? 'notesEmpty' : 'notesNoResults';
     const fallback = isEmpty ? 'No notes yet. Click + to add one!' : 'No matching notes.';
-    emptyParagraph.textContent = window.i18n ? window.i18n.t(key) : fallback;
+    emptyParagraph.textContent = translateOr(key, fallback);
     emptyParagraph.dataset.i18n = key;
   }
 
@@ -1063,11 +1105,11 @@
     grip.draggable = true;
     grip.tabIndex = 0;
     grip.innerHTML = SVG_GRIP;
-    grip.title = window.i18n ? window.i18n.t('notesDragToReorder') : 'Drag to reorder';
+    grip.title = translateOr('notesDragToReorder', 'Drag to reorder');
 
     const textarea = document.createElement('textarea');
     textarea.className = 'note-textarea';
-    textarea.placeholder = window.i18n ? window.i18n.t('notesPlaceholder') : 'Type your note here...';
+    textarea.placeholder = translateOr('notesPlaceholder', 'Type your note here...');
     textarea.value = note.text || '';
     textarea.dataset.id = note.id;
     textarea.rows = 2;
@@ -1087,7 +1129,7 @@
     const tagBtn = document.createElement('button');
     tagBtn.className = 'note-tag-btn';
     tagBtn.dataset.id = note.id;
-    tagBtn.title = note.tag || (window.i18n ? window.i18n.t('notesAddTag') : 'Add tag');
+    tagBtn.title = note.tag || translateOr('notesAddTag', 'Add tag');
     tagBtn.innerHTML = SVG_TAG;
     if (note.tag) {
       const tagLabel = document.createElement('span');
@@ -1104,13 +1146,13 @@
     const previewBtn = document.createElement('button');
     previewBtn.className = 'note-preview-btn';
     previewBtn.dataset.id = note.id;
-    previewBtn.title = isPreview ? (window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit') : (window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview');
+    previewBtn.title = isPreview ? translateOr('notesEditTooltip', 'Edit') : translateOr('notesPreviewTooltip', 'Preview');
     previewBtn.innerHTML = isPreview ? SVG_PENCIL : SVG_EYE;
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'note-delete-btn';
     deleteBtn.dataset.id = note.id;
-    deleteBtn.title = window.i18n ? window.i18n.t('notesDeleteTooltip') : 'Delete Note';
+    deleteBtn.title = translateOr('notesDeleteTooltip', 'Delete Note');
     deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"></polyline><path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path></svg>';
 
     card.appendChild(grip);
@@ -1464,7 +1506,7 @@
         textarea.style.display = 'none';
       }
       if (previewBtn) {
-        previewBtn.title = window.i18n ? window.i18n.t('notesEditTooltip') : 'Edit';
+        previewBtn.title = translateOr('notesEditTooltip', 'Edit');
         previewBtn.innerHTML = SVG_PENCIL;
       }
     } else {
@@ -1477,7 +1519,7 @@
         scheduleResize(textarea);
       }
       if (previewBtn) {
-        previewBtn.title = window.i18n ? window.i18n.t('notesPreviewTooltip') : 'Preview';
+        previewBtn.title = translateOr('notesPreviewTooltip', 'Preview');
         previewBtn.innerHTML = SVG_EYE;
       }
     }
@@ -1515,7 +1557,7 @@
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'note-tag-input';
-    input.placeholder = window.i18n ? window.i18n.t('notesTagPlaceholder') : 'Tag name...';
+    input.placeholder = translateOr('notesTagPlaceholder', 'Tag name...');
     input.value = note.tag || '';
     picker.appendChild(input);
 
@@ -1539,7 +1581,7 @@
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'note-tag-remove-btn';
-      removeBtn.textContent = window.i18n ? window.i18n.t('notesRemoveTag') : 'Remove tag';
+      removeBtn.textContent = translateOr('notesRemoveTag', 'Remove tag');
       actions.appendChild(removeBtn);
     }
     picker.appendChild(actions);
@@ -1950,7 +1992,7 @@
 
     if (addedCount === 0) {
       if (typeof showToast === 'function') {
-        showToast(window.i18n ? window.i18n.t('notesImportNoNew') : 'No new notes to import.', 'info');
+        showToast(translateOr('notesImportNoNew', 'No new notes to import.'), 'info');
       }
       return 0;
     }
@@ -1978,7 +2020,7 @@
     reader.onerror = function() {
       console.error('Failed to read notes import file');
       if (typeof showToast === 'function') {
-        showToast(window.i18n ? window.i18n.t('importReadError') : 'Failed to read the selected file.', 'error');
+        showToast(translateOr('importReadError', 'Failed to read the selected file.'), 'error');
       }
     };
     reader.onload = function(e) {
@@ -1986,7 +2028,7 @@
         const data = JSON.parse(e.target.result);
         if (!validateNotesData(data)) {
           if (typeof showToast === 'function') {
-            showToast(window.i18n ? window.i18n.t('notesImportInvalid') : 'Invalid notes data. Please select a valid JSON file.', 'error');
+            showToast(translateOr('notesImportInvalid', 'Invalid notes data. Please select a valid JSON file.'), 'error');
           }
           return;
         }
@@ -1994,7 +2036,7 @@
       } catch (err) {
         console.error('Failed to parse notes import file:', err);
         if (typeof showToast === 'function') {
-          showToast(window.i18n ? window.i18n.t('notesImportInvalid') : 'Invalid notes data. Please select a valid JSON file.', 'error');
+          showToast(translateOr('notesImportInvalid', 'Invalid notes data. Please select a valid JSON file.'), 'error');
         }
       }
     };
@@ -2032,7 +2074,7 @@
     if (elements.addNoteBtn) {
       elements.addNoteBtn.removeEventListener('click', addNote);
       elements.addNoteBtn.addEventListener('click', addNote);
-      elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
+      elements.addNoteBtn.title = translateOr('addNoteTooltip', 'Add note');
     }
 
     if (elements.exportNotesBtn) {
@@ -2053,7 +2095,7 @@
     if (elements.notesSearch) {
       elements.notesSearch.removeEventListener('input', handleNotesSearchInput);
       elements.notesSearch.addEventListener('input', handleNotesSearchInput);
-      elements.notesSearch.placeholder = window.i18n ? window.i18n.t('notesSearchPlaceholder') : 'Search notes...';
+      elements.notesSearch.placeholder = translateOr('notesSearchPlaceholder', 'Search notes...');
       // Restore current query value in case renderNotes cleared it
       if (elements.notesSearch.value !== _activeSearchQuery) {
         elements.notesSearch.value = _activeSearchQuery;
@@ -2089,10 +2131,10 @@
   window.addEventListener('languageChanged', () => {
     flushPendingSaves();
     if (elements.addNoteBtn) {
-      elements.addNoteBtn.title = window.i18n ? window.i18n.t('addNoteTooltip') : 'Add note';
+      elements.addNoteBtn.title = translateOr('addNoteTooltip', 'Add note');
     }
     if (elements.notesSearch) {
-      elements.notesSearch.placeholder = window.i18n ? window.i18n.t('notesSearchPlaceholder') : 'Search notes...';
+      elements.notesSearch.placeholder = translateOr('notesSearchPlaceholder', 'Search notes...');
     }
     // renderNotes() re-ranks (debounced) and sets the correct semantic
     // status for the current ready state; do not force one here.
@@ -2161,6 +2203,7 @@ try {
   window.renderNotes = renderNotes;
   window.getFilteredNotes = getFilteredNotes;
   window.getFilteredNotesRanked = getFilteredNotesRanked;
+  window.retrieveNotesForAI = retrieveNotesForAI;
   window.isNotesSemanticEnabled = isNotesSemanticEnabled;
   window.isNotesSemanticReady = isNotesSemanticReady;
   window.invalidateSemanticRerank = invalidateSemanticRerank;

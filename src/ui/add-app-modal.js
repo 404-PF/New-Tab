@@ -449,7 +449,7 @@ function renderDefaultAppsList() {
         const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
         if (existingUrls.has(canonical) || existingNames.has(normalizeAppName(app.name))) {
           button.classList.add('duplicate');
-          button.title = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+          button.title = window.translate('appAlreadyAdded', 'This URL is already in your apps');
         }
       }
     } catch { void 0; }
@@ -573,7 +573,7 @@ function renderAddAppValidationMessage(validation, isDuplicate) {
     return;
   }
   if (isDuplicate) {
-    validationMessage.textContent = window.i18n ? window.i18n.t('appAlreadyAdded') : 'This URL is already in your apps';
+    validationMessage.textContent = window.translate('appAlreadyAdded', 'This URL is already in your apps');
     validationMessage.classList.add('show', 'duplicate');
     validationMessage.classList.remove('malformed', 'undetectable');
   } else {

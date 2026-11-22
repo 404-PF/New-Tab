@@ -264,6 +264,7 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
         return key;
       }
     };
+    window.translate = (key, fallback, args) => window.i18n.t(key, args);
     window.chrome = {
       notifications: {
         create() {}

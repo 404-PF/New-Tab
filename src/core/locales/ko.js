@@ -696,6 +696,9 @@ window.i18n.__registerLocale('ko', {
   aiGroundWithWeb: '웹으로 보강',
   aiGroundWithWebDescription: '현재 답변에 실시간 웹 결과를 사용합니다.',
   aiSources: '출처',
+  aiIncludeNotes: '내 메모 포함',
+  aiIncludeNotesDescription: '가장 관련성 높은 로컬 메모를 프롬프트에 추가합니다. 메시지와 함께 AI 모델로 전송됩니다.',
+  aiContextNotesUsed: '컨텍스트로 사용된 메모',
   aiSearchingWeb: '웹 검색 중…',
   aiGroundingFallback: '웹 검색을 사용할 수 없습니다. 실시간 웹 데이터 없이 답변합니다.',
   // Games

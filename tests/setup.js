@@ -299,6 +299,11 @@ if (!globalThis.window) {
   });
 }
 
+// Same contract as translate() in src/core/utils.js, for specs that load feature scripts alone.
+if (!globalThis.window.translate) {
+  globalThis.window.translate = (key, fallback, args) => (globalThis.window.i18n ? globalThis.window.i18n.t(key, args) : fallback);
+}
+
 const mockLanguages = [
   { code: 'en', flag: '\uD83C\uDDFA\uD83C\uDDF8', nativeName: 'English', nameKey: 'english' },
   { code: 'zh', flag: '\uD83C\uDDE8\uD83C\uDDF3', nativeName: '中文', nameKey: 'chinese' },

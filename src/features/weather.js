@@ -46,7 +46,7 @@
   }
 
   function t(key) {
-    return window.i18n ? window.i18n.t(key) : key;
+    return window.translate(key, key);
   }
 
   // Guard the shared helper: toast.js may fail to load (#969, #1081).

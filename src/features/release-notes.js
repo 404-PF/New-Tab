@@ -225,7 +225,7 @@
     if (window.updateChecker && typeof window.updateChecker.formatMessage === 'function') {
       message = window.updateChecker.formatMessage(key, replacements || {});
     } else {
-      message = window.i18n ? window.i18n.t(key) : key;
+      message = window.translate ? window.translate(key, key) : key;
       if (typeof message !== 'string') {
         message = key;
       }
@@ -327,7 +327,7 @@
     const notesHtml = notes.length
       ? '<ul class="release-notes-list">' +
           notes.map(function (note) {
-            return '<li>' + escapeHtml(note) + '</li>';
+            return '<li>' + window.escapeHtml(note) + '</li>';
           }).join('') +
         '</ul>'
       : '';
@@ -336,18 +336,18 @@
       <div class="release-notes-dialog" data-liquid-glass="panel" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
         <div class="release-notes-header">
           <div class="release-notes-icon">🎉</div>
-          <h2 class="release-notes-title" id="release-notes-title">${escapeHtml(title)}</h2>
-          <button class="release-notes-close" id="release-notes-close" title="${escapeHtml(closeLabel)}" aria-label="${escapeHtml(closeLabel)}">×</button>
+          <h2 class="release-notes-title" id="release-notes-title">${window.escapeHtml(title)}</h2>
+          <button class="release-notes-close" id="release-notes-close" title="${window.escapeHtml(closeLabel)}" aria-label="${window.escapeHtml(closeLabel)}">×</button>
         </div>
-        <p class="release-notes-version">v${escapeHtml(version)}</p>
-        <p class="release-notes-body">${escapeHtml(body)}</p>
+        <p class="release-notes-version">v${window.escapeHtml(version)}</p>
+        <p class="release-notes-body">${window.escapeHtml(body)}</p>
         ${notesHtml}
         <div class="release-notes-actions">
           <button class="release-notes-btn release-notes-btn-primary" id="release-notes-view">
-            ${escapeHtml(viewFullLabel)}
+            ${window.escapeHtml(viewFullLabel)}
           </button>
           <button class="release-notes-btn release-notes-btn-secondary" id="release-notes-dismiss">
-            ${escapeHtml(closeLabel)}
+            ${window.escapeHtml(closeLabel)}
           </button>
         </div>
       </div>
@@ -428,10 +428,6 @@
     if (focusable.length) {
       focusable[0].focus();
     }
-  }
-
-  function escapeHtml(text) {
-    return window.escapeHtml ? window.escapeHtml(text) : String(text);
   }
 
   // Detect whether the extension was just updated and show release notes if so.
