@@ -18,12 +18,13 @@ beforeAll(() => {
   header.className = 'todo-header';
   document.body.appendChild(header);
 
+  injectScript('src/core/utils.js');
+
   window.VisibilityInterval = class {
     constructor() {}
     destroy() {}
   };
 
-  injectScript('src/core/utils.js');
   injectScript('src/features/pomodoro.js');
 });
 

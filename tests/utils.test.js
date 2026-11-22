@@ -1,4 +1,4 @@
-/* global validateIconUrl, readStoredJson */
+/* global validateIconUrl */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { injectScript } from './helpers/inject-script.js';
 
@@ -732,16 +732,25 @@ describe('readStoredJson', () => {
 
   it('returns a fresh fallback for missing, invalid, and unparseable values', () => {
     const fallback = () => ({ a: 1 });
-    expect(readStoredJson('missing-key', { fallback })).toEqual({ a: 1 });
+    const options = { fallback, isValid: Array.isArray };
+
+    const missingA = readStoredJson('missing-key', { fallback });
+    const missingB = readStoredJson('missing-key', { fallback });
+    expect(missingA).toEqual({ a: 1 });
+    expect(missingA).not.toBe(missingB);
 
     localStorage.setItem('json-key', '"text"');
-    const invalid = readStoredJson('json-key', { fallback, isValid: Array.isArray });
-    expect(invalid).toEqual({ a: 1 });
-    expect(invalid).not.toBe(readStoredJson('json-key', { fallback, isValid: Array.isArray }));
+    const invalidA = readStoredJson('json-key', options);
+    const invalidB = readStoredJson('json-key', options);
+    expect(invalidA).toEqual({ a: 1 });
+    expect(invalidA).not.toBe(invalidB);
 
     localStorage.setItem('json-key', '{bad');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(readStoredJson('json-key', { fallback: () => [], warnLabel: 'bad json' })).toEqual([]);
+    const badA = readStoredJson('json-key', { fallback, warnLabel: 'bad json' });
+    const badB = readStoredJson('json-key', { fallback, warnLabel: 'bad json' });
+    expect(badA).toEqual({ a: 1 });
+    expect(badA).not.toBe(badB);
     expect(warn).toHaveBeenCalledWith('bad json', expect.any(Error));
     warn.mockRestore();
   });
