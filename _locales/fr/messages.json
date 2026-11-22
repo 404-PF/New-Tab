@@ -35,6 +35,14 @@
     "message": "Impossible d’enregistrer les statistiques de jeu. Votre dernier score n’a pas été enregistré.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "Impossible de lire les statistiques de jeu.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "Impossible de lire la progression enregistrée du jeu.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "Impossible d’enregistrer la progression du jeu. Votre dernière partie n’a pas été enregistrée.",
     "description": "Error shown when a game save cannot be persisted"

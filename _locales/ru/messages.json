@@ -35,6 +35,14 @@
     "message": "Не удалось сохранить статистику игры. Ваш последний результат не был сохранён.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "Не удалось прочитать статистику игры.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "Не удалось прочитать сохранённый прогресс игры.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "Не удалось сохранить прогресс игры. Ваше последнее прохождение не было сохранено.",
     "description": "Error shown when a game save cannot be persisted"

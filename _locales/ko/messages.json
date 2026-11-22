@@ -35,6 +35,14 @@
     "message": "게임 통계를 저장하지 못했습니다. 최근 점수가 저장되지 않았습니다.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "게임 통계를 읽을 수 없습니다.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "저장된 게임 진행 상황을 읽을 수 없습니다.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "게임 진행 상황을 저장하지 못했습니다. 최근 진행 내용이 저장되지 않았습니다.",
     "description": "Error shown when a game save cannot be persisted"

@@ -28,17 +28,20 @@
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   const CACHE_LOCATION_TOLERANCE_KM = 10;
   const GEO_TIMEOUT_MS = 10000; // 10 seconds
+  // Upper bound for a pending cache write's coordinates. A stalled storage write
+  // must not pin its entry in memory for the rest of the page session.
+  const CACHE_COORDS_PENDING_MS = 60 * 1000;
 
   // State
   let isRefreshing = false;
   let widgetHasBeenShown = false;
   let pendingRefresh = false;
-  // Coordinates of the last cache write. Kept in memory only so precise
-  // location is never persisted to localStorage (CodeQL: clear-text storage).
-  let lastCacheCoords = null;
-  // Identifies the most recently started cache write so an older write that
-  // resolves late cannot overwrite coordinates from a newer one.
-  let cacheWriteGeneration = 0;
+  // Coordinates of cache writes, keyed by cache timestamp. Kept in memory only
+  // so precise location is never persisted to localStorage (CodeQL: clear-text
+  // storage). An entry is removed if its write fails, and older entries are
+  // pruned once a newer write succeeds, so the cache that survives a rollback
+  // keeps its own coordinates.
+  const cacheCoordsByTimestamp = new Map();
 
   // ===================== Utility Functions =====================
 
@@ -186,8 +189,8 @@
   // Persisted caches carry no coordinates, so auto-location matching only works
   // for a cache written during this page session.
   function getCacheCoords(cache) {
-    if (!cache || !lastCacheCoords || lastCacheCoords.timestamp !== cache.timestamp) return null;
-    return lastCacheCoords;
+    if (!cache) return null;
+    return cacheCoordsByTimestamp.get(cache.timestamp) || null;
   }
 
   function isCacheMatchingSettings(cache, currentLocation = null) {
@@ -565,12 +568,23 @@
       // chrome.storage callback that never arrives cannot leave the widget
       // loading or hold isRefreshing. saveCache still dispatches
       // weatherCacheUpdated only after the write is known to have succeeded.
-      // Coordinates replace the previous record only once the write succeeds,
-      // so a failed write keeps the prior cache's coordinates valid.
-      const writeGeneration = ++cacheWriteGeneration;
+      // Coordinates are tracked per write, so a failed newer write cannot
+      // discard the coordinates of an older write that storage still holds.
+      cacheCoordsByTimestamp.set(newCache.timestamp, newCacheCoords);
+      const forgetCoords = () => cacheCoordsByTimestamp.delete(newCache.timestamp);
+      const pendingTimer = setTimeout(forgetCoords, CACHE_COORDS_PENDING_MS);
       WeatherStorage.saveCache(newCache).then((saved) => {
-        if (writeGeneration === cacheWriteGeneration && saved) lastCacheCoords = newCacheCoords;
+        clearTimeout(pendingTimer);
+        if (!saved) {
+          forgetCoords();
+          return;
+        }
+        for (const ts of [...cacheCoordsByTimestamp.keys()]) {
+          if (ts < newCache.timestamp) cacheCoordsByTimestamp.delete(ts);
+        }
       }).catch((error) => {
+        clearTimeout(pendingTimer);
+        forgetCoords();
         console.warn('Failed to write weather cache:', error);
       });
       renderWeather(weatherData, locationDisplay, unit);
@@ -818,6 +832,7 @@
     loadUnit: WeatherStorage.loadUnit,
     loadLocationMode: WeatherStorage.loadLocationMode,
     loadManualCity: WeatherStorage.loadManualCity,
+    getCacheLocationName: getCacheLocationName,
     applySettings: applyWeatherSettings
   };
 

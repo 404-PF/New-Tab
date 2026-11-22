@@ -35,6 +35,14 @@
     "message": "Failed to save game statistics. Your latest score was not saved.",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "Game statistics could not be read.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "Saved game progress could not be read.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "Failed to save game progress. Your latest run was not saved.",
     "description": "Error shown when a game save cannot be persisted"

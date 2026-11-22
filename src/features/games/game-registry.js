@@ -8,6 +8,8 @@
   const MRU_KEY = 'games_recently_played';
   const SAVES_KEY = 'games_saves';
   const SAVES_SAVE_ERROR_FALLBACK = 'Failed to save game progress. Your latest run was not saved.';
+  const STATS_LOAD_ERROR_FALLBACK = 'Game statistics could not be read.';
+  const SAVES_LOAD_ERROR_FALLBACK = 'Saved game progress could not be read.';
   const MAX_MRU = 20;
   const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
   const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -27,42 +29,100 @@
 
   // Coalesce bursts: several failed writes in quick succession show one toast.
   const TOAST_COALESCE_MS = 2000;
+  // Bounds corrupt-value backups so repeated corruption cannot exhaust quota.
+  const MAX_CORRUPT_BACKUPS = 5;
 
   // A localStorage key holding a plain JSON object, with a private read cache
   // and its own toast coalescing.
-  function createJSONObjectStore({ key, errorI18nKey, fallback }) {
+  function createJSONObjectStore({ key, errorI18nKey, fallback, loadErrorI18nKey, loadFallback }) {
     let cache = null;
     let cacheRaw;
     let lastToastAt = -Infinity;
+    // Settles to whether the latest corrupt value is preserved. Replacement
+    // writes wait on it and are refused if the backup did not persist.
+    let backupGate = null;
+    // Unsettled setItemAsync() backup writes by key. The bridge exposes these
+    // values optimistically, so a probe must wait for them rather than trust them.
+    const pendingBackups = new Map();
+
+    // Keep an unparseable value under a backup key so the next write, which
+    // starts from an empty object, cannot silently destroy it. Backup keys
+    // are probed so an existing backup is never overwritten.
+    function backupCorrupt(raw) {
+      const base = `${key}_corrupt_backup`;
+      let backupKey = base;
+      for (let i = 1; ; i += 1) {
+        const existing = localStorage.getItem(backupKey);
+        if (existing === null) break;
+        if (existing === raw) return pendingBackups.get(backupKey) || Promise.resolve(true);
+        // When every slot is taken, refuse the write rather than overwrite a backup.
+        if (i >= MAX_CORRUPT_BACKUPS) {
+          console.warn(`Not preserving corrupt ${key}: all ${MAX_CORRUPT_BACKUPS} backup slots are in use`);
+          return Promise.resolve(false);
+        }
+        backupKey = `${base}_${i}`;
+      }
+      console.warn(`Preserved corrupt ${key} as ${backupKey}`);
+      if (typeof localStorage.setItemAsync === 'function') {
+        const pending = Promise.resolve(localStorage.setItemAsync(backupKey, raw))
+          .then((persisted) => persisted === true)
+          .finally(() => {
+            if (pendingBackups.get(backupKey) === pending) pendingBackups.delete(backupKey);
+          });
+        pendingBackups.set(backupKey, pending);
+        return pending;
+      }
+      const persisted = localStorage.setItem(backupKey, raw);
+      return Promise.resolve(persisted !== false); // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    }
+
+    async function preserveCorrupt(raw) {
+      try {
+        return await backupCorrupt(raw);
+      } catch (e) {
+        console.warn(`Failed to back up corrupt ${key}:`, e);
+        return false;
+      }
+    }
 
     function load() {
+      let raw;
       try {
-        const raw = localStorage.getItem(key);
+        raw = localStorage.getItem(key);
         if (raw === cacheRaw && cache !== null) return cache;
         cacheRaw = raw;
+        backupGate = null;
         if (!raw) {
           cache = {};
           return cache;
         }
         const parsed = JSON.parse(raw);
-        cache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new TypeError(`${key} is not a JSON object`);
+        }
+        cache = parsed;
         return cache;
       } catch (e) {
         console.warn(`Failed to load ${key}:`, e);
         cache = {};
-        cacheRaw = undefined;
+        // Remember the bad raw value so it is backed up once, not on every read.
+        cacheRaw = raw;
+        if (raw) {
+          backupGate = preserveCorrupt(raw);
+          showError(loadErrorI18nKey, loadFallback);
+        }
         return cache;
       }
     }
 
-    function showError() {
+    function showError(messageKey = errorI18nKey, messageFallback = fallback) {
       const now = Date.now();
       if (now - lastToastAt < TOAST_COALESCE_MS) return;
       lastToastAt = now;
-      let message = fallback;
+      let message = messageFallback;
       if (window.i18n && typeof window.i18n.t === 'function') {
-        const translated = window.i18n.t(errorI18nKey);
-        if (translated && translated !== errorI18nKey) message = translated;
+        const translated = window.i18n.t(messageKey);
+        if (translated && translated !== messageKey) message = translated;
       }
       if (typeof window.showToast === 'function') {
         window.showToast(message, 'error');
@@ -80,11 +140,29 @@
       return false;
     }
 
-    function save(value) {
+    function write(value) {
       return writeTrackedJSON(key, value, (cached, raw) => {
         cache = cached;
         cacheRaw = raw;
+        backupGate = null;
       }, fail);
+    }
+
+    function save(value) {
+      load();
+      const gate = backupGate;
+      if (!gate) return write(value);
+      const protectedRaw = cacheRaw;
+      // Keep the in-memory view current while the backup settles; fail()
+      // rolls it back if the backup is refused.
+      cache = value;
+      return gate.then((preserved) => {
+        if (!preserved) return fail();
+        // An external update during the wait is not covered by the backup;
+        // cancel this stale write so that value is loaded and preserved next.
+        if (localStorage.getItem(key) !== protectedRaw) return fail();
+        return write(value);
+      });
     }
 
     function invalidate() {
@@ -102,12 +180,16 @@
   const statsStore = createJSONObjectStore({
     key: STATS_KEY,
     errorI18nKey: 'gameStatsSaveError',
-    fallback: STATS_SAVE_ERROR_FALLBACK
+    fallback: STATS_SAVE_ERROR_FALLBACK,
+    loadErrorI18nKey: 'gameStatsLoadError',
+    loadFallback: STATS_LOAD_ERROR_FALLBACK
   });
   const savesStore = createJSONObjectStore({
     key: SAVES_KEY,
     errorI18nKey: 'gameSavesSaveError',
-    fallback: SAVES_SAVE_ERROR_FALLBACK
+    fallback: SAVES_SAVE_ERROR_FALLBACK,
+    loadErrorI18nKey: 'gameSavesLoadError',
+    loadFallback: SAVES_LOAD_ERROR_FALLBACK
   });
 
   // Shared write path for the tracked JSON stores (stats, saves, MRU).

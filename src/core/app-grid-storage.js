@@ -77,6 +77,7 @@ function readJsonArray(key, fallbackValue, warningLabel, fallbackLabel) {
     return fallbackValue;
   }
 }
+window.readJsonArray = readJsonArray;
 
 function writeJson(key, value) {
   try {

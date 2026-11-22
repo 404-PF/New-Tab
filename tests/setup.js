@@ -561,6 +561,8 @@ globalThis.window.i18n = {
       bgRotationNext: 'Next Background',
       appGridSaveError: 'Failed to save app changes. Your last action was not saved.',
       gameStatsSaveError: 'Failed to save game statistics. Your latest score was not saved.',
+      gameStatsLoadError: 'Game statistics could not be read.',
+      gameSavesLoadError: 'Saved game progress could not be read.',
       gameSavesSaveError: 'Failed to save game progress. Your latest run was not saved.',
       shortcutSaveError: 'Failed to save shortcut changes. Your last action was not saved.',
       featureToggleSaveError: 'Failed to save this setting. Your last action was not saved.',

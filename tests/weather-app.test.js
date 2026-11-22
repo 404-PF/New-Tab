@@ -117,6 +117,34 @@ describe('Weather app', () => {
     expect(body.querySelector('.weather-app-current-temp').textContent).toContain('21');
   });
 
+  it('renders the widget-resolved label for an auto-location cache without locationName', () => {
+    localStorage.setItem('weatherEnabled', 'true');
+    localStorage.setItem('weatherCache', JSON.stringify({
+      data: {
+        current: { temperature_2m: 20, weather_code: 0, apparent_temperature: 18, wind_speed_10m: 5, relative_humidity_2m: 65 }
+      },
+      locationMode: 'auto'
+    }));
+    const getCacheLocationName = vi.fn().mockReturnValue('Berlin, DE');
+    const refresh = vi.fn().mockResolvedValue();
+    const originalWeatherWidget = window.WeatherWidget;
+    window.WeatherWidget = { refresh, getCacheLocationName };
+
+    try {
+      window.WeatherApp.open();
+
+      expect(getCacheLocationName).toHaveBeenCalled();
+      const body = document.getElementById('weather-app-body');
+      expect(body.querySelector('.weather-app-current-location').textContent).toContain('Berlin, DE');
+    } finally {
+      if (originalWeatherWidget === undefined) {
+        delete window.WeatherWidget;
+      } else {
+        window.WeatherWidget = originalWeatherWidget;
+      }
+    }
+  });
+
   it('triggers a refresh that ignores the widget toggle', () => {
     const refresh = vi.fn().mockResolvedValue();
     const originalWeatherWidget = window.WeatherWidget;

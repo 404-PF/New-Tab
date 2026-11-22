@@ -20,6 +20,7 @@ beforeAll(() => {
   injectScript('src/core/dom-ready.js');
   injectScript('src/core/utils.js');
   injectScript('src/core/toast.js');
+  injectScript('src/core/app-grid-storage.js');
   injectScript('src/features/notes.js');
 });
 

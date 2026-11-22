@@ -35,6 +35,14 @@
     "message": "无法保存游戏数据。您最新的成绩未被保存。",
     "description": "Error shown when game statistics cannot be persisted"
   },
+  "gameStatsLoadError": {
+    "message": "无法读取游戏数据。",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
+  "gameSavesLoadError": {
+    "message": "无法读取已保存的游戏进度。",
+    "description": "Error shown when stored game saves are unreadable"
+  },
   "gameSavesSaveError": {
     "message": "无法保存游戏进度。您最新的游戏记录未被保存。",
     "description": "Error shown when a game save cannot be persisted"

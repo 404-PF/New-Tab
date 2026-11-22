@@ -48,6 +48,7 @@ beforeAll(() => {
   injectScript('src/ui/color-picker.js');
   injectScript('src/ui/font-picker.js');
   injectScript('src/ui/settings.js');
+  injectScript('src/core/app-grid-storage.js');
   injectScript('src/features/notes.js');
 });
 
