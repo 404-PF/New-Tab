@@ -1653,6 +1653,7 @@ describe('AIStore semantic conversation search (#1328)', () => {
   };
 
   beforeAll(() => {
+    injectScript('src/ai/embeddings/hybrid-ranker.js');
     injectScript('src/ai/embeddings/notes-semantic-search.js');
   });
 
