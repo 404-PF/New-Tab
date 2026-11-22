@@ -424,6 +424,14 @@
     return `${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew}`;
   }
 
+  // Auto-location labels are coordinates and are not persisted, so they are
+  // rebuilt from the in-session coordinates when a cache entry is rendered.
+  function getCacheLocationName(cache) {
+    if (cache.locationName) return cache.locationName;
+    const coords = getCacheCoords(cache);
+    return coords ? formatCoords(coords.lat, coords.lon) : null;
+  }
+
   // Fire-and-forget refresh for UI event handlers, which cannot await. Network and
   // storage errors are caught inside refreshWeather; this logs anything that escapes it.
   function refreshWeatherSafely(force = false) {
@@ -496,8 +504,8 @@
           }
         }
         if (isCacheMatchingSettings(cache, location)) {
-          renderWeather(cache.data, cache.locationName, unit);
-          return { ok: true, data: cache.data, locationName: cache.locationName };
+          renderWeather(cache.data, getCacheLocationName(cache), unit);
+          return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
         }
       }
 
@@ -513,8 +521,8 @@
           // Fall back to the cache only while it is within its TTL; older data
           // must not be rendered as current (#1264).
           if (isCacheValid(cache) && isCacheMatchingSettings(cache)) {
-            renderWeather(cache.data, cache.locationName, unit);
-            return { ok: true, data: cache.data, locationName: cache.locationName };
+            renderWeather(cache.data, getCacheLocationName(cache), unit);
+            return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
           }
           if (e.code === 'NETWORK_ERROR' || e.code === 'GEOCODING_TIMEOUT' || e.code === 'GEOCODING_FAILED' || e.code === 'GEOCODING_INVALID') {
             renderError(t('weatherError'));
@@ -548,7 +556,7 @@
         timestamp: Date.now(),
         locationMode: locationMode,
         manualCity: manualCity.trim(),
-        locationName: locationDisplay
+        locationName: locationMode === 'auto' ? null : locationDisplay
       };
       lastCacheCoords = { timestamp: newCache.timestamp, lat: location.lat, lon: location.lon };
 
@@ -559,16 +567,16 @@
       WeatherStorage.saveCache(newCache).catch((error) => {
         console.warn('Failed to write weather cache:', error);
       });
-      renderWeather(weatherData, newCache.locationName, unit);
-      return { ok: true, data: weatherData, locationName: newCache.locationName };
+      renderWeather(weatherData, locationDisplay, unit);
+      return { ok: true, data: weatherData, locationName: locationDisplay };
     } catch (e) {
       console.error('Weather refresh failed:', e);
       // A cached auto-location result is only a safe fallback while it is
       // within its TTL and the current geolocation has been confirmed to be
       // within the tolerance (#1264).
       if (isCacheValid(cache) && isCacheMatchingSettings(cache, location)) {
-        renderWeather(cache.data, cache.locationName, unit);
-        return { ok: true, data: cache.data, locationName: cache.locationName };
+        renderWeather(cache.data, getCacheLocationName(cache), unit);
+        return { ok: true, data: cache.data, locationName: getCacheLocationName(cache) };
       }
       renderError(t('weatherError'));
       return { ok: false, message: t('weatherError') };
