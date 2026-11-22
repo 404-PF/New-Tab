@@ -39,6 +39,14 @@
     "message": "Failed to save game progress. Your latest run was not saved.",
     "description": "Error shown when a game save cannot be persisted"
   },
+  "gameSavesLoadError": {
+    "message": "Saved game progress could not be read.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
+  "gameStatsLoadError": {
+    "message": "Game statistics could not be read.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
   "searchProviderSaveError": {
     "message": "Failed to save search provider changes. Your last action was not saved.",
     "description": "Error shown when custom search provider changes cannot be persisted"

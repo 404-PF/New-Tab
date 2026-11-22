@@ -855,3 +855,32 @@ describe('GameRegistry corrupt saves store (#1391)', () => {
     expect(raw['save-game'].state).toEqual({ level: 9 });
   });
 });
+
+describe('GameRegistry corrupt saves backups (#1391)', () => {
+  function saveOnce() {
+    const game = registerSaveableGame('backup-game', { snapshot: { level: 1 } });
+    ensureContainer();
+    window.GameRegistry.launch('backup-game');
+    game.setSnapshot({ level: 2 });
+    return window.GameRegistry.destroyCurrent();
+  }
+
+  beforeEach(() => {
+    localStorage.removeItem('games_saves_corrupt_backup');
+    localStorage.removeItem('games_saves_corrupt_backup_1');
+  });
+
+  it('backs up a parseable non-object games_saves payload before overwriting it', async () => {
+    localStorage.setItem('games_saves', '[1,2]');
+    await expect(saveOnce()).resolves.toBe(true);
+    expect(localStorage.getItem('games_saves_corrupt_backup')).toBe('[1,2]');
+  });
+
+  it('keeps an earlier backup when a later corrupt payload is preserved', async () => {
+    localStorage.setItem('games_saves_corrupt_backup', 'earlier-corrupt');
+    localStorage.setItem('games_saves', '{"broken":');
+    await expect(saveOnce()).resolves.toBe(true);
+    expect(localStorage.getItem('games_saves_corrupt_backup')).toBe('earlier-corrupt');
+    expect(localStorage.getItem('games_saves_corrupt_backup_1')).toBe('{"broken":');
+  });
+});
