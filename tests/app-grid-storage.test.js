@@ -18,6 +18,21 @@ describe('AppGridStorage', () => {
     expect(AppGridStorage.loadFolders()).toEqual([]);
   });
 
+  it('skips URL migration writes when utils.js is unavailable but keeps saves fail-closed', () => {
+    const normalize = window.normalizeCustomAppUrl;
+    const stored = JSON.stringify([{ id: 'custom-2', url: 'example.com' }]);
+    localStorage.setItem('customApps', stored);
+    delete window.normalizeCustomAppUrl;
+
+    try {
+      expect(AppGridStorage.loadCustomApps()).toEqual([{ id: 'custom-2', url: 'example.com' }]);
+      expect(localStorage.getItem('customApps')).toBe(stored);
+      expect(AppGridStorage.saveCustomApps([{ id: 'custom-3', url: 'example.com' }])).toBe(false);
+    } finally {
+      window.normalizeCustomAppUrl = normalize;
+    }
+  });
+
   it('shows a save error only for app-grid storage write failures', () => {
     window.dispatchEvent(new CustomEvent('storageBridgeWriteError', { detail: { key: 'theme' } }));
     expect(document.querySelector('.toast-notification')).toBeNull();

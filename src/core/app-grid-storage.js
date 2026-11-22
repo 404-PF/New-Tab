@@ -90,8 +90,14 @@ function writeJson(key, value) {
 }
 
 // Relies on utils.js being loaded first (bootstrap.js guarantees this).
+function isCustomAppUrlNormalizerAvailable() {
+  return typeof window.normalizeCustomAppUrl === 'function';
+}
+
+// Returns null for both invalid URLs and an unavailable normalizer; callers
+// that must not mistake the latter for the former check availability first.
 function normalizeCustomAppUrlLocal(url) {
-  if (typeof window.normalizeCustomAppUrl !== 'function') return null;
+  if (!isCustomAppUrlNormalizerAvailable()) return null;
   return window.normalizeCustomAppUrl(url);
 }
 
@@ -106,6 +112,10 @@ window.__normalizeAppUrlForCheck = function (trimmed) {
  * @returns {boolean} True when one or more records were normalized or sanitized.
  */
 function migrateCustomAppUrls(apps) {
+  // Without utils.js every URL would look invalid and be replaced with '#'
+  // and persisted, so leave stored records untouched until the helper loads.
+  if (!isCustomAppUrlNormalizerAvailable()) return false;
+
   let mutated = false;
   for (const app of apps) {
     if (!app || typeof app !== 'object' || !Object.prototype.hasOwnProperty.call(app, 'url')) continue;
