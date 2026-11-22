@@ -67,7 +67,9 @@
 
   function showStatsSaveError() {
     if (typeof window.showToast === 'function') {
-      window.showToast(window.translate('todoSaveError', 'Failed to save todo changes. Your last action was not saved.'), 'error');
+      const fallback = 'Failed to save todo changes. Your last action was not saved.';
+      const message = typeof window.translate === 'function' ? window.translate('todoSaveError', fallback) : fallback;
+      window.showToast(message, 'error');
     } else {
       console.warn('showToast unavailable: failed to save todo stats');
     }
