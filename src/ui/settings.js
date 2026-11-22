@@ -593,6 +593,58 @@ function applyInteractiveBackground(bgData, loadVersion, thumbnailEl, fullEl) {
   });
 }
 
+// Loads the thumbnail as a full-size image fallback. Options:
+// - hideThumbnailAfterDelay: hide the thumbnail 1200 ms after the full image shows
+// - handleError: hide the overlay if the full image fails to load
+function showThumbnailFallback(bgData, loadVersion, thumbnailEl, fullEl, { hideThumbnailAfterDelay = false, handleError = false } = {}) {
+  const fullImg = new Image();
+  fullImg.onload = function() {
+    if (loadVersion !== backgroundLoadVersion) {
+      return;
+    }
+
+    fullEl.src = bgData.thumb;
+    requestAnimationFrame(() => {
+      if (loadVersion !== backgroundLoadVersion) {
+        return;
+      }
+
+      fullEl.classList.add('loaded');
+      hideBackgroundOverlay();
+      if (!hideThumbnailAfterDelay) {
+        return;
+      }
+
+      setTimeout(() => {
+        if (loadVersion !== backgroundLoadVersion) {
+          return;
+        }
+
+        thumbnailEl.classList.add('hidden');
+      }, 1200);
+    });
+  };
+  if (handleError) {
+    fullImg.onerror = function() {
+      if (loadVersion !== backgroundLoadVersion) {
+        return;
+      }
+
+      hideBackgroundOverlay();
+    };
+  }
+  fullImg.src = bgData.thumb;
+}
+
+function bindVideoHandlers(videoEl, handlers) {
+  videoEl.oncanplaythrough = handlers.canPlayThrough;
+  videoEl.onloadeddata = handlers.loadedData;
+  videoEl.onplaying = handlers.playing;
+  videoEl.onloadedmetadata = handlers.loadedMetadata;
+  videoEl.onerror = handlers.error;
+  videoEl.onpause = handlers.pause;
+}
+
 function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl, containerEl) {
   // Reset image states
   fullEl.classList.remove('loaded');
@@ -607,34 +659,13 @@ function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl,
     }
     thumbnailEl.src = bgData.thumb;
     // Still load the full image as fallback
-    const fullImg = new Image();
-    fullImg.onload = function() {
-      if (loadVersion !== backgroundLoadVersion) {
-        return;
-      }
-
-      fullEl.src = bgData.thumb;
-      requestAnimationFrame(() => {
-        if (loadVersion !== backgroundLoadVersion) {
-          return;
-        }
-
-        fullEl.classList.add('loaded');
-        hideBackgroundOverlay();
-        setTimeout(() => {
-          if (loadVersion !== backgroundLoadVersion) {
-            return;
-          }
-
-          thumbnailEl.classList.add('hidden');
-        }, 1200);
-      });
-    };
-    fullImg.src = bgData.thumb;
+    showThumbnailFallback(bgData, loadVersion, thumbnailEl, fullEl, { hideThumbnailAfterDelay: true });
     return;
   }
 
   if (videoEl) {
+    const isStaleVideo = () => loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id;
+
     videoEl.classList.remove('hidden');
     videoEl.dataset.currentBg = bgData.id;
 
@@ -667,7 +698,7 @@ function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl,
     // Start playing immediately while fading in - mimics image loading behavior
     // This ensures the video starts playback right away without waiting for full buffer
     const startVideoPlayback = function() {
-      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+      if (isStaleVideo()) {
         return;
       }
 
@@ -687,7 +718,7 @@ function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl,
 
     // Helper to trigger crossfade between thumbnail and video
     const triggerCrossfade = function() {
-      if (videoEl.dataset.crossfadeTriggered === 'true' || loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+      if (videoEl.dataset.crossfadeTriggered === 'true' || isStaleVideo()) {
         return;
       }
 
@@ -730,7 +761,7 @@ function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl,
       // Use 3000ms to ensure video is fully visible before hiding thumbnail
       // This matches the 2.5s opacity transition in CSS
       backgroundTransitionTimeout = setTimeout(() => {
-        if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
+        if (isStaleVideo()) {
           return;
         }
 
@@ -744,87 +775,66 @@ function applyVideoBackground(bgData, loadVersion, thumbnailEl, fullEl, videoEl,
       }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS)); // Match CSS opacity transition duration
     };
 
-    // Video can play through - trigger crossfade
-    videoEl.oncanplaythrough = triggerCrossfade;
+    bindVideoHandlers(videoEl, {
+      // Video can play through - trigger crossfade
+      canPlayThrough: triggerCrossfade,
 
-    // Fallback: if canplaythrough takes too long, trigger on loadeddata
-    videoEl.onloadeddata = function() {
-      videoEl.onloadeddata = null;
-      if (videoEl.dataset.crossfadeTriggered !== 'true') {
-        triggerCrossfade();
-      }
-    };
+      // Fallback: if canplaythrough takes too long, trigger on loadeddata
+      loadedData: function() {
+        videoEl.onloadeddata = null;
+        if (videoEl.dataset.crossfadeTriggered !== 'true') {
+          triggerCrossfade();
+        }
+      },
 
-    // Additional fallback: ensure crossfade happens after video starts playing
-    videoEl.onplaying = function() {
-      // Reset resume attempt counter when video is actively playing
-      if (videoEl.dataset.currentBg === bgData.id) {
-        videoEl.dataset.resumeAttempts = '0';
-      }
-      if (videoEl.dataset.crossfadeTriggered !== 'true') {
-        triggerCrossfade();
-      }
-    };
+      // Additional fallback: ensure crossfade happens after video starts playing
+      playing: function() {
+        // Reset resume attempt counter when video is actively playing
+        if (videoEl.dataset.currentBg === bgData.id) {
+          videoEl.dataset.resumeAttempts = '0';
+        }
+        if (videoEl.dataset.crossfadeTriggered !== 'true') {
+          triggerCrossfade();
+        }
+      },
 
-    // Video loaded metadata - ensure proper sizing
-    videoEl.onloadedmetadata = function() {
-      videoEl.onloadedmetadata = null;
-      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-        return;
-      }
-
-      // Force video to maintain proper scaling after metadata loads
-      videoEl.style.width = '100%';
-      videoEl.style.height = '100%';
-    };
-
-    // Video playback error - fallback to thumbnail
-    videoEl.onerror = function() {
-      if (loadVersion !== backgroundLoadVersion || videoEl.dataset.currentBg !== bgData.id) {
-        return;
-      }
-
-      console.warn('Video background failed to load, falling back to image');
-      if (containerEl) {
-        containerEl.classList.add('video-error');
-      }
-      resetBackgroundVideo(videoEl, true);
-      thumbnailEl.classList.remove('hidden');
-      thumbnailEl.classList.remove('clearing');
-      thumbnailEl.src = bgData.thumb;
-      const fullImg = new Image();
-      fullImg.onload = function() {
-        if (loadVersion !== backgroundLoadVersion) {
+      // Video loaded metadata - ensure proper sizing
+      loadedMetadata: function() {
+        videoEl.onloadedmetadata = null;
+        if (isStaleVideo()) {
           return;
         }
 
-        fullEl.src = bgData.thumb;
-        requestAnimationFrame(() => {
-          if (loadVersion !== backgroundLoadVersion) {
-            return;
-          }
+        // Force video to maintain proper scaling after metadata loads
+        videoEl.style.width = '100%';
+        videoEl.style.height = '100%';
+      },
 
-          fullEl.classList.add('loaded');
-          hideBackgroundOverlay();
+      // Video playback error - fallback to thumbnail
+      error: function() {
+        if (isStaleVideo()) {
+          return;
+        }
+
+        console.warn('Video background failed to load, falling back to image');
+        if (containerEl) {
+          containerEl.classList.add('video-error');
+        }
+        resetBackgroundVideo(videoEl, true);
+        thumbnailEl.classList.remove('hidden');
+        thumbnailEl.classList.remove('clearing');
+        thumbnailEl.src = bgData.thumb;
+        showThumbnailFallback(bgData, loadVersion, thumbnailEl, fullEl, { handleError: true });
+      },
+
+      // Handle visibility change to pause/resume video for better performance
+      pause: function() {
+        window.handleBackgroundVideoPause(videoEl, {
+          isCurrent: () => loadVersion === backgroundLoadVersion && videoEl.dataset.currentBg === bgData.id,
+          autoplayEnabled: loadVideoAutoplay()
         });
-      };
-      fullImg.onerror = function() {
-        if (loadVersion !== backgroundLoadVersion) {
-          return;
-        }
-
-        hideBackgroundOverlay();
-      };
-      fullImg.src = bgData.thumb;
-    };
-
-    // Handle visibility change to pause/resume video for better performance
-    videoEl.onpause = function() {
-      window.handleBackgroundVideoPause(videoEl, {
-        isCurrent: () => loadVersion === backgroundLoadVersion && videoEl.dataset.currentBg === bgData.id,
-        autoplayEnabled: loadVideoAutoplay()
-      });
-    };
+      }
+    });
   }
 }
 
