@@ -485,7 +485,7 @@
   }
 
   function clearKeyboardPick(container, restoreSource = true) {
-    const picked = container?.querySelector('.app-icon.keyboard-picked-up');
+    const picked = container ? getKeyboardPicked(container) : null;
     if (!picked) return null;
 
     picked.classList.remove('keyboard-picked-up');
@@ -538,6 +538,71 @@
   function isFolderableDefaultAppId(appId) {
     return typeof window.AppGridState?.canHideDefaultApp === 'function' &&
       window.AppGridState.canHideDefaultApp(appId);
+  }
+
+  function getKeyboardPicked(container) {
+    return container.querySelector('.app-icon.keyboard-picked-up');
+  }
+
+  function pickUpKeyboardCell(container, cell) {
+    cell.classList.add('keyboard-picked-up');
+    cell.setAttribute('aria-grabbed', 'true');
+    getGridCells(container).forEach(item => item.setAttribute('aria-dropeffect', 'move'));
+    announceMove(getCellLabel(cell), 'picked up');
+  }
+
+  function commitKeyboardMove(container, cell, picked) {
+    const inFolderPopup = container.id === 'folder-popup-apps';
+    const sourceId = picked.id;
+    const targetId = cell.id;
+
+    let moved = false;
+    if (inFolderPopup) {
+      const folderId = window.AppFolders?.currentFolderId;
+      if (folderId) moved = reorderInFolder(folderId, sourceId.replace(/^popup-/, ''), targetId.replace(/^popup-/, ''));
+    } else if (cell.classList.contains('folder-icon')) {
+      const folderableSource = picked.classList.contains('custom-app') ||
+        (picked.classList.contains('default-app') && isFolderableDefaultAppId(picked.id));
+      if (folderableSource) {
+        moved = !!window.AppGridState?.moveAppToFolder?.(targetId, sourceId);
+      } else if (picked.classList.contains('folder-icon')) {
+        moved = reorderInAppGrid(sourceId, targetId);
+      }
+    } else {
+      moved = reorderInAppGrid(sourceId, targetId);
+    }
+
+    const sourceLabel = getCellLabel(picked);
+    const focusId = moved && container.id === 'app-grid' && cell.classList.contains('folder-icon')
+      ? targetId
+      : sourceId;
+    picked.classList.remove('keyboard-picked-up');
+    picked.setAttribute('aria-grabbed', 'false');
+    getGridCells(container).forEach(item => item.removeAttribute('aria-dropeffect'));
+
+    if (moved && inFolderPopup) {
+      window.AppFolders?.renderFolderAppsInPopup?.();
+    } else if (moved && cell.classList.contains('folder-icon') && !picked.classList.contains('folder-icon')) {
+      if (typeof window.removeAppIcon === 'function') {
+        window.removeAppIcon(sourceId);
+        if (typeof window.AppFolders?.refreshFolderUI === 'function') {
+          window.AppFolders.refreshFolderUI(targetId);
+        }
+      }
+    } else if (moved && typeof window.syncAppGridOrder === 'function') {
+      window.syncAppGridOrder();
+    }
+
+    requestAnimationFrame(() => {
+      let movedElement = document.getElementById(focusId);
+      if (inFolderPopup) {
+        movedElement = document.getElementById('popup-' + focusId.replace(/^popup-/, ''));
+      }
+      if (movedElement) movedElement.focus({ preventScroll: true });
+    });
+
+    announceMove(sourceLabel, moved ? 'moved' : 'not moved');
+    return moved;
   }
 
   function handleGridKeydown(event) {
@@ -593,69 +658,18 @@
       return;
     }
 
-    const picked = container.querySelector('.app-icon.keyboard-picked-up');
+    const picked = getKeyboardPicked(container);
     if (event.key === ' ' || event.key === 'Enter') {
       if (!picked) {
         if (event.key === ' ') {
           event.preventDefault();
-          cell.classList.add('keyboard-picked-up');
-          cell.setAttribute('aria-grabbed', 'true');
-          getGridCells(container).forEach(item => item.setAttribute('aria-dropeffect', 'move'));
-          announceMove(getCellLabel(cell), 'picked up');
+          pickUpKeyboardCell(container, cell);
         }
         return;
       }
 
       event.preventDefault();
-      const sourceId = picked.id;
-      const targetId = cell.id;
-
-      let moved = false;
-      if (container.id === 'folder-popup-apps') {
-        const folderId = window.AppFolders?.currentFolderId;
-        if (folderId) moved = reorderInFolder(folderId, sourceId.replace(/^popup-/, ''), targetId.replace(/^popup-/, ''));
-      } else if (cell.classList.contains('folder-icon')) {
-        const folderableSource = picked.classList.contains('custom-app') ||
-          (picked.classList.contains('default-app') && isFolderableDefaultAppId(picked.id));
-        if (folderableSource) {
-          moved = !!window.AppGridState?.moveAppToFolder?.(targetId, sourceId);
-        } else if (picked.classList.contains('folder-icon')) {
-          moved = reorderInAppGrid(sourceId, targetId);
-        }
-      } else {
-        moved = reorderInAppGrid(sourceId, targetId);
-      }
-
-      const sourceLabel = getCellLabel(picked);
-      const focusId = moved && container.id === 'app-grid' && cell.classList.contains('folder-icon')
-        ? targetId
-        : sourceId;
-      picked.classList.remove('keyboard-picked-up');
-      picked.setAttribute('aria-grabbed', 'false');
-      getGridCells(container).forEach(item => item.removeAttribute('aria-dropeffect'));
-
-      if (moved && container.id === 'folder-popup-apps') {
-        window.AppFolders?.renderFolderAppsInPopup?.();
-      } else if (moved && cell.classList.contains('folder-icon') && !picked.classList.contains('folder-icon')) {
-        if (typeof window.removeAppIcon === 'function') {
-          window.removeAppIcon(sourceId);
-          if (typeof window.AppFolders?.refreshFolderUI === 'function') {
-            window.AppFolders.refreshFolderUI(targetId);
-          }
-        }
-      } else if (moved && typeof window.syncAppGridOrder === 'function') {
-        window.syncAppGridOrder();
-      }
-
-      requestAnimationFrame(() => {
-        let movedElement = document.getElementById(focusId);
-        if (container.id === 'folder-popup-apps') {
-          movedElement = document.getElementById('popup-' + focusId.replace(/^popup-/, ''));
-        }
-        if (movedElement) movedElement.focus({ preventScroll: true });
-      });
-
-      announceMove(sourceLabel, moved ? 'moved' : 'not moved');
+      commitKeyboardMove(container, cell, picked);
     }
 
     if (event.key === 'Escape' && picked) {
