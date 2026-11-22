@@ -36,6 +36,9 @@
   // Coordinates of the last cache write. Kept in memory only so precise
   // location is never persisted to localStorage (CodeQL: clear-text storage).
   let lastCacheCoords = null;
+  // Identifies the most recently started cache write so an older write that
+  // resolves late cannot overwrite coordinates from a newer one.
+  let cacheWriteGeneration = 0;
 
   // ===================== Utility Functions =====================
 
@@ -566,8 +569,9 @@
       // weatherCacheUpdated only after the write is known to have succeeded.
       // Coordinates replace the previous record only once the write succeeds,
       // so a failed write keeps the prior cache's coordinates valid.
+      const writeGeneration = ++cacheWriteGeneration;
       WeatherStorage.saveCache(newCache).then((saved) => {
-        if (saved) lastCacheCoords = newCacheCoords;
+        if (writeGeneration === cacheWriteGeneration && saved) lastCacheCoords = newCacheCoords;
       }).catch((error) => {
         console.warn('Failed to write weather cache:', error);
       });
