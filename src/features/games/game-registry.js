@@ -41,6 +41,9 @@
     // Settles to whether the latest corrupt value is preserved. Replacement
     // writes wait on it and are refused if the backup did not persist.
     let backupGate = null;
+    // Unsettled setItemAsync() backup writes by key. The bridge exposes these
+    // values optimistically, so a probe must wait for them rather than trust them.
+    const pendingBackups = new Map();
 
     // Keep an unparseable value under a backup key so the next write, which
     // starts from an empty object, cannot silently destroy it. Backup keys
@@ -51,7 +54,7 @@
       for (let i = 1; ; i += 1) {
         const existing = localStorage.getItem(backupKey);
         if (existing === null) break;
-        if (existing === raw) return Promise.resolve(true);
+        if (existing === raw) return pendingBackups.get(backupKey) || Promise.resolve(true);
         // When every slot is taken, refuse the write rather than overwrite a backup.
         if (i >= MAX_CORRUPT_BACKUPS) {
           console.warn(`Not preserving corrupt ${key}: all ${MAX_CORRUPT_BACKUPS} backup slots are in use`);
@@ -61,7 +64,13 @@
       }
       console.warn(`Preserved corrupt ${key} as ${backupKey}`);
       if (typeof localStorage.setItemAsync === 'function') {
-        return Promise.resolve(localStorage.setItemAsync(backupKey, raw)).then((persisted) => persisted === true);
+        const pending = Promise.resolve(localStorage.setItemAsync(backupKey, raw))
+          .then((persisted) => persisted === true)
+          .finally(() => {
+            if (pendingBackups.get(backupKey) === pending) pendingBackups.delete(backupKey);
+          });
+        pendingBackups.set(backupKey, pending);
+        return pending;
       }
       const persisted = localStorage.setItem(backupKey, raw);
       return Promise.resolve(persisted !== false);
@@ -143,10 +152,17 @@
       load();
       const gate = backupGate;
       if (!gate) return write(value);
+      const protectedRaw = cacheRaw;
       // Keep the in-memory view current while the backup settles; fail()
       // rolls it back if the backup is refused.
       cache = value;
-      return gate.then((preserved) => (preserved ? write(value) : fail()));
+      return gate.then((preserved) => {
+        if (!preserved) return fail();
+        // An external update during the wait is not covered by the backup;
+        // cancel this stale write so that value is loaded and preserved next.
+        if (localStorage.getItem(key) !== protectedRaw) return fail();
+        return write(value);
+      });
     }
 
     function invalidate() {
