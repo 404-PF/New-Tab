@@ -831,18 +831,6 @@ describe('Todo details translations (issue #1228)', () => {
   });
 });
 
-describe('Todo label translations', () => {
-  const TODO_LABEL_TRANSLATION_KEYS = ['todoEditLabel', 'todoLabelPlaceholder', 'todoLabelFilterAll', 'todoLabelFilterAria'];
-
-  it('defines the label strings in every supported language', () => {
-    expectTranslationKeys(TODO_LABEL_TRANSLATION_KEYS, { differFromEnglish: true });
-  });
-
-  it('includes the label strings in every _locales messages.json', () => {
-    TODO_LABEL_TRANSLATION_KEYS.forEach((key) => expectMessagesJsonKey(key));
-  });
-});
-
 describe('New-Tab.html i18n key completeness', () => {
   it('resolves every data-i18n key used in New-Tab.html in the en dictionary', () => {
     const html = readFileSync(resolve(process.cwd(), 'New-Tab.html'), 'utf8');

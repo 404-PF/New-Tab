@@ -126,8 +126,6 @@
                 <span class="priority-dot priority-high"></span>
               </button>
             </div>
-            <input type="text" id="todo-label-input" class="todo-label-input" list="todo-label-options" maxlength="30" placeholder="Label" data-i18n-placeholder="todoLabelPlaceholder" data-i18n-aria-label="todoLabelPlaceholder" aria-label="Label" autocomplete="off" />
-            <datalist id="todo-label-options"></datalist>
             <div class="custom-date-picker">
               <button type="button" id="date-picker-trigger" class="date-picker-trigger">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -220,9 +218,6 @@
                 <span class="filter-label" data-i18n="priorityLow">Low</span>
                 <span class="filter-badge" id="badge-low">0</span>
               </button>
-              <select id="todo-label-filter" class="todo-sort-select todo-label-filter" data-i18n-aria-label="todoLabelFilterAria" aria-label="Filter by label">
-                <option value="" selected data-i18n="todoLabelFilterAll">All labels</option>
-              </select>
               <span class="filter-divider"></span>
               <div class="todo-sort">
                 <label for="todo-sort-select" class="todo-sort-label" data-i18n="todoSortLabel">Sort</label>
@@ -543,8 +538,6 @@
           <option value="weekly" data-i18n="recurrenceWeekly">Weekly</option>
           <option value="monthly" data-i18n="recurrenceMonthly">Monthly</option>
         </select>
-        <label for="todo-edit-label" data-i18n="todoEditLabel">Label</label>
-        <input type="text" id="todo-edit-label" maxlength="30" list="todo-label-options" autocomplete="off" />
         <div id="todo-edit-subtasks-section" class="todo-edit-subtasks-section">
           <label data-i18n="todoSubtasks">Subtasks</label>
           <div id="todo-edit-subtasks-list" class="todo-edit-subtasks-list"></div>

@@ -36,11 +36,6 @@ beforeAll(() => {
   injectScript('src/ai/embeddings/notes-vector-cache.js');
   realTodoVectorCache = window.TodoVectorCache;
   injectScript('src/features/todo.js');
-  if (!document.getElementById('todo-label-filter')) {
-    const labelFilter = document.createElement('select');
-    labelFilter.id = 'todo-label-filter';
-    document.body.appendChild(labelFilter);
-  }
 });
 
 beforeEach(() => {

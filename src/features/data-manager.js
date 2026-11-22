@@ -729,7 +729,7 @@
     bgRotationNightTime: function (v) { return typeof v === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v); },
     bgRotationDaySelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
     bgRotationNightSelection: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'string'; }); },
-    todos: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string' && (item.label === undefined || item.label === null || (typeof item.label === 'string' && item.label.length <= 30)); }); },
+    todos: function (v) { return Array.isArray(v) && v.every(function (item) { return typeof item === 'object' && item !== null && typeof item.id === 'string'; }); },
     todoEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderEnabled: function (v) { return typeof v === 'boolean'; },
     todoReminderLeadTime: function (v) { return typeof v === 'string' || typeof v === 'number'; },

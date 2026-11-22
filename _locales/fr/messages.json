@@ -902,22 +902,6 @@
     "message": "Détails",
     "description": "Button that expands or collapses the details block on a todo row"
   },
-  "todoEditLabel": {
-    "message": "Étiquette",
-    "description": "Label for the grouping label field in the todo edit modal"
-  },
-  "todoLabelPlaceholder": {
-    "message": "Étiquette",
-    "description": "Placeholder and accessible name for the todo grouping label input"
-  },
-  "todoLabelFilterAll": {
-    "message": "Toutes les étiquettes",
-    "description": "Label filter option that shows todos with any label"
-  },
-  "todoLabelFilterAria": {
-    "message": "Filtrer par étiquette",
-    "description": "Accessible name for the todo label filter dropdown"
-  },
   "todoEditPriority": {
     "message": "Priorité",
     "description": "Label for the priority selector in the edit dialog"
