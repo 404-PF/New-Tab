@@ -70,6 +70,14 @@
 
   // ===================== Storage =====================
 
+  // Auto-location caches store no label; the widget rebuilds it from in-session
+  // coordinates. Fall back to the stored name when the widget export is absent.
+  function getCacheLocationName(cache) {
+    if (cache.locationName) return cache.locationName;
+    const resolve = window.WeatherWidget && window.WeatherWidget.getCacheLocationName;
+    return resolve ? resolve(cache) : null;
+  }
+
   function loadCache() {
     try {
       const raw = localStorage.getItem(CACHE_KEY);
@@ -422,7 +430,7 @@
     const cache = loadCache();
     if (cache && cache.data) {
       const unit = loadUnit();
-      renderExpandedWeather(cache.data, cache.locationName, unit);
+      renderExpandedWeather(cache.data, getCacheLocationName(cache), unit);
     } else {
       renderAppLoading();
     }
@@ -489,7 +497,7 @@
         const cache = loadCache();
         if (cache && cache.data) {
           const unit = loadUnit();
-          renderExpandedWeather(cache.data, cache.locationName, unit);
+          renderExpandedWeather(cache.data, getCacheLocationName(cache), unit);
         }
       }
     });
@@ -500,7 +508,7 @@
         const cache = loadCache();
         if (cache && cache.data) {
           const unit = loadUnit();
-          renderExpandedWeather(cache.data, cache.locationName, unit);
+          renderExpandedWeather(cache.data, getCacheLocationName(cache), unit);
         }
       }
     });
@@ -524,7 +532,7 @@
         }
         const cache = loadCache();
         if (cache && cache.data) {
-          renderExpandedWeather(cache.data, cache.locationName, loadUnit());
+          renderExpandedWeather(cache.data, getCacheLocationName(cache), loadUnit());
         }
         return;
       }
