@@ -530,15 +530,196 @@
 
   // --- Apply custom background ---
 
+  function applyVideoCustomBackground(id, bg, blobUrl, els, isStale) {
+    const { thumbnailEl, fullEl, videoEl, containerEl } = els;
+
+    // Reset image states
+    fullEl.classList.remove('loaded');
+    fullEl.src = '';
+    thumbnailEl.classList.remove('hidden', 'clearing');
+    thumbnailEl.src = bg.thumb;
+
+    if (!videoEl) return true;
+
+    resetCustomBackgroundVideo(videoEl, false);
+
+    videoEl.classList.remove('hidden');
+    videoEl.classList.add('loading');
+    videoEl.dataset.currentBg = id;
+
+    if (containerEl) {
+      containerEl.classList.remove('video-fallback', 'video-error');
+    }
+
+    // Apply user playback settings
+    videoEl.muted = loadVideoMuted();
+    videoEl.autoplay = loadVideoAutoplay();
+
+    const sourceEl = videoEl.querySelector('source');
+    if (!sourceEl) {
+      URL.revokeObjectURL(blobUrl);
+      delete blobUrlCache[id];
+      return false;
+    }
+
+    sourceEl.src = blobUrl;
+    sourceEl.type = bg.data.type || 'video/mp4';
+    videoEl.load();
+
+    function triggerCrossfade() {
+      if (videoEl.dataset.crossfadeTriggered === 'true' || isStale() || videoEl.dataset.currentBg !== id) {
+        return;
+      }
+
+      videoEl.dataset.crossfadeTriggered = 'true';
+      videoEl.classList.remove('loading');
+
+      // When autoplay is disabled, keep thumbnail visible and video hidden
+      if (!loadVideoAutoplay()) {
+        if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+        return;
+      }
+
+      // When reduced motion is preferred, treat the looping video as
+      // non-essential motion: keep the static thumbnail visible and
+      // skip autoplay. The end state (a full-bleed background) is
+      // unchanged, only the path there is.
+      if (window.prefersReducedMotion && window.prefersReducedMotion()) {
+        videoEl.dataset.reducedMotionPaused = 'true';
+        if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+        return;
+      }
+
+      videoEl.play().catch(function () {});
+      videoEl.classList.add('active', 'ready');
+      if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+      thumbnailEl.classList.add('clearing');
+
+      customBackgroundTransitionTimeout = setTimeout(function () {
+        if (isStale() || videoEl.dataset.currentBg !== id) {
+          return;
+        }
+
+        thumbnailEl.classList.add('hidden');
+        thumbnailEl.classList.remove('clearing');
+        customBackgroundTransitionTimeout = null;
+        // Belt-and-suspenders: the reduced-motion early return above
+        // normally prevents this timer from being created, but the
+        // wrapper still collapses the duration if the preference
+        // flips between scheduling and firing.
+      }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
+    }
+
+    videoEl.oncanplaythrough = triggerCrossfade;
+    videoEl.onloadeddata = function () {
+      videoEl.onloadeddata = null;
+      if (!videoEl.classList.contains('active')) triggerCrossfade();
+    };
+    videoEl.onplaying = function () {
+      // Reset resume attempt counter when video is actively playing
+      if (videoEl.dataset.currentBg === id) {
+        videoEl.dataset.resumeAttempts = '0';
+      }
+      if (!videoEl.classList.contains('active')) triggerCrossfade();
+    };
+    videoEl.onloadedmetadata = function () {
+      videoEl.onloadedmetadata = null;
+
+      if (isStale() || videoEl.dataset.currentBg !== id) {
+        return;
+      }
+
+      videoEl.style.width = '100%';
+      videoEl.style.height = '100%';
+    };
+    videoEl.onerror = function () {
+      if (isStale() || videoEl.dataset.currentBg !== id) {
+        return;
+      }
+
+      containerEl && containerEl.classList.add('video-error');
+      resetCustomBackgroundVideo(videoEl, true);
+      thumbnailEl.classList.remove('hidden');
+      thumbnailEl.classList.remove('clearing');
+      fullEl.src = bg.thumb;
+
+      requestAnimationFrame(function () {
+        if (isStale()) {
+          return;
+        }
+
+        fullEl.classList.add('loaded');
+        if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+      });
+    };
+    videoEl.onpause = function () {
+      window.handleBackgroundVideoPause(videoEl, {
+        isCurrent: () => !isStale() && videoEl.dataset.currentBg === id,
+        autoplayEnabled: loadVideoAutoplay()
+      });
+    };
+
+    return true;
+  }
+
+  function applyImageCustomBackground(bg, blobUrl, els, isStale) {
+    const { thumbnailEl, fullEl, videoEl, containerEl } = els;
+
+    resetCustomBackgroundVideo(videoEl, true);
+    containerEl && containerEl.classList.remove('video-fallback', 'video-error');
+
+    fullEl.classList.remove('loaded');
+    thumbnailEl.classList.remove('hidden', 'clearing');
+    thumbnailEl.src = bg.thumb;
+
+    const fullImg = new Image();
+    fullImg.onload = function () {
+      if (isStale()) {
+        return;
+      }
+
+      fullEl.src = blobUrl;
+
+      requestAnimationFrame(function () {
+        if (isStale()) {
+          return;
+        }
+
+        fullEl.classList.add('loaded');
+        if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+        thumbnailEl.classList.add('clearing');
+
+        customBackgroundTransitionTimeout = setTimeout(function () {
+          if (isStale()) {
+            return;
+          }
+
+          thumbnailEl.classList.add('hidden');
+          thumbnailEl.classList.remove('clearing');
+          customBackgroundTransitionTimeout = null;
+        }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
+      });
+    };
+    fullImg.onerror = function () {
+      if (isStale()) {
+        return;
+      }
+
+      if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
+    };
+    fullImg.src = blobUrl;
+  }
+
   function applyCustomBackground(id) {
     const loadVersion = ++customBackgroundLoadVersion;
+    const isStale = () => !isActiveCustomBackgroundRequest(id, loadVersion);
 
     return getCustomBackground(id).then(function (bg) {
       if (!bg) {
         handleMissingCustomBackground(id, loadVersion);
         return false;
       }
-      if (!isActiveCustomBackgroundRequest(id, loadVersion)) return false;
+      if (isStale()) return false;
 
       const thumbnailEl = document.getElementById('bg-thumbnail');
       const fullEl = document.getElementById('bg-full');
@@ -552,194 +733,27 @@
       // Revoke old blob URLs to free memory
       revokeAllBlobUrls();
 
-      if (!isActiveCustomBackgroundRequest(id, loadVersion)) return false;
+      if (isStale()) return false;
 
       const blobUrl = URL.createObjectURL(bg.data);
 
-      if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
+      if (isStale()) {
         URL.revokeObjectURL(blobUrl);
         return false;
       }
 
       blobUrlCache[id] = blobUrl;
 
+      const els = { thumbnailEl, fullEl, videoEl, containerEl };
+
       if (bg.type === 'video') {
-        // Reset image states
-        fullEl.classList.remove('loaded');
-        fullEl.src = '';
-        thumbnailEl.classList.remove('hidden', 'clearing');
-        thumbnailEl.src = bg.thumb;
-
-        if (videoEl) {
-          resetCustomBackgroundVideo(videoEl, false);
-
-          videoEl.classList.remove('hidden');
-          videoEl.classList.add('loading');
-          videoEl.dataset.currentBg = id;
-
-          if (containerEl) {
-            containerEl.classList.remove('video-fallback', 'video-error');
-          }
-
-          // Apply user playback settings
-          videoEl.muted = loadVideoMuted();
-          videoEl.autoplay = loadVideoAutoplay();
-
-          const sourceEl = videoEl.querySelector('source');
-          if (!sourceEl) {
-            URL.revokeObjectURL(blobUrl);
-            delete blobUrlCache[id];
-            return false;
-          }
-
-          sourceEl.src = blobUrl;
-          sourceEl.type = bg.data.type || 'video/mp4';
-          videoEl.load();
-
-          function triggerCrossfade() {
-            if (videoEl.dataset.crossfadeTriggered === 'true' || !isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
-              return;
-            }
-
-            videoEl.dataset.crossfadeTriggered = 'true';
-            videoEl.classList.remove('loading');
-
-            // When autoplay is disabled, keep thumbnail visible and video hidden
-            if (!loadVideoAutoplay()) {
-              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-              return;
-            }
-
-            // When reduced motion is preferred, treat the looping video as
-            // non-essential motion: keep the static thumbnail visible and
-            // skip autoplay. The end state (a full-bleed background) is
-            // unchanged, only the path there is.
-            if (window.prefersReducedMotion && window.prefersReducedMotion()) {
-              videoEl.dataset.reducedMotionPaused = 'true';
-              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-              return;
-            }
-
-            videoEl.play().catch(function () {});
-            videoEl.classList.add('active', 'ready');
-            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-            thumbnailEl.classList.add('clearing');
-
-            customBackgroundTransitionTimeout = setTimeout(function () {
-              if (!isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
-                return;
-              }
-
-              thumbnailEl.classList.add('hidden');
-              thumbnailEl.classList.remove('clearing');
-              customBackgroundTransitionTimeout = null;
-              // Belt-and-suspenders: the reduced-motion early return above
-              // normally prevents this timer from being created, but the
-              // wrapper still collapses the duration if the preference
-              // flips between scheduling and firing.
-            }, crossfadeDelayMs(VIDEO_THUMBNAIL_HIDE_DELAY_MS));
-          }
-
-          videoEl.oncanplaythrough = triggerCrossfade;
-          videoEl.onloadeddata = function () {
-            videoEl.onloadeddata = null;
-            if (!videoEl.classList.contains('active')) triggerCrossfade();
-          };
-          videoEl.onplaying = function () {
-            // Reset resume attempt counter when video is actively playing
-            if (videoEl.dataset.currentBg === id) {
-              videoEl.dataset.resumeAttempts = '0';
-            }
-            if (!videoEl.classList.contains('active')) triggerCrossfade();
-          };
-          videoEl.onloadedmetadata = function () {
-            videoEl.onloadedmetadata = null;
-
-            if (!isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
-              return;
-            }
-
-            videoEl.style.width = '100%';
-            videoEl.style.height = '100%';
-          };
-          videoEl.onerror = function () {
-            if (!isActiveCustomBackgroundRequest(id, loadVersion) || videoEl.dataset.currentBg !== id) {
-              return;
-            }
-
-            containerEl && containerEl.classList.add('video-error');
-            resetCustomBackgroundVideo(videoEl, true);
-            thumbnailEl.classList.remove('hidden');
-            thumbnailEl.classList.remove('clearing');
-            fullEl.src = bg.thumb;
-
-            requestAnimationFrame(function () {
-              if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
-                return;
-              }
-
-              fullEl.classList.add('loaded');
-              if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-            });
-          };
-          videoEl.onpause = function () {
-            window.handleBackgroundVideoPause(videoEl, {
-              isCurrent: () => isActiveCustomBackgroundRequest(id, loadVersion) && videoEl.dataset.currentBg === id,
-              autoplayEnabled: loadVideoAutoplay()
-            });
-          };
-
-        }
-      } else {
-        // Image background
-        resetCustomBackgroundVideo(videoEl, true);
-        containerEl && containerEl.classList.remove('video-fallback', 'video-error');
-
-        fullEl.classList.remove('loaded');
-        thumbnailEl.classList.remove('hidden', 'clearing');
-        thumbnailEl.src = bg.thumb;
-
-        const fullImg = new Image();
-        fullImg.onload = function () {
-          if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
-            return;
-          }
-
-          fullEl.src = blobUrl;
-
-          requestAnimationFrame(function () {
-            if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
-              return;
-            }
-
-            fullEl.classList.add('loaded');
-            if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-            thumbnailEl.classList.add('clearing');
-
-            customBackgroundTransitionTimeout = setTimeout(function () {
-              if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
-                return;
-              }
-
-              thumbnailEl.classList.add('hidden');
-              thumbnailEl.classList.remove('clearing');
-              customBackgroundTransitionTimeout = null;
-            }, crossfadeDelayMs(IMAGE_THUMBNAIL_HIDE_DELAY_MS));
-          });
-        };
-        fullImg.onerror = function () {
-          if (!isActiveCustomBackgroundRequest(id, loadVersion)) {
-            return;
-          }
-
-          if (typeof hideBackgroundOverlay === 'function') hideBackgroundOverlay();
-        };
-        fullImg.src = blobUrl;
+        return applyVideoCustomBackground(id, bg, blobUrl, els, isStale);
       }
 
+      applyImageCustomBackground(bg, blobUrl, els, isStale);
       return true;
     }).catch(function (error) {
-      if (isActiveCustomBackgroundRequest(id, loadVersion)) {
+      if (isStale()) {
         showBackgroundError('customBackgroundLoadError', 'Failed to load the custom background. Please try again.', error);
       }
       return false;
