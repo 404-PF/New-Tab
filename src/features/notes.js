@@ -48,11 +48,9 @@
         ? CORRUPT_BACKUP_PREFIX
         : `${CORRUPT_BACKUP_PREFIX}_${window.generateUuidV4()}`;
       const result = localStorage.setItem(key, raw);
-      if (result === false) {
-        console.warn('Storage bridge rejected the corrupt notes backup');
-        return false;
-      }
-      return true;
+      if (result !== false) return true; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+      console.warn('Storage bridge rejected the corrupt notes backup');
+      return false;
     } catch (error) {
       console.warn('Failed to back up corrupt notes data:', error);
       return false;
