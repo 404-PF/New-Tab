@@ -3317,31 +3317,34 @@ if (settingsMenu) {
   })();
 }
 
-// About section initialization
-function initAboutSection() {
-  const aboutSection = document.querySelector('.settings-section[data-section="about"]');
-  if (aboutSection) {
-    const t = window.i18n ? window.i18n.t : (key => key);
+// Shared by the 'project' and 'onboardingTour' About cards
+const ABOUT_NOTEBOOK_ICON_SVG = `<svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"></path>
+              <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5Z"></path>
+              <path d="M16 14h.01"></path>
+              <path d="M8 14h.01"></path>
+              <path d="M12 14h.01"></path>
+            </svg>`;
+
+function getAboutTranslator() {
+  return window.i18n ? window.i18n.t : (key => key);
+}
+
+function buildAboutSectionHtml(t) {
     const updateStatus = window.updateChecker ? updateChecker.getUpdateStatus() : t('updateCheckerNotLoaded');
     const isEnabled = window.updateChecker ? updateChecker.isEnabled() : true;
 
     const currentVersion = window.CURRENT_VERSION;
     const versionFallback = window.VERSION_DISPLAY_UNAVAILABLE_TEXT || 'extension only';
     const versionText = currentVersion ? `v${currentVersion}` : versionFallback;
-    aboutSection.innerHTML = `
+    return `
       <div class="about-setting-group">
         <h4 data-i18n="aboutSettings">${t('aboutSettings')}</h4>
         <p data-i18n="aboutSettingsDesc">${t('aboutSettingsDesc')}</p>
 
         <div class="about-cards">
           <div class="setting-card">
-            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"></path>
-              <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5Z"></path>
-              <path d="M16 14h.01"></path>
-              <path d="M8 14h.01"></path>
-              <path d="M12 14h.01"></path>
-            </svg>
+            ${ABOUT_NOTEBOOK_ICON_SVG}
             <div class="setting-content">
               <label data-i18n="project">${t('project')}</label>
               <div style="font-size: 16px; font-weight: 600; color: var(--settings-text-color); margin-bottom: 4px;">New-Tab</div>
@@ -3364,13 +3367,7 @@ function initAboutSection() {
           </div>
 
           <div class="setting-card">
-            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"></path>
-              <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5Z"></path>
-              <path d="M16 14h.01"></path>
-              <path d="M8 14h.01"></path>
-              <path d="M12 14h.01"></path>
-            </svg>
+            ${ABOUT_NOTEBOOK_ICON_SVG}
             <div class="setting-content">
               <label data-i18n="onboardingTour">${t('onboardingTour')}</label>
               <div style="font-size: 16px; font-weight: 600; color: var(--settings-text-color);" data-i18n="restartTour">${t('restartTour')}</div>
@@ -3429,7 +3426,14 @@ function initAboutSection() {
         </div>
       </div>
     `;
+}
 
+function scheduleAboutRefresh() {
+  setTimeout(() => initAboutSection(), 100);
+}
+
+function bindAboutListeners() {
+    const t = getAboutTranslator();
     // Add event listeners for update settings
     const updateEnabledCheckbox = document.getElementById('update-check-enabled');
     const manualCheckButton = document.getElementById('manual-update-check');
@@ -3445,25 +3449,24 @@ function initAboutSection() {
           window.reportFeatureToggleSaveError();
         }
         // Refresh the about section to show updated status
-        setTimeout(() => initAboutSection(), 100);
+        scheduleAboutRefresh();
       });
     }
 
     if (manualCheckButton && window.updateChecker) {
       manualCheckButton.addEventListener('click', async function() {
-        const tBtn = window.i18n ? window.i18n.t : (key => key);
         this.disabled = true;
-        this.textContent = tBtn('checking');
+        this.textContent = t('checking');
         try {
           await updateChecker.manualCheck();
         } catch (err) {
           console.error('Manual update check failed:', err);
         } finally {
           this.disabled = false;
-          this.textContent = tBtn('checkNow');
+          this.textContent = t('checkNow');
         }
         // Refresh the about section after manual check
-        setTimeout(() => initAboutSection(), 100);
+        scheduleAboutRefresh();
       });
     }
 
@@ -3500,6 +3503,14 @@ function initAboutSection() {
         }
       });
     }
+}
+
+// About section initialization
+function initAboutSection() {
+  const aboutSection = document.querySelector('.settings-section[data-section="about"]');
+  if (aboutSection) {
+    aboutSection.innerHTML = buildAboutSectionHtml(getAboutTranslator());
+    bindAboutListeners();
 
     // The innerHTML rebuild above wipes any inline manual-check result; ask the
     // checker to re-append it while its auto-hide window is still valid
