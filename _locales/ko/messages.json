@@ -39,6 +39,14 @@
     "message": "게임 진행 상황을 저장하지 못했습니다. 최근 진행 내용이 저장되지 않았습니다.",
     "description": "Error shown when a game save cannot be persisted"
   },
+  "gameSavesLoadError": {
+    "message": "저장된 게임 진행 상황을 읽을 수 없습니다.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
+  "gameStatsLoadError": {
+    "message": "게임 통계를 읽을 수 없습니다.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
   "searchProviderSaveError": {
     "message": "검색 공급자 변경사항을 저장하지 못했습니다. 마지막 작업이 저장되지 않았습니다.",
     "description": "Error shown when custom search provider changes cannot be persisted"

@@ -243,6 +243,8 @@ window.i18n.__registerLocale('ja', {
   appGridSaveError: 'アプリの変更を保存できませんでした。直前の操作は保存されていません。',
   gameStatsSaveError: 'ゲーム統計を保存できませんでした。直前のスコアは保存されていません。',
   gameSavesSaveError: 'ゲームの進行状況を保存できませんでした。直前のプレイ内容は保存されていません。',
+  gameStatsLoadError: 'ゲーム統計を読み込めませんでした。',
+  gameSavesLoadError: '保存されたゲームの進行状況を読み込めませんでした。',
   appsSettingsDesc: 'アプリアイコンをカスタマイズ',
   iconStyle: 'アイコンスタイル',
   iconStyleDesc: 'アプリアイコンの形状と外観を選択',

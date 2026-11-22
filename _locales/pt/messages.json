@@ -39,6 +39,14 @@
     "message": "Não foi possível salvar o progresso do jogo. Sua última partida não foi salva.",
     "description": "Error shown when a game save cannot be persisted"
   },
+  "gameSavesLoadError": {
+    "message": "Não foi possível ler o progresso do jogo salvo.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
+  "gameStatsLoadError": {
+    "message": "Não foi possível ler as estatísticas do jogo.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
   "searchProviderSaveError": {
     "message": "Não foi possível salvar as alterações do mecanismo de busca. Sua última ação não foi salva.",
     "description": "Error shown when custom search provider changes cannot be persisted"

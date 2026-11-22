@@ -230,6 +230,8 @@ window.i18n.__registerLocale('de', {
   appGridSaveError: 'App-Änderungen konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.',
   gameStatsSaveError: 'Spielstatistiken konnten nicht gespeichert werden. Dein letzter Punktestand wurde nicht gespeichert.',
   gameSavesSaveError: 'Spielfortschritte konnten nicht gespeichert werden. Dein letzter Spielstand wurde nicht gespeichert.',
+  gameStatsLoadError: 'Spielstatistiken konnten nicht gelesen werden.',
+  gameSavesLoadError: 'Gespeicherter Spielfortschritt konnte nicht gelesen werden.',
   appsSettingsDesc: 'App-Symbole anpassen',
   iconStyle: 'Symbolstil',
   iconStyleDesc: 'Wähle Form und Aussehen deiner App-Symbole',
