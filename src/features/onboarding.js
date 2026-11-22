@@ -141,117 +141,23 @@ class OnboardingTour {
 
   // Define all onboarding steps
   defineSteps() {
+    // i18n keys are derived from the step id: onboarding<Id>Title / onboarding<Id>Content
+    const defineStep = (id, title, content, target, position, action = null, waitForAction = false) => {
+      const cap = id.charAt(0).toUpperCase() + id.slice(1);
+      return { id, titleKey: `onboarding${cap}Title`, title, contentKey: `onboarding${cap}Content`, content, target, position, action, waitForAction };
+    };
+
     return [
-      {
-        id: 'language',
-        titleKey: 'onboardingLanguageTitle',
-        title: 'Choose Your Language 🌐',
-        contentKey: 'onboardingLanguageContent',
-        content: 'Select your preferred language for the interface. You can change this later in Settings.',
-        target: null,
-        position: 'center',
-        action: 'select-language',
-        waitForAction: true
-      },
-      {
-        id: 'theme',
-        titleKey: 'onboardingThemeTitle',
-        title: 'Choose Your Theme 🌙',
-        contentKey: 'onboardingThemeContent',
-        content: 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.',
-        target: null,
-        position: 'center',
-        action: 'select-theme',
-        waitForAction: true
-      },
-      {
-        id: 'welcome',
-        titleKey: 'onboardingWelcomeTitle',
-        title: 'Welcome to New-Tab! 🎉',
-        contentKey: 'onboardingWelcomeContent',
-        content: 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.',
-        target: null,
-        position: 'center',
-        action: null,
-        waitForAction: false
-      },
-      {
-        id: 'clock',
-        titleKey: 'onboardingClockTitle',
-        title: 'Clock & Date Display',
-        contentKey: 'onboardingClockContent',
-        content: 'Your current time and date are displayed here. You can customize the appearance in Settings.',
-        target: '#clock',
-        position: 'bottom',
-        action: null,
-        waitForAction: false
-      },
-      {
-        id: 'search',
-        titleKey: 'onboardingSearchTitle',
-        title: 'Web Search',
-        contentKey: 'onboardingSearchContent',
-        content: 'Search the web from your new tab using your browser\'s default search provider.',
-        target: '.search-bar',
-        position: 'bottom',
-        action: null,
-        waitForAction: false
-      },
-      {
-        id: 'apps',
-        titleKey: 'onboardingAppsTitle',
-        title: 'App Shortcuts',
-        contentKey: 'onboardingAppsContent',
-        content: 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.',
-        target: '#app-grid',
-        position: 'top',
-        action: 'add-app',
-        waitForAction: false
-      },
-      {
-        id: 'background',
-        titleKey: 'onboardingBackgroundTitle',
-        title: 'Beautiful Backgrounds',
-        contentKey: 'onboardingBackgroundContent',
-        content: 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.',
-        target: 'body',
-        position: 'center',
-        action: null,
-        waitForAction: false
-      },
-      {
-        id: 'motto',
-        titleKey: 'onboardingMottoTitle',
-        title: 'Daily Inspiration',
-        contentKey: 'onboardingMottoContent',
-        content: 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.',
-        target: '#motto-container',
-        position: 'top',
-        action: null,
-        waitForAction: false
-      },
-      {
-        id: 'settings',
-        titleKey: 'onboardingSettingsTitle',
-        title: 'Customization Center',
-        contentKey: 'onboardingSettingsContent',
-        content: 'Click the gear icon to access extensive customization options for themes, styling, and more.',
-        target: '#settings-modal',
-        position: 'left',
-        action: 'open-settings',
-        waitForAction: false
-      },
-      {
-        id: 'complete',
-        titleKey: 'onboardingCompleteTitle',
-        title: 'You\'re All Set! ✨',
-        contentKey: 'onboardingCompleteContent',
-        content: 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.',
-        target: null,
-        position: 'center',
-        action: null,
-        waitForAction: false
-      }
+      defineStep('language', 'Choose Your Language 🌐', 'Select your preferred language for the interface. You can change this later in Settings.', null, 'center', 'select-language', true),
+      defineStep('theme', 'Choose Your Theme 🌙', 'Select your preferred interface theme. You can switch between dark and light modes anytime in Settings.', null, 'center', 'select-theme', true),
+      defineStep('welcome', 'Welcome to New-Tab! 🎉', 'Let\'s take a quick tour of the features to help you get started with personalizing your new tab page.', null, 'center'),
+      defineStep('clock', 'Clock & Date Display', 'Your current time and date are displayed here. You can customize the appearance in Settings.', '#clock', 'bottom'),
+      defineStep('search', 'Web Search', 'Search the web from your new tab using your browser\'s default search provider.', '.search-bar', 'bottom'),
+      defineStep('apps', 'App Shortcuts', 'Add your favorite websites as quick-launch icons. Drag and drop to reorder them.', '#app-grid', 'top', 'add-app'),
+      defineStep('background', 'Beautiful Backgrounds', 'Choose from stunning built-in backgrounds or upload your own. Access this in Settings > Background.', 'body', 'center'),
+      defineStep('motto', 'Daily Inspiration', 'Enjoy a new motivational quote each day. Click the refresh button to get a random quote or the copy button to copy it.', '#motto-container', 'top'),
+      defineStep('settings', 'Customization Center', 'Click the gear icon to access extensive customization options for themes, styling, and more.', '#settings-modal', 'left', 'open-settings'),
+      defineStep('complete', 'You\'re All Set! ✨', 'You now know the basics of New-Tab. Explore the settings to make it truly yours. You can always restart this tour from Settings > About.', null, 'center')
     ];
   }
 
