@@ -810,6 +810,35 @@ describe('OpenRouter non-JSON error bodies (#866)', () => {
     }
   });
 
+  it('fails fast instead of waiting for a Retry-After beyond the cap', async () => {
+    vi.useFakeTimers();
+    const originalMaxRetries = OpenRouterAPI.config.maxRetries;
+    const originalRetryDelay = OpenRouterAPI.config.retryDelay;
+
+    try {
+      OpenRouterAPI.config.maxRetries = 2;
+      OpenRouterAPI.config.retryDelay = 0;
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        createNonJsonErrorResponse(429, { headers: { 'Retry-After': '3600' } })
+      );
+
+      const promise = OpenRouterAPI.sendMessageStreaming('hello');
+      await vi.advanceTimersByTimeAsync(0);
+      const result = await promise;
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        success: false,
+        code: 'RATE_LIMIT',
+        error: 'Rate limited. Try again in 3600 seconds'
+      });
+    } finally {
+      OpenRouterAPI.config.maxRetries = originalMaxRetries;
+      OpenRouterAPI.config.retryDelay = originalRetryDelay;
+      vi.useRealTimers();
+    }
+  });
+
   it('falls back to aiRateLimit for an unparseable Retry-After value', async () => {
     const originalMaxRetries = OpenRouterAPI.config.maxRetries;
 
