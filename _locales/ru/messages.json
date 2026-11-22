@@ -39,6 +39,14 @@
     "message": "Не удалось сохранить прогресс игры. Ваше последнее прохождение не было сохранено.",
     "description": "Error shown when a game save cannot be persisted"
   },
+  "gameSavesLoadError": {
+    "message": "Не удалось прочитать сохранённый прогресс игры.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
+  "gameStatsLoadError": {
+    "message": "Не удалось прочитать статистику игры.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
   "searchProviderSaveError": {
     "message": "Не удалось сохранить изменения поисковых провайдеров. Последнее действие не было сохранено.",
     "description": "Error shown when custom search provider changes cannot be persisted"

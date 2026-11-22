@@ -263,6 +263,8 @@ window.i18n.__registerLocale('zh', {
   appGridSaveError: '无法保存应用更改。您上次的操作未被保存。',
   gameStatsSaveError: '无法保存游戏数据。您最新的成绩未被保存。',
   gameSavesSaveError: '无法保存游戏进度。您最新的游戏记录未被保存。',
+  gameStatsLoadError: '无法读取游戏数据。',
+  gameSavesLoadError: '无法读取已保存的游戏进度。',
   appsSettingsDesc: '自定义应用图标',
   iconStyle: '图标样式',
   iconStyleDesc: '选择应用图标的形状和外观',

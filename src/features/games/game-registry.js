@@ -60,17 +60,13 @@
       return Promise.resolve(true);
     }
 
-    function preserveCorrupt(raw) {
-      let pending;
+    async function preserveCorrupt(raw) {
       try {
-        pending = Promise.resolve(backupCorrupt(raw));
+        return await backupCorrupt(raw);
       } catch (e) {
-        pending = Promise.reject(e);
-      }
-      return pending.catch((e) => {
         console.warn(`Failed to back up corrupt ${key}:`, e);
         return false;
-      });
+      }
     }
 
     function load() {

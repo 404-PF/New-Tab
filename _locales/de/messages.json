@@ -39,6 +39,14 @@
     "message": "Spielfortschritte konnten nicht gespeichert werden. Dein letzter Spielstand wurde nicht gespeichert.",
     "description": "Error shown when a game save cannot be persisted"
   },
+  "gameSavesLoadError": {
+    "message": "Gespeicherter Spielfortschritt konnte nicht gelesen werden.",
+    "description": "Error shown when stored game saves are unreadable"
+  },
+  "gameStatsLoadError": {
+    "message": "Spielstatistiken konnten nicht gelesen werden.",
+    "description": "Error shown when stored game statistics are unreadable"
+  },
   "searchProviderSaveError": {
     "message": "Änderungen an Suchanbietern konnten nicht gespeichert werden. Die letzte Aktion wurde nicht gespeichert.",
     "description": "Error shown when custom search provider changes cannot be persisted"
