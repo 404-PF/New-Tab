@@ -39,14 +39,6 @@ function createHarness({ mode }) {
       }
     }
   });
-  dom.window.VisibilityInterval = class {
-    constructor(callback) {
-      this.callback = callback;
-    }
-
-    destroy() {}
-  };
-
   const warnings = [];
   dom.window.console.warn = (...args) => warnings.push(args.join(' '));
 
@@ -76,6 +68,15 @@ function createHarness({ mode }) {
   };
 
   dom.window.translate = (key, fallback, args) => dom.window.i18n.t(key, args);
+  injectScript('src/core/utils.js', dom.getInternalVMContext());
+
+  dom.window.VisibilityInterval = class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    destroy() {}
+  };
   injectScript('src/features/pomodoro.js', dom.getInternalVMContext());
 
   // The timer is disabled by default, so enable it before any start attempt.

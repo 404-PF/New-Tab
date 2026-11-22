@@ -623,6 +623,22 @@
     return localStorage.getItem(key) !== 'false';
   }
 
+  // fallback is a factory so each call gets a fresh value. Missing, failing,
+  // and isValid-rejected values all return fallback() without warning; only a
+  // read or parse error logs warnLabel.
+  function readStoredJson(key, options) {
+    const { fallback, isValid, warnLabel } = options;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback();
+      const parsed = JSON.parse(raw);
+      return !isValid || isValid(parsed) ? parsed : fallback();
+    } catch (err) {
+      console.warn(warnLabel, err);
+      return fallback();
+    }
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c));
@@ -919,6 +935,7 @@
   window.getClosestSizeOption = getClosestSizeOption;
   window.syncSizeChoiceButtons = syncSizeChoiceButtons;
   window.readDefaultOnFlag = readDefaultOnFlag;
+  window.readStoredJson = readStoredJson;
   function translate(key, fallback, args) {
     return window.i18n ? window.i18n.t(key, args) : fallback;
   }

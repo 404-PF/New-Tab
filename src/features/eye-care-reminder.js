@@ -85,14 +85,11 @@
       return window.loadEyeCareReminderState();
     }
 
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { enabled: false };
-      return { enabled: false, ...JSON.parse(raw) };
-    } catch (error) {
-      console.warn('Failed to parse eye-care reminder state:', error);
-      return { enabled: false };
-    }
+    const stored = window.readStoredJson(STORAGE_KEY, {
+      fallback: () => null,
+      warnLabel: 'Failed to parse eye-care reminder state:'
+    });
+    return { enabled: false, ...stored };
   }
 
   function saveState(updates) {

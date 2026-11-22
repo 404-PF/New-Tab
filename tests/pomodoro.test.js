@@ -18,6 +18,8 @@ beforeAll(() => {
   header.className = 'todo-header';
   document.body.appendChild(header);
 
+  injectScript('src/core/utils.js');
+
   window.VisibilityInterval = class {
     constructor() {}
     destroy() {}
@@ -233,6 +235,7 @@ describe('Pomodoro leadership election regression (issue #763)', () => {
       url: 'https://new-tab.test/'
     });
     const { window } = dom;
+    injectScript('src/core/utils.js', dom.getInternalVMContext());
     const header = window.document.createElement('div');
     header.className = 'todo-header';
     window.document.body.appendChild(header);

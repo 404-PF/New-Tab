@@ -50,21 +50,18 @@
   let _stateEpoch = 0;
 
   function loadSettings() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { ...DEFAULTS };
-      const parsed = JSON.parse(raw);
-      return {
-        workDuration: typeof parsed.workDuration === 'number' ? parsed.workDuration : DEFAULTS.workDuration,
-        shortBreakDuration: typeof parsed.shortBreakDuration === 'number' ? parsed.shortBreakDuration : DEFAULTS.shortBreakDuration,
-        longBreakDuration: typeof parsed.longBreakDuration === 'number' ? parsed.longBreakDuration : DEFAULTS.longBreakDuration,
-        sessionsBeforeLongBreak: typeof parsed.sessionsBeforeLongBreak === 'number' ? parsed.sessionsBeforeLongBreak : DEFAULTS.sessionsBeforeLongBreak,
-        enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULTS.enabled
-      };
-    } catch (error) {
-      console.warn('Failed to load Pomodoro settings from localStorage:', error);
-      return { ...DEFAULTS };
-    }
+    const parsed = window.readStoredJson(STORAGE_KEY, {
+      fallback: () => ({ ...DEFAULTS }),
+      isValid: value => value !== null && typeof value === 'object',
+      warnLabel: 'Failed to load Pomodoro settings from localStorage:'
+    });
+    return {
+      workDuration: typeof parsed.workDuration === 'number' ? parsed.workDuration : DEFAULTS.workDuration,
+      shortBreakDuration: typeof parsed.shortBreakDuration === 'number' ? parsed.shortBreakDuration : DEFAULTS.shortBreakDuration,
+      longBreakDuration: typeof parsed.longBreakDuration === 'number' ? parsed.longBreakDuration : DEFAULTS.longBreakDuration,
+      sessionsBeforeLongBreak: typeof parsed.sessionsBeforeLongBreak === 'number' ? parsed.sessionsBeforeLongBreak : DEFAULTS.sessionsBeforeLongBreak,
+      enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULTS.enabled
+    };
   }
 
   function saveSettings(settings) {
