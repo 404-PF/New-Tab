@@ -558,13 +558,17 @@
         manualCity: manualCity.trim(),
         locationName: locationMode === 'auto' ? null : locationDisplay
       };
-      lastCacheCoords = { timestamp: newCache.timestamp, lat: location.lat, lon: location.lon };
+      const newCacheCoords = { timestamp: newCache.timestamp, lat: location.lat, lon: location.lon };
 
       // Persistence can outlive this refresh. Render the fetched data now so a
       // chrome.storage callback that never arrives cannot leave the widget
       // loading or hold isRefreshing. saveCache still dispatches
       // weatherCacheUpdated only after the write is known to have succeeded.
-      WeatherStorage.saveCache(newCache).catch((error) => {
+      // Coordinates replace the previous record only once the write succeeds,
+      // so a failed write keeps the prior cache's coordinates valid.
+      WeatherStorage.saveCache(newCache).then((saved) => {
+        if (saved) lastCacheCoords = newCacheCoords;
+      }).catch((error) => {
         console.warn('Failed to write weather cache:', error);
       });
       renderWeather(weatherData, locationDisplay, unit);
