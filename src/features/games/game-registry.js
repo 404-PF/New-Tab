@@ -35,9 +35,19 @@
     let cacheRaw;
     let lastToastAt = -Infinity;
 
+    // Keep an unparseable value under a backup key so the next write, which
+    // starts from an empty object, cannot silently destroy it.
+    function backupCorrupt(raw) {
+      let backupKey = `${key}_corrupt_backup`;
+      if (localStorage.getItem(backupKey) !== null) backupKey = `${backupKey}_${Date.now()}`;
+      localStorage.setItem(backupKey, raw);
+      console.warn(`Preserved corrupt ${key} as ${backupKey}`);
+    }
+
     function load() {
+      let raw;
       try {
-        const raw = localStorage.getItem(key);
+        raw = localStorage.getItem(key);
         if (raw === cacheRaw && cache !== null) return cache;
         cacheRaw = raw;
         if (!raw) {
@@ -50,7 +60,16 @@
       } catch (e) {
         console.warn(`Failed to load ${key}:`, e);
         cache = {};
-        cacheRaw = undefined;
+        // Remember the bad raw value so it is backed up once, not on every read.
+        cacheRaw = raw;
+        if (raw) {
+          try {
+            backupCorrupt(raw);
+          } catch (backupError) {
+            console.warn(`Failed to back up corrupt ${key}:`, backupError);
+          }
+          showError();
+        }
         return cache;
       }
     }

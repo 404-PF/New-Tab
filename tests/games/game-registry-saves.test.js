@@ -838,3 +838,20 @@ describe('GameRegistry MRU bridge rejection (#1069)', () => {
     expect(JSON.parse(localStorage.getItem('games_recently_played'))).toEqual(['mru-throw-a']);
   });
 });
+
+describe('GameRegistry corrupt saves store (#1391)', () => {
+  it('preserves an unparseable games_saves value when the next save writes', async () => {
+    const corrupt = '{"other-game":{"state":{"level":2}';
+    localStorage.removeItem('games_saves_corrupt_backup');
+    localStorage.setItem('games_saves', corrupt);
+    const game = registerSaveableGame('save-game', { snapshot: { level: 7 } });
+    ensureContainer();
+    window.GameRegistry.launch('save-game');
+    game.setSnapshot({ level: 9 });
+    await expect(window.GameRegistry.destroyCurrent()).resolves.toBe(true);
+
+    expect(localStorage.getItem('games_saves_corrupt_backup')).toBe(corrupt);
+    const raw = JSON.parse(localStorage.getItem('games_saves'));
+    expect(raw['save-game'].state).toEqual({ level: 9 });
+  });
+});
