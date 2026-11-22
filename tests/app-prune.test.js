@@ -103,4 +103,49 @@ describe('app vector pruning (issue #1386)', () => {
     const rows = await cache.getAllCachedVectors(modelId);
     expect(rows.map((row) => String(row.appId)).sort()).toEqual(['alpha']);
   });
+
+  it('skips a stale prune that resolves after a newer ranking pass', async () => {
+    const cache = window.AppVectorCache;
+    const modelId = 'prune-test-model';
+    await window.AppSemanticSearch.rankApps('alpha', APPS, []);
+    await flush();
+    expect(await cache.getAllCachedVectors(modelId)).toHaveLength(2);
+
+    // Hold the next prune's store read so the older generation resolves last.
+    const originalGetAll = cache.getAllCachedVectors.bind(cache);
+    let releaseStale;
+    let staleStarted = false;
+    const staleGate = new Promise((resolve) => { releaseStale = resolve; });
+    cache.getAllCachedVectors = function (...args) {
+      if (!staleStarted) {
+        staleStarted = true;
+        return originalGetAll(...args).then(async (rows) => {
+          await staleGate;
+          return rows;
+        });
+      }
+      return originalGetAll(...args);
+    };
+    try {
+      const renamed = APPS.map((app) => (
+        app.id === 'alpha' ? { ...app, name: 'Alpha Renamed' } : app
+      ));
+      // Newer pass writes the fresh row while the stale read is held.
+      const staleRank = window.AppSemanticSearch.rankApps('alpha', APPS, []);
+      await flush();
+      window.AppSemanticSearch.clearCache();
+      await window.AppSemanticSearch.rankApps('alpha', renamed, []);
+      await flush();
+      releaseStale();
+      await staleRank;
+      await flush();
+
+      const rows = await originalGetAll(modelId);
+      const liveHash = cache.hashNoteText('Alpha Renamed alpha.example.com');
+      const hashes = rows.map((row) => row.textHash);
+      expect(hashes).toContain(liveHash);
+    } finally {
+      cache.getAllCachedVectors = originalGetAll;
+    }
+  });
 });

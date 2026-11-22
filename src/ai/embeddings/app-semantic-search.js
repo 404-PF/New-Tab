@@ -179,42 +179,51 @@
     });
   }
 
-  function pruneRemovedAppVectors(docs, modelId, appCache) {
+  function pruneRemovedAppVectors(docs, modelId, appCache, expectedGeneration) {
     try {
       const liveTextById = new Map();
       (Array.isArray(docs) ? docs : []).forEach(function (d) {
-        if (d && d.id !== undefined) liveTextById.set(String(d.id), d.embedText);
+        if (d?.id !== undefined) liveTextById.set(String(d.id), d.embedText);
       });
       const all = appCache.getAllCachedVectors(modelId);
       if (!all || typeof all.then !== 'function') return;
       all.then(function (records) {
-        (Array.isArray(records) ? records : []).forEach(function (r) {
-          const id = r && (r.appId !== undefined ? r.appId : r.id);
-          if (id === undefined) return;
-          const sid = String(id);
-          if (!liveTextById.has(sid)) {
-            try {
-              const deleted = appCache.deleteCachedVectorsForItem(id);
-              if (deleted && typeof deleted.catch === 'function') deleted.catch(function () { /* ignore */ });
-            } catch { /* ignore */ }
-            return;
-          }
-          // Live app whose embedding text changed (rename, URL or folder
-          // move): the row's text hash no longer matches, but an id-scoped
-          // delete would also drop the fresh row just written for the same
-          // id, so only the stale key is removed.
-          try {
-            if (typeof appCache.hashNoteText !== 'function'
-              || typeof appCache.deleteCachedVectorByKey !== 'function') return;
-            const liveHash = appCache.hashNoteText(liveTextById.get(sid));
-            if (r.textHash !== liveHash && r.key !== undefined && r.key !== null) {
-              const removed = appCache.deleteCachedVectorByKey(r.key);
-              if (removed && typeof removed.catch === 'function') removed.catch(function () { /* ignore */ });
-            }
-          } catch { /* ignore */ }
-        });
+        if (expectedGeneration !== undefined && expectedGeneration !== _pruneGeneration) return;
+        pruneStaleRecords(records, liveTextById, appCache);
       }).catch(function () { /* best-effort */ });
     } catch { /* best-effort */ }
+  }
+
+  function pruneStaleRecords(records, liveTextById, appCache) {
+    (Array.isArray(records) ? records : []).forEach(function (r) {
+      pruneStaleRecord(r, liveTextById, appCache);
+    });
+  }
+
+  function pruneStaleRecord(r, liveTextById, appCache) {
+    const id = r && (r.appId !== undefined ? r.appId : r.id);
+    if (id === undefined) return;
+    const sid = String(id);
+    if (!liveTextById.has(sid)) {
+      try {
+        const deleted = appCache.deleteCachedVectorsForItem(id);
+        if (deleted && typeof deleted.catch === 'function') deleted.catch(function () { /* ignore */ });
+      } catch { /* ignore */ }
+      return;
+    }
+    // Live app whose embedding text changed (rename, URL or folder
+    // move): the row's text hash no longer matches, but an id-scoped
+    // delete would also drop the fresh row just written for the same
+    // id, so only the stale key is removed.
+    try {
+      if (typeof appCache.hashNoteText !== 'function'
+        || typeof appCache.deleteCachedVectorByKey !== 'function') return;
+      const liveHash = appCache.hashNoteText(liveTextById.get(sid));
+      if (r.textHash !== liveHash && r.key !== undefined && r.key !== null) {
+        const removed = appCache.deleteCachedVectorByKey(r.key);
+        if (removed && typeof removed.catch === 'function') removed.catch(function () { /* ignore */ });
+      }
+    } catch { /* ignore */ }
   }
 
   // Prune runs inside every ranking pass, including cache-hit passes (one
@@ -223,13 +232,14 @@
   // only run after adds/removes/renames (the fingerprint binds ids to their
   // current embedding text, so folder moves count as changes too).
   let _lastPruneFingerprint = null;
+  let _pruneGeneration = 0;
 
   function pruneFingerprint(docs, modelId) {
     try {
       const parts = (Array.isArray(docs) ? docs : []).map(function (d) {
-        return String(d && d.id) + '=' + String(d && d.embedText);
+        return String(d?.id) + '=' + String(d?.embedText);
       });
-      parts.sort();
+      parts.sort(function (a, b) { return String(a).localeCompare(String(b)); });
       return String(modelId) + '|' + parts.length + '|' + parts.join('|');
     } catch {
       return null;
@@ -241,7 +251,8 @@
     const fingerprint = pruneFingerprint(docs, modelId);
     if (fingerprint !== null && fingerprint === _lastPruneFingerprint) return;
     _lastPruneFingerprint = fingerprint;
-    pruneRemovedAppVectors(docs, modelId, appCache);
+    _pruneGeneration += 1;
+    pruneRemovedAppVectors(docs, modelId, appCache, _pruneGeneration);
   }
 
   function toAppResults(ranked, appsById) {
@@ -302,7 +313,10 @@
     cacheModelId = null;
     // A cleared store must be pruned again on the next pass even for an
     // unchanged app list; also resets test state between ranking passes.
+    // Bump the generation so an in-flight prune cannot delete rows written
+    // after the clear.
     _lastPruneFingerprint = null;
+    _pruneGeneration += 1;
     try {
       const appCache = getAppCache();
       if (appCache && typeof appCache.clearCachedVectors === 'function') {

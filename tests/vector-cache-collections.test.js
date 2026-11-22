@@ -136,4 +136,72 @@ describe('Vector cache collections (issue #1332)', () => {
     expect(requestErrored).toBe(true);
     expect(completed).toBe(false);
   });
+
+  it('rejects a cross-collection single-key delete', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    const makeCache = window.createVectorCache;
+    const cacheA = makeCache({
+      dbName: 'SharedDeleteByKeyDb',
+      storeName: 'vectors',
+      idField: 'itemId',
+      idIndex: 'byItem',
+      label: 'a',
+      collection: 'aaa'
+    });
+    const cacheB = makeCache({
+      dbName: 'SharedDeleteByKeyDb',
+      storeName: 'vectors',
+      idField: 'itemId',
+      idIndex: 'byItem',
+      label: 'b',
+      collection: 'bbb'
+    });
+    await cacheA.putCachedVector('shared', 'hello', 'm1', [1, 0]);
+    await cacheB.putCachedVector('shared', 'hello', 'm1', [0, 1]);
+    const otherKey = cacheB.makeCollectionVectorKey('bbb', 'shared', cacheB.hashNoteText('hello'), 'm1');
+    expect(await cacheA.deleteCachedVectorByKey(otherKey)).toBe(false);
+    expect(await cacheB.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
+    expect(await cacheA.getCachedVector('shared', 'hello', 'm1')).not.toBeNull();
+  });
+
+  it('does not fire request.onerror when an onsuccess handler throws', async () => {
+    globalThis.indexedDB = makeMockIndexedDB();
+    // Ensure the store exists through the vector cache path instead of raw DDL.
+    const cache = window.createVectorCache({
+      dbName: 'HandlerThrowDb2',
+      storeName: 'vectors',
+      idField: 'itemId',
+      idIndex: 'byItem',
+      label: 'h',
+      collection: 'hhh'
+    });
+    await cache.putCachedVector('x', 'hello', 'm1', [1, 0]);
+    const db2 = await new Promise((resolve, reject) => {
+      const openReq = globalThis.indexedDB.open('HandlerThrowDb2');
+      openReq.onsuccess = () => resolve(openReq.result);
+      openReq.onerror = () => reject(openReq.error);
+    });
+    const checkTx = db2.transaction(['vectors'], 'readonly');
+    let errored = false;
+    let completed = false;
+    let reported = null;
+    const originalReportError = globalThis.reportError;
+    globalThis.reportError = (e) => { reported = e; };
+    try {
+      checkTx.oncomplete = () => { completed = true; };
+      const store = checkTx.objectStore('vectors');
+      const req = store.getAll();
+      req.onerror = () => { errored = true; };
+      const boom = new Error('handler boom');
+      req.onsuccess = () => { throw boom; };
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(errored).toBe(false);
+      expect(completed).toBe(true);
+      expect(req.result.length).toBe(1);
+      expect(reported).toBe(boom);
+    } finally {
+      if (originalReportError === undefined) delete globalThis.reportError;
+      else globalThis.reportError = originalReportError;
+    }
+  });
 });

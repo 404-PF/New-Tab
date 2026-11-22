@@ -280,8 +280,8 @@
       keySource.onsuccess = function () {
         const rows = Array.isArray(keySource.result) ? keySource.result : [];
         const keys = [];
-        for (let i = 0; i < rows.length; i += 1) {
-          if (rows[i] && match.test(rows[i])) keys.push(rows[i].key);
+        for (const row of rows) {
+          if (row && match.test(row)) keys.push(row.key);
         }
         removeKeysFromStore(store, keys, errorMessage);
       };
@@ -303,8 +303,8 @@
       allReq.onsuccess = function () {
         const rows = Array.isArray(allReq.result) ? allReq.result : [];
         const keys = [];
-        for (let i = 0; i < rows.length; i += 1) {
-          if (rows[i] && match.test(rows[i])) keys.push(rows[i].key);
+        for (const row of rows) {
+          if (row && match.test(row)) keys.push(row.key);
         }
         removeKeysFromStore(store, keys, errorMessage);
       };
@@ -358,7 +358,7 @@
       return deleteInSingleTransaction({
         index: ID_INDEX,
         value: id,
-        test: function (r) { return r && r[ID_FIELD] === id && belongsToCollection(r); }
+        test: function (r) { return r?.[ID_FIELD] === id && belongsToCollection(r); }
       }, 'Failed to delete ' + LABEL + ' vectors from IndexedDB:');
     }
 
@@ -368,10 +368,27 @@
     function deleteCachedVectorByKey(key) {
       if (key === undefined || key === null) return Promise.resolve(false);
       const expected = String(key);
-      return runStore('readwrite', function (store) {
-        return store.delete(expected);
-      }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function () { return true; })
-        .catch(function () { return false; });
+      const prefix = String(COLLECTION) + '::';
+      if (expected.indexOf(prefix) === 0) {
+        return runStore('readwrite', function (store) {
+          return store.delete(expected);
+        }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function () { return true; })
+          .catch(function () { return false; });
+      }
+      // A key without this collection's prefix must never delete another
+      // collection's row when a cache is reused on a shared store: read first
+      // and only delete legacy rows that belong to this cache (notes/todos
+      // pre-#1332 rows carry no collection field; apps never had legacy rows
+      // so the guard rejects for them).
+      return runStore('readonly', function (store) {
+        return store.get(expected);
+      }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function (record) {
+        if (!belongsToCollection(record)) return false;
+        return runStore('readwrite', function (store) {
+          return store.delete(expected);
+        }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function () { return true; })
+          .catch(function () { return false; });
+      }).catch(function () { return false; });
     }
 
     function clearCachedVectors(modelId) {
@@ -381,7 +398,7 @@
         return deleteInSingleTransaction({
           index: 'byModel',
           value: expected,
-          test: function (r) { return r && r.modelId === expected && belongsToCollection(r); }
+          test: function (r) { return r?.modelId === expected && belongsToCollection(r); }
         }, 'Failed to clear ' + LABEL + ' vectors from IndexedDB:');
       }
       // No model scope: every row must be inspected, so a full scan is
@@ -410,7 +427,7 @@
       }, 'Failed to read ' + LABEL + ' vectors from IndexedDB:').then(function (all) {
         const records = Array.isArray(all) ? all : [];
         if (typeof modelId === 'string' && modelId) {
-          return records.filter(function (r) { return r && r.modelId === modelId && Array.isArray(r.vector) && belongsToCollection(r); });
+          return records.filter(function (r) { return r?.modelId === modelId && Array.isArray(r.vector) && belongsToCollection(r); });
         }
         return records.filter(function (r) { return r && Array.isArray(r.vector) && belongsToCollection(r); });
       }).catch(function () { return []; });

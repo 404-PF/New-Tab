@@ -1885,7 +1885,7 @@ function loadSemanticEnabled() {
 // `notesSemanticEnabled` key so pre-#1332 readers stay in sync. Returns true
 // only when both writes settle.
 function persistSemanticEnabled(value) {
-  const next = value ? true : false;
+  const next = Boolean(value);
   let ok = true;
   try {
     if (window.persistSetting) {
