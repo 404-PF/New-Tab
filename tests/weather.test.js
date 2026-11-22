@@ -284,8 +284,6 @@ describe('Weather widget', () => {
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');
     localStorage.setItem('weatherCache', JSON.stringify({
-      lat: cacheCoordinates.latitude,
-      lon: cacheCoordinates.longitude,
       data: cacheData,
       timestamp: Date.now(),
       locationMode: 'auto',

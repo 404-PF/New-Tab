@@ -533,8 +533,6 @@
         : formatCoords(location.lat, location.lon);
 
       const newCache = {
-        lat: location.lat,
-        lon: location.lon,
         data: weatherData,
         timestamp: Date.now(),
         locationMode: locationMode,
