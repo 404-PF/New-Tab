@@ -919,7 +919,12 @@
   window.getClosestSizeOption = getClosestSizeOption;
   window.syncSizeChoiceButtons = syncSizeChoiceButtons;
   window.readDefaultOnFlag = readDefaultOnFlag;
+  function translate(key, fallback, args) {
+    return window.i18n ? window.i18n.t(key, args) : fallback;
+  }
+
   window.translateValidationMessage = translateValidationMessage;
+  window.translate = translate;
   window.persistSetting = persistSetting;
 
 })();

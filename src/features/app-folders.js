@@ -133,7 +133,7 @@
       const empty = document.createElement('div');
       empty.className = 'folder-popup-empty';
       empty.setAttribute('data-i18n', 'folderEmpty');
-      empty.textContent = window.i18n ? window.i18n.t('folderEmpty') : 'This folder is empty';
+      empty.textContent = window.translate('folderEmpty', 'This folder is empty');
       grid.appendChild(empty);
       return;
     }
@@ -173,7 +173,7 @@
     const folder = getFolder(folderId);
     if (!folder) return;
 
-    const newName = prompt(window.i18n ? window.i18n.t('renameFolderPrompt') : 'Enter new folder name:', folder.name);
+    const newName = prompt(window.translate('renameFolderPrompt', 'Enter new folder name:'), folder.name);
     if (newName && newName.trim()) {
       if (window.AppGridState.renameFolder(folderId, newName.trim())) {
         refreshFolderUI(folderId);
@@ -209,7 +209,7 @@
   }
 
   function promptCreateFolder() {
-    const name = prompt(window.i18n ? window.i18n.t('createFolderPrompt') : 'Enter folder name:', window.i18n ? window.i18n.t('newFolder') : 'New Folder');
+    const name = prompt(window.translate('createFolderPrompt', 'Enter folder name:'), window.translate('newFolder', 'New Folder'));
     if (!name || !name.trim()) return;
 
     const folder = window.AppGridState.createFolder(name.trim(), []);
@@ -229,7 +229,7 @@
     const folder = getFolder(folderId);
     if (!folder) return;
 
-    const msg = window.i18n ? window.i18n.t('deleteFolderConfirm', { name: folder.name }) : 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.';
+    const msg = window.translate('deleteFolderConfirm', 'Delete folder "' + folder.name + '"? Apps inside will be moved back to the grid.', { name: folder.name });
     if (confirm(msg)) {
       if (currentFolderId === folderId) closeFolderPopup();
       const releasedAppIds = Array.isArray(folder.apps) ? folder.apps.slice() : [];
@@ -244,7 +244,7 @@
   function showMoveToFolderSelector(appId) {
     const folders = getFolders();
     if (folders.length === 0) {
-      const create = confirm(window.i18n ? window.i18n.t('noFoldersCreate') : 'No folders yet. Create one now?');
+      const create = confirm(window.translate('noFoldersCreate', 'No folders yet. Create one now?'));
       if (create) {
         promptCreateFolder();
       }
@@ -281,7 +281,7 @@
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'move-to-folder-option cancel';
-    cancelBtn.textContent = window.i18n ? window.i18n.t('cancel') : 'Cancel';
+    cancelBtn.textContent = window.translate('cancel', 'Cancel');
     cancelBtn.addEventListener('click', hideMoveToFolderSelector);
     list.appendChild(cancelBtn);
 

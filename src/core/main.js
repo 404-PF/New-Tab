@@ -324,8 +324,8 @@ function setupRefreshMotto() {
 
 // Handle copy motto functionality
 function showCopyNotification(success) {
-  const successText = window.i18n ? window.i18n.t('copyMottoCopied') : 'Copied';
-  const failureText = window.i18n ? window.i18n.t('copyMottoFailed') : 'Failed to copy';
+  const successText = window.translate('copyMottoCopied', 'Copied');
+  const failureText = window.translate('copyMottoFailed', 'Failed to copy');
 
   if (typeof window.showToast === 'function') {
     window.showToast(success ? successText : failureText, success ? 'success' : 'error', { duration: 3000 });
