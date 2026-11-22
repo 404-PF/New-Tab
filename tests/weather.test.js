@@ -210,7 +210,7 @@ describe('Weather widget', () => {
   });
 
   it('renders today high/low under the temperature from cached daily data (#1226)', async () => {
-    configureAutoWeather();
+    await configureAutoWeather();
 
     await window.WeatherWidget.refresh();
 
@@ -227,7 +227,7 @@ describe('Weather widget', () => {
   });
 
   it('converts today high/low when switching to Fahrenheit (#1226)', async () => {
-    configureAutoWeather();
+    await configureAutoWeather();
     installWeatherFetch();
 
     const fahrenheitButton = document.querySelector(
@@ -245,7 +245,7 @@ describe('Weather widget', () => {
   });
 
   it('omits high/low when the payload has no daily data (#1226)', async () => {
-    configureAutoWeather({ cacheData: { current: mockWeatherData.current } });
+    await configureAutoWeather({ cacheData: { current: mockWeatherData.current } });
 
     await window.WeatherWidget.refresh();
 
@@ -255,7 +255,7 @@ describe('Weather widget', () => {
   });
 
   it('omits high/low when the daily arrays are incomplete (#1226)', async () => {
-    configureAutoWeather({
+    await configureAutoWeather({
       cacheData: {
         ...mockWeatherData,
         daily: { ...mockWeatherData.daily, temperature_2m_min: [] }
@@ -274,7 +274,10 @@ describe('Weather widget', () => {
     longitude: -122.4194
   };
 
-  function configureAutoWeather({
+  // Coordinates are never persisted, so a cache only matches auto-location
+  // once it was written by a refresh in this page session. Prime it with a
+  // real refresh, then swap in the requested payload under the same timestamp.
+  async function configureAutoWeather({
     cacheData = mockWeatherData,
     cacheCoordinates = DEFAULT_AUTO_COORDINATES,
     currentCoordinates = DEFAULT_AUTO_COORDINATES,
@@ -283,13 +286,14 @@ describe('Weather widget', () => {
     localStorage.setItem('weatherEnabled', 'true');
     localStorage.setItem('weatherUnit', 'celsius');
     localStorage.setItem('weatherLocationMode', 'auto');
+    mockGeolocation(cacheCoordinates);
+    installWeatherFetch({ data: mockWeatherData });
+    await window.WeatherWidget.refresh(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const stored = JSON.parse(localStorage.getItem('weatherCache'));
     localStorage.setItem('weatherCache', JSON.stringify({
-      lat: cacheCoordinates.latitude,
-      lon: cacheCoordinates.longitude,
+      ...stored,
       data: cacheData,
-      timestamp: Date.now(),
-      locationMode: 'auto',
-      manualCity: '',
       locationName
     }));
     mockGeolocation(currentCoordinates);
@@ -315,7 +319,7 @@ describe('Weather widget', () => {
 
 
   it('does not use a fresh auto-location cache after the user moves', async () => {
-    configureAutoWeather({
+    await configureAutoWeather({
       currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
     });
 
@@ -334,7 +338,7 @@ describe('Weather widget', () => {
   });
 
   it('uses a fresh auto-location cache within the coordinate tolerance', async () => {
-    configureAutoWeather({
+    await configureAutoWeather({
       cacheData: createWeatherDataWithTemperature(19),
       currentCoordinates: { latitude: 37.8044, longitude: -122.4194 }
     });
@@ -354,7 +358,7 @@ describe('Weather widget', () => {
 
   it('rejects a fresh auto-location cache just beyond the coordinate tolerance', async () => {
     // ~10.50 km north of the cached latitude, just beyond the 10 km limit.
-    configureAutoWeather({
+    await configureAutoWeather({
       currentCoordinates: { latitude: 37.8693, longitude: -122.4194 }
     });
 
@@ -373,7 +377,7 @@ describe('Weather widget', () => {
   });
 
   it('force-refreshes weather when changing units in auto-location mode', async () => {
-    configureAutoWeather({
+    await configureAutoWeather({
       cacheData: createWeatherDataWithTemperature(19),
       currentCoordinates: { latitude: 34.0522, longitude: -118.2437 }
     });
@@ -401,7 +405,7 @@ describe('Weather widget', () => {
   });
 
   it('does not use a fresh auto-location cache when geolocation fails', async () => {
-    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    await configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
     mockGeolocationError();
 
     let fetchCalled = false;
@@ -419,7 +423,7 @@ describe('Weather widget', () => {
   });
 
   it('does not trust an auto-location cache with invalid coordinates', async () => {
-    configureAutoWeather({
+    await configureAutoWeather({
       cacheCoordinates: { latitude: null, longitude: -122.4194 }
     });
 
@@ -436,7 +440,7 @@ describe('Weather widget', () => {
   });
 
   it('falls back to matching auto-location cache when the weather fetch fails', async () => {
-    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    await configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
 
     global.fetch = async () => {
       throw new Error('Network unavailable');
@@ -448,7 +452,7 @@ describe('Weather widget', () => {
   });
 
   it('does not fall back to a stale auto-location cache when the weather fetch fails (#1264)', async () => {
-    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    await configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
     const cache = JSON.parse(localStorage.getItem('weatherCache'));
     cache.timestamp = Date.now() - 2 * 24 * 60 * 60 * 1000;
     localStorage.setItem('weatherCache', JSON.stringify(cache));
@@ -582,13 +586,11 @@ describe('Weather widget', () => {
           temperature_2m: 30
         }
       };
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const stored = JSON.parse(localStorage.getItem('weatherCache'));
       localStorage.setItem('weatherCache', JSON.stringify({
-        lat: 37.7749,
-        lon: -122.4194,
+        ...stored,
         data: updatedData,
-        timestamp: Date.now(),
-        locationMode: 'auto',
-        manualCity: '',
         locationName: '<img src=x onerror=alert(1)>'
       }));
 
@@ -628,7 +630,7 @@ describe('Weather widget', () => {
   });
 
   async function expectPersistedCacheEvent({ installFailure, eventCount, storedTemperature }) {
-    configureAutoWeather({
+    await configureAutoWeather({
       cacheData: createWeatherDataWithTemperature(19)
     });
     installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
@@ -721,7 +723,7 @@ describe('Weather widget', () => {
   }
 
   it('dispatches weatherRefreshSettled with the successful result', async () => {
-    configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
+    await configureAutoWeather({ cacheData: createWeatherDataWithTemperature(19) });
     installWeatherFetch({ data: createWeatherDataWithTemperature(22) });
 
     const { result, details } = await captureSettledEvents(

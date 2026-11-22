@@ -33,6 +33,9 @@
   let isRefreshing = false;
   let widgetHasBeenShown = false;
   let pendingRefresh = false;
+  // Coordinates of the last cache write. Kept in memory only so precise
+  // location is never persisted to localStorage (CodeQL: clear-text storage).
+  let lastCacheCoords = null;
 
   // ===================== Utility Functions =====================
 
@@ -179,17 +182,25 @@
       && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
   }
 
+  // Persisted caches carry no coordinates, so auto-location matching only works
+  // for a cache written during this page session.
+  function getCacheCoords(cache) {
+    if (!cache || !lastCacheCoords || lastCacheCoords.timestamp !== cache.timestamp) return null;
+    return lastCacheCoords;
+  }
+
   function isCacheMatchingSettings(cache, currentLocation = null) {
     if (!cache) return false;
     const locationMode = WeatherStorage.loadLocationMode();
     const manualCity = WeatherStorage.loadManualCity();
     if (cache.locationMode !== locationMode) return false;
     if (locationMode === 'auto') {
-      if (!isValidCoordinates(cache.lat, cache.lon)) return false;
+      const coords = getCacheCoords(cache);
+      if (!coords || !isValidCoordinates(coords.lat, coords.lon)) return false;
       if (!currentLocation || !isValidCoordinates(currentLocation.lat, currentLocation.lon)) {
         return false;
       }
-      return getDistanceKm(cache.lat, cache.lon, currentLocation.lat, currentLocation.lon)
+      return getDistanceKm(coords.lat, coords.lon, currentLocation.lat, currentLocation.lon)
         <= CACHE_LOCATION_TOLERANCE_KM;
     }
     if (locationMode === 'manual' && cache.manualCity !== manualCity.trim()) return false;
@@ -533,14 +544,13 @@
         : formatCoords(location.lat, location.lon);
 
       const newCache = {
-        lat: location.lat,
-        lon: location.lon,
         data: weatherData,
         timestamp: Date.now(),
         locationMode: locationMode,
         manualCity: manualCity.trim(),
         locationName: locationDisplay
       };
+      lastCacheCoords = { timestamp: newCache.timestamp, lat: location.lat, lon: location.lon };
 
       // Persistence can outlive this refresh. Render the fetched data now so a
       // chrome.storage callback that never arrives cannot leave the widget
