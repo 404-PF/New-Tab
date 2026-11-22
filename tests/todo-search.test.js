@@ -36,11 +36,6 @@ beforeAll(() => {
   // toast.js provides window.showToast for todo save-error notifications.
   injectScript('src/core/toast.js');
   injectScript('src/features/todo.js');
-  if (!document.getElementById('todo-label-filter')) {
-    const labelFilter = document.createElement('select');
-    labelFilter.id = 'todo-label-filter';
-    document.body.appendChild(labelFilter);
-  }
 });
 
 beforeEach(() => {
@@ -54,40 +49,8 @@ beforeEach(() => {
   }
   currentFilters.status = 'all';
   currentFilters.priority = 'all';
-  currentFilters.label = '';
   selectedIds.clear();
   setTodoSort('due');
-});
-
-describe('Todo label filter and search', () => {
-  it('filters by exact label and matches the label in search', () => {
-    setTodos([
-      { id: '1', text: 'Pay rent', completed: false, createdAt: '2026-01-01', label: 'home' },
-      { id: '2', text: 'Send report', completed: false, createdAt: '2026-01-02', label: 'work' },
-      { id: '3', text: 'Buy stamps', completed: false, createdAt: '2026-01-03', label: 'errands' },
-      { id: '4', text: 'Attend workshop', completed: false, createdAt: '2026-01-04', label: 'workshop' }
-    ]);
-    initTodo();
-    const labelSelect = document.getElementById('todo-label-filter');
-    labelSelect.value = 'work';
-    labelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(visibleTexts()).toEqual(['Send report']);
-
-    labelSelect.value = '';
-    labelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    typeQuery('ERRAND');
-    expect(visibleTexts()).toEqual(['Buy stamps']);
-  });
-
-  it('renders a label chip on labeled rows only', () => {
-    setTodos([
-      { id: '1', text: 'Pay rent', completed: false, createdAt: '2026-01-01', label: 'home' },
-      { id: '2', text: 'Nap', completed: false, createdAt: '2026-01-02', label: null }
-    ]);
-    initTodo();
-    const chips = [...document.querySelectorAll('.todo-label-chip')].map(c => c.textContent);
-    expect(chips).toEqual(['home']);
-  });
 });
 
 describe('Todo search', () => {

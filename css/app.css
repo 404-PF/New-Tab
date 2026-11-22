@@ -1115,39 +1115,6 @@ body.light-theme .calendar-day.other-month {
   color: #4caf50;
 }
 
-/* Grouping label chip on todo items */
-.todo-label-chip {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.8);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
-}
-
-/* Label entry in the add row */
-.todo-label-input {
-  width: 110px;
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 8px 0 8px 10px;
-  color: #ffffff;
-  font-size: 13px;
-  outline: none;
-}
-
-.todo-label-input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 /* Recurrence badge beside due date */
 .todo-recurrence-badge {
   display: inline-flex;
