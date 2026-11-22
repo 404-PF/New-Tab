@@ -18,6 +18,15 @@ function getNotes() {
   }
 }
 
+function backupKeys() {
+  return Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+    .filter(key => key.startsWith('notes_corrupt_backup'));
+}
+
+function clearBackupKeys() {
+  backupKeys().forEach(key => localStorage.removeItem(key));
+}
+
 function setNotes(data) {
   localStorage.setItem('notes', JSON.stringify(data));
 }
@@ -51,6 +60,47 @@ describe('Notes persistence', () => {
     initNotes();
     expect(getNotes()).toEqual([]);
     expect(document.getElementById('notes-empty').style.display).toBe('block');
+  });
+
+  it('preserves a corrupt notes payload in a backup key before a later save', () => {
+    localStorage.setItem('notes', 'not-json');
+    initNotes();
+    addNote();
+    expect(localStorage.getItem('notes_corrupt_backup')).toBe('not-json');
+    expect(getNotes()).toHaveLength(1);
+  });
+
+  it('does not duplicate a backup when the same corrupt payload is loaded again', () => {
+    clearBackupKeys();
+    localStorage.setItem('notes', 'not-json');
+    initNotes();
+    initNotes();
+    expect(backupKeys()).toHaveLength(1);
+  });
+
+  it('keeps earlier backups intact when a different corrupt payload appears', () => {
+    clearBackupKeys();
+    localStorage.setItem('notes', 'first-corrupt');
+    initNotes();
+    localStorage.setItem('notes', 'second-corrupt');
+    initNotes();
+    expect(localStorage.getItem('notes_corrupt_backup')).toBe('first-corrupt');
+    const values = backupKeys().map(key => localStorage.getItem(key));
+    expect(values.sort()).toEqual(['first-corrupt', 'second-corrupt']);
+  });
+
+  it('blocks saves that would overwrite corrupt data whose backup failed', () => {
+    clearBackupKeys();
+    const restore = failStorageWritesFor('notes_corrupt_backup', 'sync');
+    try {
+      localStorage.setItem('notes', 'not-json');
+      initNotes();
+      addNote();
+    } finally {
+      restore();
+    }
+    expect(localStorage.getItem('notes')).toBe('not-json');
+    expect(backupKeys()).toHaveLength(0);
   });
 
   it('resets non-array data on init', () => {
