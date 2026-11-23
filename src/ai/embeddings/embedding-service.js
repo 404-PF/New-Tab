@@ -244,9 +244,7 @@
       }
 
       function onAbort() {
-        const err = new Error('Embedding load cancelled');
-        err.name = 'AbortError';
-        settleReject(err);
+        settleReject(createLoadCancelledError());
       }
 
       function onVendorLoaded() {
@@ -318,9 +316,7 @@
       // background. Transformers.js treats a throw in progress_callback as a
       // failure, which surfaces as AbortError and is ignored via generation.
       if (typeof generation === 'number' && loadGeneration !== generation) {
-        const cancelErr = new Error('Embedding load cancelled');
-        cancelErr.name = 'AbortError';
-        throw cancelErr;
+        throw createLoadCancelledError();
       }
       try {
         // Transformers.js reports progress as a 0-100 percentage. The
