@@ -851,9 +851,35 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
+  // Parse "HH:MM" string into minutes since midnight
+  function parseTimeMinutes(timeStr) {
+    const parts = String(timeStr).split(':');
+    if (parts.length !== 2) return 0;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return 0;
+    return h * 60 + m;
+  }
+
+  // Pick the active side of a two-boundary daily schedule. The first label
+  // applies from firstStart up to secondStart; otherwise the second label applies.
+  // Inverted windows (firstStart > secondStart) and equal times resolve to the
+  // second label's window accordingly.
+  function pickScheduledSide(currentMinutes, firstStartMinutes, secondStartMinutes, firstLabel, secondLabel) {
+    if (firstStartMinutes < secondStartMinutes) {
+      return (currentMinutes >= firstStartMinutes && currentMinutes < secondStartMinutes) ? firstLabel : secondLabel;
+    }
+    if (firstStartMinutes > secondStartMinutes) {
+      return (currentMinutes >= secondStartMinutes && currentMinutes < firstStartMinutes) ? secondLabel : firstLabel;
+    }
+    return secondLabel;
+  }
+
   // Make utilities available globally
   window.generateUuidV4 = generateUuidV4;
   window.formatLocalDateISO = formatLocalDateISO;
+  window.parseTimeMinutes = parseTimeMinutes;
+  window.pickScheduledSide = pickScheduledSide;
 
   // Shared video-background reset; callers pass their own transition-timeout clearer and pause/load wrappers
   function resetBackgroundVideoEl(videoEl, unloadSource, { clearTransitionTimeout, pause, load }) {
