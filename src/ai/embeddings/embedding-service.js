@@ -244,9 +244,7 @@
       }
 
       function onAbort() {
-        const err = new Error('Embedding load cancelled');
-        err.name = 'AbortError';
-        settleReject(err);
+        settleReject(createLoadCancelledError());
       }
 
       function onVendorLoaded() {
@@ -318,9 +316,7 @@
       // background. Transformers.js treats a throw in progress_callback as a
       // failure, which surfaces as AbortError and is ignored via generation.
       if (typeof generation === 'number' && loadGeneration !== generation) {
-        const cancelErr = new Error('Embedding load cancelled');
-        cancelErr.name = 'AbortError';
-        throw cancelErr;
+        throw createLoadCancelledError();
       }
       try {
         // Transformers.js reports progress as a 0-100 percentage. The
@@ -433,6 +429,32 @@
     } catch { /* ignore */ }
   }
 
+  function createLoadCancelledError() {
+    const err = new Error('Embedding load cancelled');
+    err.name = 'AbortError';
+    return err;
+  }
+
+  function adoptLiveProvider(provider) {
+    liveProvider = provider;
+    publishLiveProvider(provider);
+    setState('ready', 1);
+    return liveProvider;
+  }
+
+  function handleLoadFailure(err, generation, logWarning) {
+    // Stale chain (cancel → re-enable): leave shared state alone.
+    if (loadGeneration !== generation) throw err;
+    loadPromise = null;
+    if (err && err.name === 'AbortError') {
+      setState('idle', 0);
+    } else {
+      if (logWarning) console.warn('Failed to load embedding model:', err);
+      setState('error', progress, (err && err.message) || String(err));
+    }
+    throw err;
+  }
+
   function ensureModel(options) {
     const opts = options || {};
     if (status === 'ready' && liveProvider) {
@@ -457,9 +479,7 @@
     if (hooks && typeof hooks.pipelineFactory === 'function') {
       loadPromise = Promise.resolve().then(function () {
         if (signal && signal.aborted) {
-          const err = new Error('Embedding load cancelled');
-          err.name = 'AbortError';
-          throw err;
+          throw createLoadCancelledError();
         }
         let provider;
         try {
@@ -484,29 +504,16 @@
             }
           };
         }
-        liveProvider = provider;
-        publishLiveProvider(provider);
-        setState('ready', 1);
-        return liveProvider;
+        return adoptLiveProvider(provider);
       }).catch(function (err) {
-        // Stale chain (cancel → re-enable): leave shared state alone.
-        if (loadGeneration !== generation) throw err;
-        loadPromise = null;
-        if (err && err.name === 'AbortError') {
-          setState('idle', 0);
-        } else {
-          setState('error', progress, (err && err.message) || String(err));
-        }
-        throw err;
+        return handleLoadFailure(err, generation, false);
       });
       return loadPromise;
     }
 
     loadPromise = loadVendorModule(signal).then(function (vendor) {
       if (signal && signal.aborted) {
-        const err = new Error('Embedding load cancelled');
-        err.name = 'AbortError';
-        throw err;
+        throw createLoadCancelledError();
       }
       // MV3 has no cross-origin isolation: ORT must stay single-threaded.
       // The pipeline runs on the webgpu ORT instance Transformers imports
@@ -535,9 +542,7 @@
         progress_callback: progressCallback
       }).then(function (extractor) {
         if (signal && signal.aborted) {
-          const err = new Error('Embedding load cancelled');
-          err.name = 'AbortError';
-          throw err;
+          throw createLoadCancelledError();
         }
         const factory = buildPipelineFactory(extractor);
         let provider;
@@ -551,22 +556,10 @@
         if (!provider) {
           throw new Error('Harrier provider unavailable');
         }
-        liveProvider = provider;
-        publishLiveProvider(provider);
-        setState('ready', 1);
-        return liveProvider;
+        return adoptLiveProvider(provider);
       });
     }).catch(function (err) {
-      // Stale chain (cancel → re-enable): leave shared state alone.
-      if (loadGeneration !== generation) throw err;
-      loadPromise = null;
-      if (err && err.name === 'AbortError') {
-        setState('idle', 0);
-      } else {
-        console.warn('Failed to load embedding model:', err);
-        setState('error', progress, (err && err.message) || String(err));
-      }
-      throw err;
+      return handleLoadFailure(err, generation, true);
     });
 
     return loadPromise;
