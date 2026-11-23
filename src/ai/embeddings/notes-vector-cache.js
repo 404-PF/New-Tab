@@ -185,23 +185,26 @@
       });
     }
 
+    function readVectorRecord(key, errorMessage) {
+      return runStore('readonly', function (store) {
+        return store.get(key);
+      }, errorMessage);
+    }
+
     function getCachedVector(itemId, text, modelId) {
       const textHash = hashNoteText(text);
       const key = makeCollectionVectorKey(COLLECTION, itemId, textHash, modelId);
       const legacyKey = makeLegacyVectorKey(itemId, textHash, modelId);
       // Apps never had legacy rows: skip the second IndexedDB round-trip.
       const hasLegacyRows = COLLECTION === 'notes' || COLLECTION === 'todos';
-      return runStore('readonly', function (store) {
-        return store.get(key);
-      }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (record) {
+      const readError = 'Failed to read ' + LABEL + ' vector from IndexedDB:';
+      return readVectorRecord(key, readError).then(function (record) {
         if (record && Array.isArray(record.vector)) return record;
         // Upgrade path (issue #1332): rows written before the collection key
         // existed stay readable and are not rewritten or removed; the next
         // put writes the new collection key alongside the legacy row.
         if (!hasLegacyRows || legacyKey === key) return null;
-        return runStore('readonly', function (store) {
-          return store.get(legacyKey);
-        }, 'Failed to read ' + LABEL + ' vector from IndexedDB:').then(function (legacyRecord) {
+        return readVectorRecord(legacyKey, readError).then(function (legacyRecord) {
           if (!legacyRecord || !Array.isArray(legacyRecord.vector)) return null;
           return legacyRecord;
         }).catch(function () { return null; });
@@ -264,6 +267,14 @@
       }
     }
 
+    function collectMatchingKeys(rows, match) {
+      const keys = [];
+      for (const row of rows) {
+        if (row && match.test(row)) keys.push(row.key);
+      }
+      return keys;
+    }
+
     function deleteByIndex(store, match, done, errorMessage) {
       // Index-assisted delete (issue #1332 review): IDBIndex.getAll(value)
       // returns full records, so the existing id/model index narrows the
@@ -279,11 +290,7 @@
       if (!keySource) return false;
       keySource.onsuccess = function () {
         const rows = Array.isArray(keySource.result) ? keySource.result : [];
-        const keys = [];
-        for (const row of rows) {
-          if (row && match.test(row)) keys.push(row.key);
-        }
-        removeKeysFromStore(store, keys, errorMessage);
+        removeKeysFromStore(store, collectMatchingKeys(rows, match), errorMessage);
       };
       // A failed lookup must not report purged: tx.oncomplete would otherwise
       // resolve true with nothing deleted.
@@ -302,11 +309,7 @@
       }
       allReq.onsuccess = function () {
         const rows = Array.isArray(allReq.result) ? allReq.result : [];
-        const keys = [];
-        for (const row of rows) {
-          if (row && match.test(row)) keys.push(row.key);
-        }
-        removeKeysFromStore(store, keys, errorMessage);
+        removeKeysFromStore(store, collectMatchingKeys(rows, match), errorMessage);
       };
       allReq.onerror = function () { done(false); };
     }
@@ -380,9 +383,7 @@
       // and only delete legacy rows that belong to this cache (notes/todos
       // pre-#1332 rows carry no collection field; apps never had legacy rows
       // so the guard rejects for them).
-      return runStore('readonly', function (store) {
-        return store.get(expected);
-      }, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function (record) {
+      return readVectorRecord(expected, 'Failed to delete ' + LABEL + ' vector from IndexedDB:').then(function (record) {
         if (!belongsToCollection(record)) return false;
         return runStore('readwrite', function (store) {
           return store.delete(expected);
