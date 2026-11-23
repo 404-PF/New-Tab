@@ -1407,6 +1407,42 @@ describe('DataManager import refresh (issue #824)', () => {
     }
   });
 
+  it('runs the post-import refresh steps in order with the correct receiver', async () => {
+    const calls = [];
+    const originalShortcuts = window.Shortcuts;
+    const originalTodoRefresh = window.applyTodoAppSettings;
+    const hooks = withSpiedRefreshHooks([
+      'reloadTodosState',
+      'primeNotesSemanticImport',
+      'initSettings',
+      'applyBg',
+      'scheduleTodoReminderCheck'
+    ]);
+    const shortcutsReceiver = {
+      renderShortcutsSection() {
+        calls.push(['renderShortcutsSection', this === shortcutsReceiver]);
+      }
+    };
+    window.Shortcuts = shortcutsReceiver;
+    window.applyTodoAppSettings = () => calls.push(['applyTodoAppSettings']);
+    try {
+      const result = await importBackup({ theme: 'dark' }, 'replace');
+      expect(result.type).toBe('success');
+
+      const order = (name) => hooks.spies[name].mock.invocationCallOrder[0];
+      expect(order('reloadTodosState')).toBeLessThan(order('primeNotesSemanticImport'));
+      expect(order('primeNotesSemanticImport')).toBeLessThan(order('initSettings'));
+      expect(order('initSettings')).toBeLessThan(order('applyBg'));
+      expect(order('applyBg')).toBeLessThan(order('scheduleTodoReminderCheck'));
+      expect(calls.map((c) => c[0])).toEqual(['applyTodoAppSettings', 'renderShortcutsSection']);
+      expect(calls[1][1]).toBe(true);
+    } finally {
+      hooks.restore();
+      window.Shortcuts = originalShortcuts;
+      window.applyTodoAppSettings = originalTodoRefresh;
+    }
+  });
+
   it('cancels pending note saves before writing the backup', async () => {
     const hooks = withSpiedRefreshHooks(['cancelPendingNoteSaves', 'reloadTodosState']);
     try {
