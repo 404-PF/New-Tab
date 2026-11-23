@@ -431,19 +431,14 @@
       ['pomodoro-stats-rolling-avg', String(window.getPomodoroRollingAverage(7))],
       ['pomodoro-stats-by-todo', formatMinutesByTodo()]
     ];
-    return expected.some(function (entry) {
-      const el = document.getElementById(entry[0]);
-      return Boolean(el) && el.textContent !== String(entry[1]);
-    });
+    return window.panelTextDesynced(expected);
   }
-  window.addEventListener('storageBridgeWriteError', (event) => {
-    if (event?.detail?.key !== KEY) return;
-    setTimeout(() => {
-      if (!enabled()) return;
-      const desynced = pomodoroStatsPanelDesynced();
-      paint();
-      if (desynced) showStatsSaveError();
-    }, 0);
+  window.observeStatsResync({
+    key: KEY,
+    isEnabled: enabled,
+    isDesynced: pomodoroStatsPanelDesynced,
+    repaint: paint,
+    showError: showStatsSaveError
   });
   function boot() {
     syncVisibility();
