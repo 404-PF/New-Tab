@@ -250,33 +250,15 @@
     return getRotatableBackgrounds();
   }
 
-  // Parse "HH:MM" into minutes since midnight (mirrors auto-theme.js;
-  // kept local so the two modules stay independent).
-  function parseTimeMinutes(timeStr) {
-    const parts = String(timeStr).split(':');
-    if (parts.length !== 2) return 0;
-    const h = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m)) return 0;
-    return h * 60 + m;
-  }
-
   // Which pool is scheduled now: 'day' between day-time and night-time,
   // 'night' otherwise — including inverted schedules (e.g. day 19:00,
-  // night 07:00), the same boundary model auto-theme uses.
+  // night 07:00).
   function getScheduledSide() {
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const dayMinutes = parseTimeMinutes(loadDayTime());
-    const nightMinutes = parseTimeMinutes(loadNightTime());
-
-    if (dayMinutes < nightMinutes) {
-      return (currentMinutes >= dayMinutes && currentMinutes < nightMinutes) ? 'day' : 'night';
-    }
-    if (dayMinutes > nightMinutes) {
-      return (currentMinutes >= nightMinutes && currentMinutes < dayMinutes) ? 'night' : 'day';
-    }
-    return 'night';
+    const dayMinutes = window.parseTimeMinutes(loadDayTime());
+    const nightMinutes = window.parseTimeMinutes(loadNightTime());
+    return window.pickScheduledSide(currentMinutes, dayMinutes, nightMinutes, 'day', 'night');
   }
 
   function shuffleArray(arr) {

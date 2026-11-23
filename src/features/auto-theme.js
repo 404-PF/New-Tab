@@ -92,33 +92,14 @@
     return persistSettingLocal(STORAGE_KEY_DARK_TIME, time);
   }
 
-  // Parse "HH:MM" string into minutes since midnight
-  function parseTimeMinutes(timeStr) {
-    const parts = String(timeStr).split(':');
-    if (parts.length !== 2) return 0;
-    const h = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m)) return 0;
-    return h * 60 + m;
-  }
-
   // Determine which theme should be active based on current time.
   // Between light-time and dark-time → light; otherwise → dark.
   function getScheduledTheme() {
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const lightMinutes = parseTimeMinutes(loadLightTime());
-    const darkMinutes = parseTimeMinutes(loadDarkTime());
-
-    if (lightMinutes < darkMinutes) {
-      // e.g. light 07:00, dark 19:00 — light during the day
-      return (currentMinutes >= lightMinutes && currentMinutes < darkMinutes) ? 'light' : 'dark';
-    } else if (lightMinutes > darkMinutes) {
-      // e.g. light 19:00, dark 07:00 — inverted schedule
-      return (currentMinutes >= darkMinutes && currentMinutes < lightMinutes) ? 'dark' : 'light';
-    }
-    // Same time — default to dark
-    return 'dark';
+    const lightMinutes = window.parseTimeMinutes(loadLightTime());
+    const darkMinutes = window.parseTimeMinutes(loadDarkTime());
+    return window.pickScheduledSide(currentMinutes, lightMinutes, darkMinutes, 'light', 'dark');
   }
 
   // Returns whether the storage bridge accepted the write the way
