@@ -402,19 +402,14 @@
       ['todo-stats-best-day', formatTodoStatsBestDay(stats)],
       ['todo-stats-rolling-avg', String(getTodoStatsRollingAverage(7, stats))]
     ];
-    return expected.some(function (entry) {
-      const el = document.getElementById(entry[0]);
-      return Boolean(el) && el.textContent !== String(entry[1]);
-    });
+    return window.panelTextDesynced(expected);
   }
 
-  window.addEventListener('storageBridgeWriteError', (event) => {
-    if (event?.detail?.key !== STORAGE_KEY) return;
-    setTimeout(() => {
-      const desynced = statsPanelDesynced();
-      renderStats();
-      if (desynced) showStatsSaveError();
-    }, 0);
+  window.observeStatsResync({
+    key: STORAGE_KEY,
+    isDesynced: statsPanelDesynced,
+    repaint: renderStats,
+    showError: showStatsSaveError
   });
 
   function initTodoStats() {

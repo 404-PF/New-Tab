@@ -948,9 +948,34 @@
     return true;
   }
 
+  // entries: [elementId, expectedValue] pairs. Missing elements are skipped.
+  function panelTextDesynced(entries) {
+    return entries.some(function (entry) {
+      const el = document.getElementById(entry[0]);
+      return Boolean(el) && el.textContent !== String(entry[1]);
+    });
+  }
+
+  // Shared post-failure resync for stats panels. The desync check must run
+  // before repaint, both deferred by setTimeout(0), so the panel still shows
+  // the optimistic value when it is compared.
+  function observeStatsResync({ key, isEnabled, isDesynced, repaint, showError }) {
+    window.addEventListener('storageBridgeWriteError', (event) => {
+      if (event?.detail?.key !== key) return;
+      setTimeout(() => {
+        if (isEnabled && !isEnabled()) return;
+        const desynced = isDesynced();
+        repaint();
+        if (desynced) showError();
+      }, 0);
+    });
+  }
+
   window.reportFeatureToggleSaveError = reportFeatureToggleSaveError;
   window.translateValidationMessage = translateValidationMessage;
   window.translate = translate;
   window.persistSetting = persistSetting;
+  window.panelTextDesynced = panelTextDesynced;
+  window.observeStatsResync = observeStatsResync;
 
 })();
