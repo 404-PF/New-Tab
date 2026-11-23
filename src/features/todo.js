@@ -1294,59 +1294,185 @@
 
     // Render each todo with staggered animation
     filteredTodos.forEach((todo, index) => {
-      const li = document.createElement('li');
-      li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''} ${selectedIds.has(todo.id) ? 'selected' : ''}`;
-      li.dataset.id = todo.id;
-      // Drag reordering only applies to incomplete rows in manual sort mode;
-      // completed rows always sort by completion time and would snap back
-      // if reordered (issue #1013).
-      li.draggable = currentSort === 'manual' && !todo.completed;
+      listFragment.appendChild(buildTodoRow(todo, index));
+    });
 
-      const todoItemRow = document.createElement('div');
-      todoItemRow.className = 'todo-item-row';
+    todoList.appendChild(listFragment);
 
-      // Selection checkbox for the bulk-actions toolbar (issue #942)
-      const selectBox = document.createElement('input');
-      selectBox.type = 'checkbox';
-      selectBox.className = 'todo-select';
-      selectBox.checked = selectedIds.has(todo.id);
-      selectBox.dataset.id = todo.id;
-      selectBox.draggable = false;
-      const selectLabel = todo.text ?? '';
-      selectBox.setAttribute('aria-label', window.translate('todoSelectAria', `Select todo: ${selectLabel}`, { text: selectLabel }));
-      todoItemRow.appendChild(selectBox);
+    // Apply FLIP animation for reordering
+    applyReorderAnimation(todoList, existingItems);
 
-      const bullet = document.createElement('div');
-      bullet.className = 'todo-bullet';
-      bullet.dataset.id = todo.id;
-      bullet.appendChild(createTodoBullet(todo.completed));
-      const todoContent = document.createElement('div');
-      todoContent.className = 'todo-content';
-      const todoText = document.createElement('p');
-      todoText.className = 'todo-text';
-      todoText.textContent = todo.text ?? '';
-      todoContent.appendChild(todoText);
+    refreshOpenDatePickers();
+  }
 
-      // Priority badge
-      const todoPriority = todo.priority || 'medium';
-      if (todoPriority !== 'medium') {
-        const priorityBadge = document.createElement('span');
-        priorityBadge.className = `todo-priority-badge priority-${todoPriority}`;
-        const priorityLabelKeys = { high: 'priorityHigh', low: 'priorityLow' };
-        const priorityKey = priorityLabelKeys[todoPriority];
-        priorityBadge.textContent = priorityKey && window.i18n ? window.i18n.t(priorityKey) : String(todoPriority).charAt(0).toUpperCase() + String(todoPriority).slice(1);
-        todoContent.appendChild(priorityBadge);
-      }
+  function buildTodoRow(todo, index) {
+    const li = document.createElement('li');
+    li.className = `todo-item ${todo.completed ? 'completed' : ''} ${todo.dueDate && isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : ''} ${selectedIds.has(todo.id) ? 'selected' : ''}`;
+    li.dataset.id = todo.id;
+    // Drag reordering only applies to incomplete rows in manual sort mode;
+    // completed rows always sort by completion time and would snap back
+    // if reordered (issue #1013).
+    li.draggable = currentSort === 'manual' && !todo.completed;
 
-      const dueDate = document.createElement('div');
-      let dueDateState = 'empty';
-      if (todo.dueDate) {
-        dueDateState = isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : '';
-      }
-      dueDate.className = `todo-due-date clickable ${dueDateState}`;
-      dueDate.dataset.todoId = todo.id;
+    const todoItemRow = document.createElement('div');
+    todoItemRow.className = 'todo-item-row';
 
-      const dueDateSvg = createSvgElement('svg', {
+    // Selection checkbox for the bulk-actions toolbar (issue #942)
+    const selectBox = document.createElement('input');
+    selectBox.type = 'checkbox';
+    selectBox.className = 'todo-select';
+    selectBox.checked = selectedIds.has(todo.id);
+    selectBox.dataset.id = todo.id;
+    selectBox.draggable = false;
+    const selectLabel = todo.text ?? '';
+    selectBox.setAttribute('aria-label', window.translate('todoSelectAria', `Select todo: ${selectLabel}`, { text: selectLabel }));
+    todoItemRow.appendChild(selectBox);
+
+    const bullet = document.createElement('div');
+    bullet.className = 'todo-bullet';
+    bullet.dataset.id = todo.id;
+    bullet.appendChild(createTodoBullet(todo.completed));
+    const todoContent = document.createElement('div');
+    todoContent.className = 'todo-content';
+    const todoText = document.createElement('p');
+    todoText.className = 'todo-text';
+    todoText.textContent = todo.text ?? '';
+    todoContent.appendChild(todoText);
+
+    // Priority badge
+    const todoPriority = todo.priority || 'medium';
+    if (todoPriority !== 'medium') {
+      const priorityBadge = document.createElement('span');
+      priorityBadge.className = `todo-priority-badge priority-${todoPriority}`;
+      const priorityLabelKeys = { high: 'priorityHigh', low: 'priorityLow' };
+      const priorityKey = priorityLabelKeys[todoPriority];
+      priorityBadge.textContent = priorityKey && window.i18n ? window.i18n.t(priorityKey) : String(todoPriority).charAt(0).toUpperCase() + String(todoPriority).slice(1);
+      todoContent.appendChild(priorityBadge);
+    }
+
+    const dueDate = buildDueDateControl(todo);
+
+
+    const todoActions = document.createElement('div');
+    todoActions.className = 'todo-actions';
+    todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.translate('todoEditTooltip', 'Edit Todo'), todo.id, [
+      { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
+      { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
+    ]));
+    todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.translate('todoDeleteTooltip', 'Delete Todo'), todo.id, [
+      { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
+      { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
+      { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
+      { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
+    ]));
+    if (typeof addFocusButtonToTodoActions === 'function') {
+      addFocusButtonToTodoActions(todoActions, todo.id);
+    }
+
+    todoItemRow.appendChild(bullet);
+    todoItemRow.appendChild(todoContent);
+    todoItemRow.appendChild(dueDate);
+    todoItemRow.appendChild(todoActions);
+
+    li.appendChild(todoItemRow);
+
+    // Free-form details (issue #1228). Only rendered when non-empty so
+    // plain rows stay exactly as they were, collapsed by default, and built
+    // with textContent so stored text can never inject markup.
+    if (typeof todo.details === 'string' && todo.details.trim()) {
+      const detailsContainer = document.createElement('div');
+      detailsContainer.className = 'todo-details';
+
+      const detailsToggle = document.createElement('button');
+      detailsToggle.type = 'button';
+      detailsToggle.className = 'todo-details-toggle';
+      detailsToggle.dataset.todoId = todo.id;
+      const detailsExpanded = expandedDetailsIds.has(todo.id);
+      detailsToggle.setAttribute('aria-expanded', detailsExpanded ? 'true' : 'false');
+      detailsToggle.textContent = window.translate('todoDetailsToggle', 'Details');
+
+      const detailsBody = document.createElement('div');
+      detailsBody.className = 'todo-details-body';
+      detailsBody.hidden = !detailsExpanded;
+      detailsBody.textContent = todo.details;
+
+      detailsContainer.appendChild(detailsToggle);
+      detailsContainer.appendChild(detailsBody);
+      li.appendChild(detailsContainer);
+    }
+
+    const subtasksContainer = buildSubtasksSection(todo, todoContent);
+    if (subtasksContainer) {
+      li.appendChild(subtasksContainer);
+    }
+
+    // Add staggered animation delay
+    li.style.animationDelay = `${index * STAGGER_DELAY}s`;
+    li.setAttribute('data-animation', 'enter');
+
+    return li;
+  }
+
+  function buildDueDateControl(todo) {
+    const dueDate = document.createElement('div');
+    let dueDateState = 'empty';
+    if (todo.dueDate) {
+      dueDateState = isOverdue(todo.dueDate, todo.dueTime) ? 'overdue' : '';
+    }
+    dueDate.className = `todo-due-date clickable ${dueDateState}`;
+    dueDate.dataset.todoId = todo.id;
+
+    const dueDateSvg = createSvgElement('svg', {
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': '2',
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
+    });
+    dueDateSvg.appendChild(createSvgElement('rect', {
+      x: '3',
+      y: '4',
+      width: '18',
+      height: '18',
+      rx: '2',
+      ry: '2'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '16',
+      y1: '2',
+      x2: '16',
+      y2: '6'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '8',
+      y1: '2',
+      x2: '8',
+      y2: '6'
+    }));
+    dueDateSvg.appendChild(createSvgElement('line', {
+      x1: '3',
+      y1: '10',
+      x2: '21',
+      y2: '10'
+    }));
+    dueDate.appendChild(dueDateSvg);
+
+    const dueDateText = document.createElement('span');
+    dueDateText.className = 'due-date-text';
+    let dueDateLabel = window.translate('todoSetDate', 'Set date');
+    if (todo.dueDate) {
+      dueDateLabel = formatDate(todo.dueDate, todo.dueTime);
+    }
+    dueDateText.textContent = dueDateLabel;
+    dueDate.appendChild(dueDateText);
+
+    if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
+      const recurrenceBadge = document.createElement('span');
+      recurrenceBadge.className = 'todo-recurrence-badge recurrence-' + todo.recurrence;
+      recurrenceBadge.title = window.translate('recurrence' + todo.recurrence.charAt(0).toUpperCase() + todo.recurrence.slice(1), todo.recurrence);
+      recurrenceBadge.setAttribute('aria-label', recurrenceBadge.title);
+      const badgeSvg = createSvgElement('svg', {
         viewBox: '0 0 24 24',
         fill: 'none',
         stroke: 'currentColor',
@@ -1354,189 +1480,87 @@
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round'
       });
-      dueDateSvg.appendChild(createSvgElement('rect', {
-        x: '3',
-        y: '4',
-        width: '18',
-        height: '18',
-        rx: '2',
-        ry: '2'
-      }));
-      dueDateSvg.appendChild(createSvgElement('line', {
-        x1: '16',
-        y1: '2',
-        x2: '16',
-        y2: '6'
-      }));
-      dueDateSvg.appendChild(createSvgElement('line', {
-        x1: '8',
-        y1: '2',
-        x2: '8',
-        y2: '6'
-      }));
-      dueDateSvg.appendChild(createSvgElement('line', {
-        x1: '3',
-        y1: '10',
-        x2: '21',
-        y2: '10'
-      }));
-      dueDate.appendChild(dueDateSvg);
+      badgeSvg.appendChild(createSvgElement('polyline', { points: '17 1 21 5 17 9' }));
+      badgeSvg.appendChild(createSvgElement('path', { d: 'M3 11V9a4 4 0 0 1 4-4h14' }));
+      badgeSvg.appendChild(createSvgElement('polyline', { points: '7 23 3 19 7 15' }));
+      badgeSvg.appendChild(createSvgElement('path', { d: 'M21 13v2a4 4 0 0 1-4 4H3' }));
+      recurrenceBadge.appendChild(badgeSvg);
+      const badgeLabel = document.createElement('span');
+      badgeLabel.className = 'recurrence-label';
+      badgeLabel.textContent = recurrenceBadge.title;
+      recurrenceBadge.appendChild(badgeLabel);
+      dueDate.appendChild(recurrenceBadge);
+      dueDate.classList.add('has-recurrence');
+    }
 
-      const dueDateText = document.createElement('span');
-      dueDateText.className = 'due-date-text';
-      let dueDateLabel = window.translate('todoSetDate', 'Set date');
-      if (todo.dueDate) {
-        dueDateLabel = formatDate(todo.dueDate, todo.dueTime);
-      }
-      dueDateText.textContent = dueDateLabel;
-      dueDate.appendChild(dueDateText);
+    return dueDate;
+  }
 
-      if (todo.recurrence && RECURRENCE_VALUES.includes(todo.recurrence)) {
-        const recurrenceBadge = document.createElement('span');
-        recurrenceBadge.className = 'todo-recurrence-badge recurrence-' + todo.recurrence;
-        recurrenceBadge.title = window.translate('recurrence' + todo.recurrence.charAt(0).toUpperCase() + todo.recurrence.slice(1), todo.recurrence);
-        recurrenceBadge.setAttribute('aria-label', recurrenceBadge.title);
-        const badgeSvg = createSvgElement('svg', {
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          'stroke-width': '2',
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round'
-        });
-        badgeSvg.appendChild(createSvgElement('polyline', { points: '17 1 21 5 17 9' }));
-        badgeSvg.appendChild(createSvgElement('path', { d: 'M3 11V9a4 4 0 0 1 4-4h14' }));
-        badgeSvg.appendChild(createSvgElement('polyline', { points: '7 23 3 19 7 15' }));
-        badgeSvg.appendChild(createSvgElement('path', { d: 'M21 13v2a4 4 0 0 1-4 4H3' }));
-        recurrenceBadge.appendChild(badgeSvg);
-        const badgeLabel = document.createElement('span');
-        badgeLabel.className = 'recurrence-label';
-        badgeLabel.textContent = recurrenceBadge.title;
-        recurrenceBadge.appendChild(badgeLabel);
-        dueDate.appendChild(recurrenceBadge);
-        dueDate.classList.add('has-recurrence');
-      }
+  // Returns the subtask container, or null when the todo has no subtasks. The progress badge is appended to todoContent.
+  function buildSubtasksSection(todo, todoContent) {
+    if (!todo.subtasks || todo.subtasks.length === 0) return null;
 
-      const todoActions = document.createElement('div');
-      todoActions.className = 'todo-actions';
-      todoActions.appendChild(createTodoIconButton('todo-edit-btn', window.translate('todoEditTooltip', 'Edit Todo'), todo.id, [
-        { tagName: 'path', attributes: { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } },
-        { tagName: 'path', attributes: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
-      ]));
-      todoActions.appendChild(createTodoIconButton('todo-delete-btn', window.translate('todoDeleteTooltip', 'Delete Todo'), todo.id, [
-        { tagName: 'polyline', attributes: { points: '3,6 5,6 21,6' } },
-        { tagName: 'path', attributes: { d: 'M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2' } },
-        { tagName: 'line', attributes: { x1: '10', y1: '11', x2: '10', y2: '17' } },
-        { tagName: 'line', attributes: { x1: '14', y1: '11', x2: '14', y2: '17' } }
-      ]));
-      if (typeof addFocusButtonToTodoActions === 'function') {
-        addFocusButtonToTodoActions(todoActions, todo.id);
-      }
+    const subtasksContainer = document.createElement('div');
+    subtasksContainer.className = 'todo-subtasks';
+    const subtaskFragment = document.createDocumentFragment();
 
-      todoItemRow.appendChild(bullet);
-      todoItemRow.appendChild(todoContent);
-      todoItemRow.appendChild(dueDate);
-      todoItemRow.appendChild(todoActions);
+    todo.subtasks.forEach(subtask => {
+      const stItem = document.createElement('div');
+      stItem.className = `todo-subtask-item ${subtask.checked ? 'checked' : ''}`;
+      stItem.dataset.subtaskId = subtask.id;
+      stItem.dataset.todoId = todo.id;
 
-      li.appendChild(todoItemRow);
+      const stCheckbox = document.createElement('button');
+      stCheckbox.className = 'todo-subtask-checkbox';
+      stCheckbox.type = 'button';
+      stCheckbox.setAttribute('role', 'checkbox');
+      stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
+      stCheckbox.setAttribute('aria-label', window.translate('todoSubtaskToggleAria', `Toggle subtask: ${subtask.text}`, { text: subtask.text }));
+      stCheckbox.setAttribute('draggable', 'false');
+      stCheckbox.dataset.todoId = todo.id;
+      stCheckbox.dataset.subtaskId = subtask.id;
 
-      // Free-form details (issue #1228). Only rendered when non-empty so
-      // plain rows stay exactly as they were, collapsed by default, and built
-      // with textContent so stored text can never inject markup.
-      if (typeof todo.details === 'string' && todo.details.trim()) {
-        const detailsContainer = document.createElement('div');
-        detailsContainer.className = 'todo-details';
+      stCheckbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
 
-        const detailsToggle = document.createElement('button');
-        detailsToggle.type = 'button';
-        detailsToggle.className = 'todo-details-toggle';
-        detailsToggle.dataset.todoId = todo.id;
-        const detailsExpanded = expandedDetailsIds.has(todo.id);
-        detailsToggle.setAttribute('aria-expanded', detailsExpanded ? 'true' : 'false');
-        detailsToggle.textContent = window.translate('todoDetailsToggle', 'Details');
+      const stText = document.createElement('span');
+      stText.className = 'todo-subtask-text';
+      stText.textContent = subtask.text;
 
-        const detailsBody = document.createElement('div');
-        detailsBody.className = 'todo-details-body';
-        detailsBody.hidden = !detailsExpanded;
-        detailsBody.textContent = todo.details;
+      const stDelete = document.createElement('button');
+      stDelete.className = 'todo-subtask-delete';
+      stDelete.setAttribute('draggable', 'false');
+      stDelete.dataset.todoId = todo.id;
+      stDelete.dataset.subtaskId = subtask.id;
+      stDelete.title = window.translate('todoSubtaskDelete', 'Delete subtask');
+      const delSvg = createSvgElement('svg', {
+        viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+        'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+      });
+      delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
+      delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
+      stDelete.appendChild(delSvg);
 
-        detailsContainer.appendChild(detailsToggle);
-        detailsContainer.appendChild(detailsBody);
-        li.appendChild(detailsContainer);
-      }
-
-      // Subtasks
-      if (todo.subtasks && todo.subtasks.length > 0) {
-        const subtasksContainer = document.createElement('div');
-        subtasksContainer.className = 'todo-subtasks';
-        const subtaskFragment = document.createDocumentFragment();
-
-        todo.subtasks.forEach(subtask => {
-          const stItem = document.createElement('div');
-          stItem.className = `todo-subtask-item ${subtask.checked ? 'checked' : ''}`;
-          stItem.dataset.subtaskId = subtask.id;
-          stItem.dataset.todoId = todo.id;
-
-          const stCheckbox = document.createElement('button');
-          stCheckbox.className = 'todo-subtask-checkbox';
-          stCheckbox.type = 'button';
-          stCheckbox.setAttribute('role', 'checkbox');
-          stCheckbox.setAttribute('aria-checked', subtask.checked ? 'true' : 'false');
-          stCheckbox.setAttribute('aria-label', window.translate('todoSubtaskToggleAria', `Toggle subtask: ${subtask.text}`, { text: subtask.text }));
-          stCheckbox.setAttribute('draggable', 'false');
-          stCheckbox.dataset.todoId = todo.id;
-          stCheckbox.dataset.subtaskId = subtask.id;
-
-          stCheckbox.appendChild(createSubtaskCheckboxSvg(subtask.checked));
-
-          const stText = document.createElement('span');
-          stText.className = 'todo-subtask-text';
-          stText.textContent = subtask.text;
-
-          const stDelete = document.createElement('button');
-          stDelete.className = 'todo-subtask-delete';
-          stDelete.setAttribute('draggable', 'false');
-          stDelete.dataset.todoId = todo.id;
-          stDelete.dataset.subtaskId = subtask.id;
-          stDelete.title = window.translate('todoSubtaskDelete', 'Delete subtask');
-          const delSvg = createSvgElement('svg', {
-            viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-            'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
-          });
-          delSvg.appendChild(createSvgElement('line', { x1: '18', y1: '6', x2: '6', y2: '18' }));
-          delSvg.appendChild(createSvgElement('line', { x1: '6', y1: '6', x2: '18', y2: '18' }));
-          stDelete.appendChild(delSvg);
-
-          stItem.appendChild(stCheckbox);
-          stItem.appendChild(stText);
-          stItem.appendChild(stDelete);
-          subtaskFragment.appendChild(stItem);
-        });
-
-        subtasksContainer.appendChild(subtaskFragment);
-
-        // Progress badge
-        const progress = getSubtaskProgress(todo);
-        if (progress) {
-          const badge = document.createElement('span');
-          badge.className = 'todo-subtask-progress';
-          badge.textContent = `${progress.done}/${progress.total}`;
-          todoContent.appendChild(badge);
-        }
-
-        li.appendChild(subtasksContainer);
-      }
-
-      // Add staggered animation delay
-      li.style.animationDelay = `${index * STAGGER_DELAY}s`;
-      li.setAttribute('data-animation', 'enter');
-
-      listFragment.appendChild(li);
+      stItem.appendChild(stCheckbox);
+      stItem.appendChild(stText);
+      stItem.appendChild(stDelete);
+      subtaskFragment.appendChild(stItem);
     });
 
-    todoList.appendChild(listFragment);
+    subtasksContainer.appendChild(subtaskFragment);
 
-    // Apply FLIP animation for reordering
+    // Progress badge
+    const progress = getSubtaskProgress(todo);
+    if (progress) {
+      const badge = document.createElement('span');
+      badge.className = 'todo-subtask-progress';
+      badge.textContent = `${progress.done}/${progress.total}`;
+      todoContent.appendChild(badge);
+    }
+
+    return subtasksContainer;
+  }
+
+  function applyReorderAnimation(todoList, existingItems) {
     requestAnimationFrame(() => {
       const reducedMotion = window.prefersReducedMotion && window.prefersReducedMotion();
       todoList.querySelectorAll('.todo-item').forEach(item => {
@@ -1567,8 +1591,6 @@
         }
       });
     });
-
-    refreshOpenDatePickers();
   }
 
   function getInlineMonthLabel(monthIndex) {
