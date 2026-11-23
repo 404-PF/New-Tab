@@ -1932,6 +1932,23 @@ describe('DataManager background rotation re-apply (issue #1080)', () => {
 });
 
 describe('DataManager todoStats merge (issue #1143)', () => {
+  it('keeps the local longestStreak when the backup value is lower (issue #1423)', async () => {
+    localStorage.setItem('todoStats', JSON.stringify({
+      days: { '2026-11-01': 2 },
+      currentStreak: 1,
+      longestStreak: 10
+    }));
+
+    const result = await importBackup({
+      todoStats: { days: { '2026-11-01': 1 }, currentStreak: 2, longestStreak: 3 }
+    }, 'merge');
+
+    expect(result.type).toBe('success');
+    const stored = JSON.parse(localStorage.getItem('todoStats'));
+    expect(stored.longestStreak).toBe(10);
+    expect(stored.currentStreak).toBe(2);
+  });
+
   it('merges days by max and folds in the backup streaks and completedIds', async () => {
     localStorage.setItem('todoStats', JSON.stringify({
       days: { '2026-11-01': 2, '2026-11-02': 1 },

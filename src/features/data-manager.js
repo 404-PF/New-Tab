@@ -1173,9 +1173,17 @@
     // Fold in the remaining incoming fields (currentStreak,
     // longestStreak, ...) the way the pomodoroStats branch does,
     // so a backup's stats are not silently discarded (issue #1143).
+    const localLongest = currentObj.longestStreak;
+    const incomingLongest = incoming.longestStreak;
     Object.keys(incoming).forEach(function (k) {
-      if (k !== 'days' && k !== 'completedIds') currentObj[k] = incoming[k];
+      if (k !== 'days' && k !== 'completedIds' && k !== 'longestStreak') currentObj[k] = incoming[k];
     });
+    // longestStreak is the best-ever value; never lower it on import (issue #1423).
+    if (Number.isFinite(localLongest) && Number.isFinite(incomingLongest)) {
+      currentObj.longestStreak = Math.max(localLongest, incomingLongest);
+    } else if (incomingLongest !== undefined) {
+      currentObj.longestStreak = incomingLongest;
+    }
     return currentObj;
   }
 
