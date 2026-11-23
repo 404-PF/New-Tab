@@ -274,132 +274,71 @@
     }
   }
 
-  function finishImport(mode, count, hasWriteErrors) {
-    // Reload in-memory todo state and re-render the todo list, notes
-    // scratchpad, and app grid so imported data appears without a tab
-    // reload (issue #824).
-    if (typeof window.reloadTodosState === 'function') {
-      window.reloadTodosState();
+  // Calls window[path] (dotted, e.g. 'Shortcuts.renderShortcutsSection')
+  // when it is a function, with the owning object as `this`.
+  function runIfDefined(path, ...args) {
+    const parts = path.split('.');
+    const name = parts.pop();
+    let receiver = window;
+    for (const part of parts) {
+      receiver = receiver === undefined || receiver === null ? undefined : receiver[part];
     }
-    if (typeof window.initNotes === 'function') {
-      window.initNotes();
+    if (receiver !== undefined && receiver !== null && typeof receiver[name] === 'function') {
+      return receiver[name](...args);
     }
-    if (typeof window.renderAllApps === 'function') {
-      window.renderAllApps();
-    }
+    return undefined;
+  }
 
-    // A backup carries the semantic-search opt-in flag but never the model
-    // bytes (Cache Storage + vectors are device-local). Prime the transient
-    // download marker BEFORE the initSettings() below so an enabled import
-    // on this device defers to the first query (no silent ~300MB download)
-    // and Settings shows the 'Model not downloaded yet' hint until an
-    // explicit re-toggle warms it.
-    if (typeof window.primeNotesSemanticImport === 'function') {
-      window.primeNotesSemanticImport();
-    }
-
-    // Refresh the UI
-    if (typeof window.initSettings === 'function') {
-      window.initSettings();
-    }
-
-    // The todo settings migrated out of Settings into the Todo app (issue
-    // #1066), so initSettings no longer covers them; re-apply them here so an
-    // import that changed todoEnabled/todoStatsEnabled updates the widget and
-    // the Todo app modal controls without a reload.
-    if (typeof window.applyTodoAppSettings === 'function') {
-      window.applyTodoAppSettings();
-    }
-
-    // Re-render the Shortcuts section so an open Settings modal shows the
-    // imported customShortcuts bindings and the appShortcutsEnabled toggle
-    // instead of their pre-import state (issue #1136).
-    if (window.Shortcuts && typeof window.Shortcuts.renderShortcutsSection === 'function') {
-      window.Shortcuts.renderShortcutsSection();
-    }
-
-    // Re-render the custom background thumbnails and re-apply the homepage
-    // background so a restore shows the uploads in Settings → Background and
-    // renders the selected one without a tab reload (issue #996).
-    if (window._customBackgrounds && typeof window._customBackgrounds.render === 'function') {
-      const rendered = window._customBackgrounds.render();
+  // Ordered post-import refresh sequence. Order matters:
+  // - primeNotesSemanticImport must run before initSettings (a backup carries
+  //   the semantic-search opt-in flag but not the device-local model bytes).
+  // - scheduleTodoReminderCheck must run last so the service-worker payload
+  //   is built from the freshly reloaded todos.
+  const POST_IMPORT_REFRESH_STEPS = [
+    // Reload todo state and re-render the todo list, notes, and app grid (#824).
+    ['reloadTodosState'],
+    ['initNotes'],
+    ['renderAllApps'],
+    ['primeNotesSemanticImport'],
+    ['initSettings'],
+    // Todo settings moved to the Todo app (#1066).
+    ['applyTodoAppSettings'],
+    // Refresh imported shortcut bindings in Settings (#1136).
+    ['Shortcuts.renderShortcutsSection'],
+    // Custom background thumbnails (#996). The real render surfaces its own
+    // error toast; swallow a stray stub rejection so it is not unhandled.
+    function renderCustomBackgrounds() {
+      const rendered = runIfDefined('_customBackgrounds.render');
       if (rendered && typeof rendered.catch === 'function') {
-        // The real render surfaces its own error toast; keep a stray stub
-        // rejection from becoming an unhandled promise rejection here.
         rendered.catch(function () {});
       }
-    }
-    if (typeof window.applyBg === 'function') {
-      window.applyBg();
-    }
+    },
+    ['applyBg'],
+    // Re-apply rotation and re-sync its controls without re-binding (#1080).
+    ['BackgroundRotation.apply'],
+    ['BackgroundRotation.syncUI'],
+    ['applySimpleMode'],
+    ['renderExtraClocks'],
+    ['renderTimezoneCurrentList'],
+    ['refreshClockSettings'],
+    ['updateTime'],
+    ['refreshProviderBar'],
+    ['renderCustomSearchProvidersList'],
+    // refreshAutoTheme also stops the scheduler after a replace-mode import (#838).
+    ['applyFocusMode'],
+    ['refreshAutoTheme'],
+    ['refreshWebGroundingControl'],
+    ['scheduleTodoReminderCheck']
+  ];
 
-    // Re-apply background rotation so an import that changed
-    // bgRotationEnabled/bgRotationInterval/bgRotationSelection starts,
-    // stops, or re-cadences the timer, then re-syncs the toggle, interval
-    // select, and picker, all without a tab reload (issue #1080). syncUI
-    // (not initUI) refreshes the controls without re-binding their
-    // listeners.
-    if (window.BackgroundRotation && typeof window.BackgroundRotation.apply === 'function') {
-      window.BackgroundRotation.apply();
-    }
-    if (window.BackgroundRotation && typeof window.BackgroundRotation.syncUI === 'function') {
-      window.BackgroundRotation.syncUI();
-    }
-
-    // Re-apply simple mode so the imported simpleMode flag toggles the body
-    // class and header checkbox without a tab reload (issue #837).
-    if (typeof window.applySimpleMode === 'function') {
-      window.applySimpleMode();
-    }
-
-    // Refresh timezone views after merge/replace
-    if (typeof window.renderExtraClocks === 'function') {
-      window.renderExtraClocks();
-    }
-    if (typeof window.renderTimezoneCurrentList === 'function') {
-      window.renderTimezoneCurrentList();
-    }
-
-    // Re-read the cached clock/date display settings so an import that
-    // changed clockFormat, dateFormat, or the language repaints the clock
-    // immediately instead of waiting for the next minute tick.
-    if (typeof window.refreshClockSettings === 'function') {
-      window.refreshClockSettings();
-    }
-    if (typeof window.updateTime === 'function') {
-      window.updateTime();
-    }
-
-    // Reinitialize the search provider bar so imported providers/selection take effect live
-    if (typeof window.refreshProviderBar === 'function') {
-      window.refreshProviderBar();
-    }
-    if (typeof window.renderCustomSearchProvidersList === 'function') {
-      window.renderCustomSearchProvidersList();
-    }
-
-    // Re-apply focus mode and re-sync auto-theme so the imported values take
-    // effect without a tab reload (issue #838). refreshAutoTheme also stops
-    // the scheduler when a replace-mode import cleared the autoTheme key.
-    if (typeof window.applyFocusMode === 'function') {
-      window.applyFocusMode();
-    }
-    if (typeof window.refreshAutoTheme === 'function') {
-      window.refreshAutoTheme();
-    }
-
-    // Re-sync the AI "Ground with web" checkbox so an import that changed
-    // aiGroundWithWeb updates the visible toggle without a tab reload
-    // (issue #1003).
-    if (typeof window.refreshWebGroundingControl === 'function') {
-      window.refreshWebGroundingControl();
-    }
-
-    // Schedule todo reminders last so the service-worker payload is built
-    // from the freshly reloaded todos, not the pre-import in-memory array.
-    if (typeof window.scheduleTodoReminderCheck === 'function') {
-      window.scheduleTodoReminderCheck();
-    }
+  function finishImport(mode, count, hasWriteErrors) {
+    POST_IMPORT_REFRESH_STEPS.forEach(function (step) {
+      if (typeof step === 'function') {
+        step();
+      } else {
+        runIfDefined(...step);
+      }
+    });
 
     if (hasWriteErrors) {
       showToast(t('dataImportPartialSuccess', 'Import completed with some errors.'), 'warning');
