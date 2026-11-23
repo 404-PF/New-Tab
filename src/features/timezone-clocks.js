@@ -134,7 +134,7 @@
       Intl.supportedValuesOf('timeZone').forEach(function (id) {
         if (seen[id]) return;
         seen[id] = true;
-        options.push({ id: id, city: id.split('/').pop().replaceAll('_', ' ') });
+        options.push({ id: id, city: getTimeZoneCityName(id) });
       });
     }
     // UTC is a valid zone everywhere, but Intl.supportedValuesOf omits it on
@@ -163,6 +163,33 @@
     }
   }
 
+  function getTimeZoneCityName(zoneId) {
+    return zoneId.split('/').pop().replace(/_/g, ' ');
+  }
+
+  // Returns an unclassed button; callers add their own class and chip markup.
+  function createTimeZoneRemoveButton(zoneId, city, iconSize) {
+    const i18n = window.i18n;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.dataset.zone = zoneId;
+    removeBtn.title = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
+    removeBtn.setAttribute('aria-label', i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('width', String(iconSize));
+    svg.setAttribute('height', String(iconSize));
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+    removeBtn.appendChild(svg);
+    return removeBtn;
+  }
+
   function renderExtraClocks() {
     const container = document.getElementById('extra-timezones');
     if (!container) return;
@@ -183,11 +210,8 @@
 
     zones.forEach(function (zoneId) {
       const info = getZoneInfo(zoneId);
-      const city = info ? info.city : zoneId.split('/').pop().replace(/_/g, ' ');
+      const city = info ? info.city : getTimeZoneCityName(zoneId);
       const time = formatZoneTime(now, zoneId, locale, clockFormat);
-      const i18n = window.i18n;
-      const removeTitle = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
-      const removeLabel = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city;
 
       const chip = document.createElement('div');
       chip.className = 'timezone-chip';
@@ -202,22 +226,8 @@
       timeEl.className = 'timezone-time';
       timeEl.textContent = time;
 
-      const removeBtn = document.createElement('button');
+      const removeBtn = createTimeZoneRemoveButton(zoneId, city, 12);
       removeBtn.className = 'timezone-remove';
-      removeBtn.title = removeTitle;
-      removeBtn.setAttribute('aria-label', removeLabel);
-
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 16 16');
-      svg.setAttribute('width', '12');
-      svg.setAttribute('height', '12');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
-      path.setAttribute('stroke', 'currentColor');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(path);
-      removeBtn.appendChild(svg);
 
       chip.appendChild(cityEl);
       chip.appendChild(timeEl);
@@ -327,6 +337,8 @@
   window.MAX_TIMEZONES = MAX_TIMEZONES;
   window.isValidZoneId = isValidZoneId;
   window.getTimeZoneOptions = getTimeZoneOptions;
+  window.getTimeZoneCityName = getTimeZoneCityName;
+  window.createTimeZoneRemoveButton = createTimeZoneRemoveButton;
 
   window.addEventListener('languageChanged', renderExtraClocks);
 
