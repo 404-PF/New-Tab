@@ -1209,6 +1209,38 @@ function initTimezoneSettings() {
     : (window.POPULAR_ZONES || []);
   let selectedZoneId = '';
 
+  // Shared helpers come from timezone-clocks.js; these fallbacks keep the
+  // chip list working when that script is not loaded.
+  function getCityName(zoneId) {
+    return typeof window.getTimeZoneCityName === 'function'
+      ? window.getTimeZoneCityName(zoneId)
+      : zoneId.split('/').pop().replace(/_/g, ' ');
+  }
+
+  function createRemoveButton(zoneId, city) {
+    if (typeof window.createTimeZoneRemoveButton === 'function') {
+      return window.createTimeZoneRemoveButton(zoneId, city, 10);
+    }
+    const i18n = window.i18n;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.zone = zoneId;
+    btn.title = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
+    btn.setAttribute('aria-label', i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('width', '10');
+    svg.setAttribute('height', '10');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+    btn.appendChild(svg);
+    return btn;
+  }
+
   const IDLE_OPTION_LIMIT = 40;
   const MATCH_OPTION_LIMIT = 100;
 
@@ -1290,7 +1322,7 @@ function initTimezoneSettings() {
     currentList.innerHTML = '';
     saved.forEach(function (zoneId) {
       const info = zones.find(function (z) { return z.id === zoneId; });
-      const city = info ? info.city : zoneId.split('/').pop().replace(/_/g, ' ');
+      const city = info ? info.city : getCityName(zoneId);
       const chip = document.createElement('span');
       chip.className = 'timezone-current-chip';
 
@@ -1298,24 +1330,7 @@ function initTimezoneSettings() {
       cityEl.className = 'timezone-current-city';
       cityEl.textContent = city;
 
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.dataset.zone = zoneId;
-      const i18n = window.i18n;
-      removeBtn.title = i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezone') : 'Remove';
-      removeBtn.setAttribute('aria-label', i18n && typeof i18n.t === 'function' ? i18n.t('removeTimezoneLabel', { city: city }) : 'Remove ' + city);
-
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 16 16');
-      svg.setAttribute('width', '10');
-      svg.setAttribute('height', '10');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', 'M4 4l8 8M12 4l-8 8');
-      path.setAttribute('stroke', 'currentColor');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(path);
-      removeBtn.appendChild(svg);
+      const removeBtn = createRemoveButton(zoneId, city);
       chip.appendChild(cityEl);
       chip.appendChild(removeBtn);
       currentList.appendChild(chip);
