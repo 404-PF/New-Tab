@@ -202,12 +202,7 @@ const OpenRouterAPI = (function() {
   function buildLocalContextPrompt(items) {
     const body = items
       .map((item, index) => {
-        let text = String(item.text);
-        let previous;
-        do {
-          previous = text;
-          text = text.replace(/<\/?notes>/gi, '');
-        } while (text !== previous);
+        const text = String(item.text).replaceAll('<', '&lt;').replaceAll('>', '&gt;');
         return '[' + (index + 1) + '] ' + text;
       })
       .join('\n\n');
