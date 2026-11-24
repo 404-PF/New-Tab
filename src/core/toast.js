@@ -13,6 +13,83 @@ const TOAST_DEFAULT_DURATION_MS = 2000;
 // own toast precisely instead of removing whatever happens to be visible.
 let activeToastHandle = null;
 
+function clearAutoHide(timer) {
+  if (timer.autoHideTimeoutId) {
+    clearTimeout(timer.autoHideTimeoutId);
+    timer.autoHideTimeoutId = null;
+  }
+  if (timer.unsubscribeVisibility) {
+    timer.unsubscribeVisibility();
+    timer.unsubscribeVisibility = null;
+  }
+}
+
+// Appends the action button; clicking it runs the caller's handler and then
+// dismisses the toast.
+function buildActionButton(toast, handle, action) {
+  const actionButton = document.createElement('button');
+  actionButton.type = 'button';
+  actionButton.className = 'toast-action';
+  actionButton.textContent = action.label;
+  actionButton.addEventListener('click', () => {
+    if (typeof action.onClick === 'function') {
+      action.onClick();
+    }
+    handle.dismiss();
+  });
+  toast.appendChild(actionButton);
+}
+
+function scheduleAutoHide(timer, toast, hooks) {
+  if (timer.autoHideTimeoutId) {
+    clearTimeout(timer.autoHideTimeoutId);
+  }
+  timer.autoHideTimeoutId = setTimeout(() => {
+    timer.autoHideTimeoutId = null;
+    clearAutoHide(timer);
+    // The countdown is over: the toast is on its way out, so drop the
+    // action button first — it would otherwise stay clickable during the
+    // 300 ms fade and fire a handler whose state is already gone (e.g. an
+    // expired Undo) — then release caller state now rather than after the
+    // fade (a visibility pause delays this callback, which is exactly the
+    // lifetime callers want).
+    const actionButton = toast.querySelector('.toast-action');
+    if (actionButton) actionButton.remove();
+    hooks.notifyDismiss();
+    toast.classList.remove('show');
+    timer.fadeOutTimeoutId = setTimeout(() => {
+      timer.fadeOutTimeoutId = null;
+      toast.remove();
+      hooks.forgetHandle();
+    }, TOAST_FADE_OUT_MS);
+  }, timer.remaining);
+}
+
+// Visibility-aware auto-hide: pause the countdown while the tab is hidden
+// (the model the update banner used via _scheduleTimedAutoHide) so a toast
+// raised in a background tab does not expire unseen.
+function startAutoHideTimer(timer, toast, hooks, duration) {
+  timer.remaining = duration;
+  timer.startedAt = Date.now();
+  if (window.visibilityManager) {
+    timer.unsubscribeVisibility = window.visibilityManager.onChange((visible) => {
+      if (visible) {
+        timer.startedAt = Date.now();
+        scheduleAutoHide(timer, toast, hooks);
+      } else if (timer.autoHideTimeoutId) {
+        timer.remaining -= Date.now() - timer.startedAt;
+        clearTimeout(timer.autoHideTimeoutId);
+        timer.autoHideTimeoutId = null;
+      }
+    });
+    if (window.visibilityManager.isVisible) {
+      scheduleAutoHide(timer, toast, hooks);
+    }
+  } else {
+    scheduleAutoHide(timer, toast, hooks);
+  }
+}
+
 // type: '' | 'success' | 'error' | 'info' | 'warning'
 // options.duration: override hide delay in ms (default 2000)
 // options.action: optional { label, onClick } rendered as a button via
@@ -49,21 +126,12 @@ function showToast(message, type = '', options = {}) {
   messageEl.textContent = message;
   toast.appendChild(messageEl);
 
-  let autoHideTimeoutId = null;
-  let fadeOutTimeoutId = null;
-  let unsubscribeVisibility = null;
-  let remaining = 0;
-  let startedAt = 0;
-
-  const clearAutoHide = () => {
-    if (autoHideTimeoutId) {
-      clearTimeout(autoHideTimeoutId);
-      autoHideTimeoutId = null;
-    }
-    if (unsubscribeVisibility) {
-      unsubscribeVisibility();
-      unsubscribeVisibility = null;
-    }
+  const timer = {
+    autoHideTimeoutId: null,
+    fadeOutTimeoutId: null,
+    unsubscribeVisibility: null,
+    remaining: 0,
+    startedAt: 0
   };
 
   const handle = {
@@ -94,10 +162,10 @@ function showToast(message, type = '', options = {}) {
 
   // Immediate removal: cancel every timer and drop the element at once.
   handle.dismiss = () => {
-    clearAutoHide();
-    if (fadeOutTimeoutId) {
-      clearTimeout(fadeOutTimeoutId);
-      fadeOutTimeoutId = null;
+    clearAutoHide(timer);
+    if (timer.fadeOutTimeoutId) {
+      clearTimeout(timer.fadeOutTimeoutId);
+      timer.fadeOutTimeoutId = null;
     }
     toast.remove();
     forgetHandle();
@@ -105,17 +173,7 @@ function showToast(message, type = '', options = {}) {
   };
 
   if (options.action && options.action.label) {
-    const actionButton = document.createElement('button');
-    actionButton.type = 'button';
-    actionButton.className = 'toast-action';
-    actionButton.textContent = options.action.label;
-    actionButton.addEventListener('click', () => {
-      if (typeof options.action.onClick === 'function') {
-        options.action.onClick();
-      }
-      handle.dismiss();
-    });
-    toast.appendChild(actionButton);
+    buildActionButton(toast, handle, options.action);
   }
 
   document.body.appendChild(toast);
@@ -132,53 +190,7 @@ function showToast(message, type = '', options = {}) {
     ? options.duration
     : TOAST_DEFAULT_DURATION_MS;
 
-  const scheduleAutoHide = () => {
-    if (autoHideTimeoutId) {
-      clearTimeout(autoHideTimeoutId);
-    }
-    autoHideTimeoutId = setTimeout(() => {
-      autoHideTimeoutId = null;
-      clearAutoHide();
-      // The countdown is over: the toast is on its way out, so drop the
-      // action button first — it would otherwise stay clickable during the
-      // 300 ms fade and fire a handler whose state is already gone (e.g. an
-      // expired Undo) — then release caller state now rather than after the
-      // fade (a visibility pause delays this callback, which is exactly the
-      // lifetime callers want).
-      const actionButton = toast.querySelector('.toast-action');
-      if (actionButton) actionButton.remove();
-      notifyDismiss();
-      toast.classList.remove('show');
-      fadeOutTimeoutId = setTimeout(() => {
-        fadeOutTimeoutId = null;
-        toast.remove();
-        forgetHandle();
-      }, TOAST_FADE_OUT_MS);
-    }, remaining);
-  };
-
-  // Visibility-aware auto-hide: pause the countdown while the tab is hidden
-  // (the model the update banner used via _scheduleTimedAutoHide) so a toast
-  // raised in a background tab does not expire unseen.
-  remaining = duration;
-  startedAt = Date.now();
-  if (window.visibilityManager) {
-    unsubscribeVisibility = window.visibilityManager.onChange((visible) => {
-      if (visible) {
-        startedAt = Date.now();
-        scheduleAutoHide();
-      } else if (autoHideTimeoutId) {
-        remaining -= Date.now() - startedAt;
-        clearTimeout(autoHideTimeoutId);
-        autoHideTimeoutId = null;
-      }
-    });
-    if (window.visibilityManager.isVisible) {
-      scheduleAutoHide();
-    }
-  } else {
-    scheduleAutoHide();
-  }
+  startAutoHideTimer(timer, toast, { notifyDismiss, forgetHandle }, duration);
 
   return handle;
 }
