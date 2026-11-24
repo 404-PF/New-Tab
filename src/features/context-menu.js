@@ -735,11 +735,13 @@ function initThumbnailModalHandlers() {
     return false;
   }
 
-  // Close modal on cancel button
-  thumbnailCancel.addEventListener('click', function() {
+  function closeThumbnailModal() {
     thumbnailModal.classList.remove('modal-open');
     window.thumbnailAppId = null;
-  });
+  }
+
+  // Close modal on cancel button
+  thumbnailCancel.addEventListener('click', closeThumbnailModal);
 
   // Update preview when input changes
   thumbnailInput.addEventListener('input', function() {
@@ -807,8 +809,7 @@ function initThumbnailModalHandlers() {
         console.error('Failed to update custom app thumbnail:', e);
       }
     }
-    thumbnailModal.classList.remove('modal-open');
-    window.thumbnailAppId = null;
+    closeThumbnailModal();
   });
   
   // Close modal on Enter key in input
@@ -821,8 +822,7 @@ function initThumbnailModalHandlers() {
   // Close modal on backdrop click
   thumbnailModal.addEventListener('click', function(e) {
     if (e.target === thumbnailModal) {
-      thumbnailModal.classList.remove('modal-open');
-      window.thumbnailAppId = null;
+      closeThumbnailModal();
     }
   });
 
