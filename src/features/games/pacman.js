@@ -1250,11 +1250,9 @@
 
   // ===================== Touch / pointer steering (#1019) =====================
 
-  let swipeSteering = null;
-  let dpad = null;
-  let gamepad = null;
+  let steering = null;
 
-  // Shared by swipe gestures and the on-screen D-pad. Steering is ignored
+  // Shared by swipe gestures, the on-screen D-pad and the gamepad. Steering is ignored
   // until the run starts and after it ends; a tap restarts a finished run.
   function applyGestureDirection(dir) {
     if (!started || gameOver) return;
@@ -1265,24 +1263,16 @@
     if (gameOver) resetAndStart();
   }
 
-  // Gamepad input (#1022). Start behaves like Space: it lifts the ready
-  // screen first, then toggles the manual pause (never on a finished run),
-  // and A/Cross restarts a finished run or lifts the ready screen.
+  // Gamepad input (#1022). Start toggles the manual pause (never on a
+  // finished run), and A/Cross restarts a finished run. Before the run
+  // starts, both lift the ready screen (handled by createSteeringInputs).
   function handleGamepadPause() {
-    if (!started) {
-      if (readyScreen) readyScreen.start();
-      return;
-    }
     if (gameOver) return;
     if (manualPause) resumeFromManualPause();
     else pauseRun();
   }
 
   function handleGamepadRestart() {
-    if (!started) {
-      if (readyScreen) readyScreen.start();
-      return;
-    }
     if (gameOver) resetAndStart();
   }
 
@@ -1345,11 +1335,16 @@
 
     // Pointer swipes steer as soon as they cross the threshold (#1019); the
     // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
-    // same turns for thumbs that cannot reach the maze.
-    swipeSteering = window.gamesHelpers.createSwipeSteering(canvas, applyGestureDirection, {
-      onTap: handleGestureTap
+    // same turns for thumbs that cannot reach the maze. One gamepad poller
+    // per mount (#1022) is stopped in destroy() with the rest.
+    steering = window.gamesHelpers.createSteeringInputs(canvas, stage, {
+      onDirection: applyGestureDirection,
+      onTap: handleGestureTap,
+      onPause: handleGamepadPause,
+      onRestart: handleGamepadRestart,
+      isStarted: function () { return started; },
+      getReadyScreen: function () { return readyScreen; }
     });
-    dpad = window.gamesHelpers.createDPad(stage, applyGestureDirection);
 
     instructionsEl = document.createElement('div');
     instructionsEl.className = 'games-instructions games-pacman-instructions';
@@ -1377,16 +1372,6 @@
       onStart: restoredRun ? continueRestoredRun : resetAndStart
     });
     if (!readyScreen) resetAndStart();
-
-    // One gamepad poller per mount (#1022), stopped in destroy() so
-    // consecutive launches can never stack poll loops. Returns null when the
-    // Gamepad API is unavailable, leaving keyboard/touch play untouched.
-    gamepad = window.gamesHelpers?.createGamepadSteering?.({
-      deadzone: 0.4,
-      onDirection: applyGestureDirection,
-      onPause: handleGamepadPause,
-      onRestart: handleGamepadRestart
-    });
   }
 
   function continueRestoredRun() {
@@ -1419,17 +1404,9 @@
 
     toggleInputListeners(false);
 
-    if (swipeSteering) {
-      swipeSteering.destroy();
-      swipeSteering = null;
-    }
-    if (dpad) {
-      dpad.destroy();
-      dpad = null;
-    }
-    if (gamepad) {
-      gamepad.destroy();
-      gamepad = null;
+    if (steering) {
+      steering.destroy();
+      steering = null;
     }
 
     if (container) container.innerHTML = '';

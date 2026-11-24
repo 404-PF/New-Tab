@@ -781,6 +781,46 @@
     };
   };
 
+  // Wires swipe, on-screen D-pad and gamepad input for the steering games.
+  // Pause and restart from the gamepad lift the ready screen while the run
+  // has not started; readyScreen is read lazily because it is reassigned on
+  // every mount. Returns one destroy() that tears down swipe, D-pad, then
+  // gamepad, in that order.
+  window.gamesHelpers.createSteeringInputs = function (canvas, stage, options) {
+    const opts = options || {};
+    const isStarted = typeof opts.isStarted === 'function' ? opts.isStarted : function () { return true; };
+    const getReadyScreen = typeof opts.getReadyScreen === 'function' ? opts.getReadyScreen : function () { return null; };
+    const requireStarted = function (action) {
+      return function () {
+        if (!isStarted()) {
+          const readyScreen = getReadyScreen();
+          if (readyScreen) readyScreen.start();
+          return;
+        }
+        if (typeof action === 'function') action();
+      };
+    };
+
+    const swipe = window.gamesHelpers.createSwipeSteering(canvas, opts.onDirection, {
+      onTap: opts.onTap
+    });
+    const dpad = window.gamesHelpers.createDPad(stage, opts.onDirection);
+    const gamepad = window.gamesHelpers.createGamepadSteering({
+      deadzone: 0.4,
+      onDirection: opts.onDirection,
+      onPause: requireStarted(opts.onPause),
+      onRestart: requireStarted(opts.onRestart)
+    });
+
+    return {
+      destroy: function () {
+        if (swipe) swipe.destroy();
+        if (dpad) dpad.destroy();
+        if (gamepad) gamepad.destroy();
+      }
+    };
+  };
+
   // Key handling helper for restarting on Space when gameOver
   window.gamesHelpers.handleRestartSpace = function (ev, resetFn) {
     if (!ev || window.gamesHelpers.isEditableTarget(ev.target)) return;
