@@ -2275,10 +2275,11 @@ html.light-pre body:not(.light-theme) .date {
 }
 
 .thumbnail-app-input-wrapper input {
+  padding-top: 14px;
+  padding-bottom: 14px;
   padding-left: 44px !important;
   padding-right: 16px;
   width: 100%;
-  padding: 14px 16px;
   border: 2px solid rgba(107, 114, 128, 0.6);
   border-radius: 10px;
   background: rgba(31, 41, 55, 0.5);
