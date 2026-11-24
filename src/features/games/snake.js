@@ -997,14 +997,7 @@
     // same turns for thumbs that cannot reach the board.
     // One gamepad poller per mount (#1022), stopped in destroy(). It returns
     // null when the Gamepad API is unavailable, leaving keyboard/touch intact.
-    steering = window.gamesHelpers.createSteeringInputs(canvas, stage, {
-      onDirection: applyGestureDirection,
-      onTap: handleGestureTap,
-      onPause: handleGamepadPause,
-      onRestart: handleGamepadRestart,
-      isStarted: function () { return started; },
-      getReadyScreen: function () { return readyScreen; }
-    });
+    steering = window.gamesHelpers.createSteeringInputs(canvas, stage, { onDirection: applyGestureDirection, onTap: handleGestureTap, onPause: handleGamepadPause, onRestart: handleGamepadRestart, isStarted: () => started, getReadyScreen: () => readyScreen });
 
     // Instructions
     const instructions = document.createElement('div');

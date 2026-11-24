@@ -1337,14 +1337,7 @@
     // touch-only D-pad (hidden on fine-pointer devices by CSS) queues the
     // same turns for thumbs that cannot reach the maze. One gamepad poller
     // per mount (#1022) is stopped in destroy() with the rest.
-    steering = window.gamesHelpers.createSteeringInputs(canvas, stage, {
-      onDirection: applyGestureDirection,
-      onTap: handleGestureTap,
-      onPause: handleGamepadPause,
-      onRestart: handleGamepadRestart,
-      isStarted: function () { return started; },
-      getReadyScreen: function () { return readyScreen; }
-    });
+    steering = window.gamesHelpers.createSteeringInputs(canvas, stage, { onDirection: applyGestureDirection, onTap: handleGestureTap, onPause: handleGamepadPause, onRestart: handleGamepadRestart, isStarted: () => started, getReadyScreen: () => readyScreen });
 
     instructionsEl = document.createElement('div');
     instructionsEl.className = 'games-instructions games-pacman-instructions';
