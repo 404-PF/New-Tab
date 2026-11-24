@@ -1697,6 +1697,30 @@ function sweepLanguage(lang) {
   updateDynamicTranslations();
 }
 
+function setTextFromKey(selector, key) {
+  const el = document.querySelector(selector);
+  if (el) el.textContent = getTranslation(currentLanguage, key);
+}
+
+const CLEAR_COMPLETED_LABELS = [
+  { selector: '#clear-completed span', key: 'clearCompletedText' },
+  { selector: '#clear-completed-dialog .ai-confirm-title', key: 'clearCompletedConfirmTitle' },
+  { selector: '#clear-completed-dialog .ai-confirm-message', key: 'clearCompletedConfirmMessage' },
+  { selector: '#clear-completed-dialog .ai-confirm-delete', key: 'clearCompletedConfirmButton' },
+  { selector: '#clear-completed-dialog .ai-confirm-cancel', key: 'cancel' }
+];
+
+const BACKGROUND_SECTION_LABELS = [
+  { selector: '#bg-static-section .bg-subsection-header', key: 'background' },
+  { selector: '#bg-interactive-section .bg-subsection-header', key: 'interactiveBackground' },
+  { selector: '#bg-live-section .bg-subsection-header', key: 'liveBackground' },
+  { selector: '#bg-static-section .bg-subsection-desc', key: 'backgroundSettingsDesc' },
+  { selector: '#bg-interactive-section .bg-subsection-desc', key: 'interactiveBackgroundSettingsDesc' },
+  { selector: '#bg-live-section .bg-subsection-desc', key: 'liveBackgroundSettingsDesc' },
+  { selector: '#bg-rotation-section .bg-subsection-header', key: 'bgRotation' },
+  { selector: '#bg-rotation-section .bg-subsection-desc', key: 'bgRotationDesc' }
+];
+
 // Update dynamic translations (for content added after initial load)
 function updateDynamicTranslations() {
   // Update todo section if it exists
@@ -1751,70 +1775,14 @@ function updateDynamicTranslations() {
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="medium"]'), 'priorityMedium');
   updateFilterPillLabel(document.querySelector('.filter-pill[data-filter="low"]'), 'priorityLow');
   
-  // Update quick action button text
-  const clearCompletedBtn = document.getElementById('clear-completed');
-  
-  if (clearCompletedBtn) {
-    const span = clearCompletedBtn.querySelector('span');
-    if (span) span.textContent = getTranslation(currentLanguage, 'clearCompletedText');
-  }
-
-  // Update clear completed confirmation dialog
-  const clearCompletedDialog = document.getElementById('clear-completed-dialog');
-  if (clearCompletedDialog) {
-    const titleEl = clearCompletedDialog.querySelector('.ai-confirm-title');
-    const messageEl = clearCompletedDialog.querySelector('.ai-confirm-message');
-    const confirmBtn = clearCompletedDialog.querySelector('.ai-confirm-delete');
-    const cancelBtn = clearCompletedDialog.querySelector('.ai-confirm-cancel');
-    
-    if (titleEl) titleEl.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmTitle');
-    if (messageEl) messageEl.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmMessage');
-    if (confirmBtn) confirmBtn.textContent = getTranslation(currentLanguage, 'clearCompletedConfirmButton');
-    if (cancelBtn) cancelBtn.textContent = getTranslation(currentLanguage, 'cancel');
-  }
+  CLEAR_COMPLETED_LABELS.forEach(({ selector, key }) => setTextFromKey(selector, key));
 
   // Notify other modules that language has changed so they can re-render
   window.dispatchEvent(new CustomEvent('languageChanged', {
     detail: { language: currentLanguage }
   }));
 
-  // Update background section headers if they exist
-  const bgStaticHeader = document.querySelector('#bg-static-section .bg-subsection-header');
-  const bgInteractiveHeader = document.querySelector('#bg-interactive-section .bg-subsection-header');
-  const bgLiveHeader = document.querySelector('#bg-live-section .bg-subsection-header');
-  const bgStaticDesc = document.querySelector('#bg-static-section .bg-subsection-desc');
-  const bgInteractiveDesc = document.querySelector('#bg-interactive-section .bg-subsection-desc');
-  const bgLiveDesc = document.querySelector('#bg-live-section .bg-subsection-desc');
-  
-  if (bgStaticHeader) {
-    bgStaticHeader.textContent = getTranslation(currentLanguage, 'background');
-  }
-  if (bgInteractiveHeader) {
-    bgInteractiveHeader.textContent = getTranslation(currentLanguage, 'interactiveBackground');
-  }
-  if (bgLiveHeader) {
-    bgLiveHeader.textContent = getTranslation(currentLanguage, 'liveBackground');
-  }
-  if (bgStaticDesc) {
-    bgStaticDesc.textContent = getTranslation(currentLanguage, 'backgroundSettingsDesc');
-  }
-  if (bgInteractiveDesc) {
-    bgInteractiveDesc.textContent = getTranslation(currentLanguage, 'interactiveBackgroundSettingsDesc');
-  }
-  if (bgLiveDesc) {
-    bgLiveDesc.textContent = getTranslation(currentLanguage, 'liveBackgroundSettingsDesc');
-  }
-
-  // Update background rotation section header and description
-  const bgRotationHeader = document.querySelector('#bg-rotation-section .bg-subsection-header');
-  const bgRotationDesc = document.querySelector('#bg-rotation-section .bg-subsection-desc');
-  if (bgRotationHeader) {
-    bgRotationHeader.textContent = getTranslation(currentLanguage, 'bgRotation');
-  }
-  if (bgRotationDesc) {
-    bgRotationDesc.textContent = getTranslation(currentLanguage, 'bgRotationDesc');
-  }
-
+  BACKGROUND_SECTION_LABELS.forEach(({ selector, key }) => setTextFromKey(selector, key));
 }
 
 // Get translated text with optional placeholder replacement
