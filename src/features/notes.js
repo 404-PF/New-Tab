@@ -1569,6 +1569,17 @@
       }
     };
 
+    // Detached pickers have no card and remove() is a no-op, so this still commits the tag.
+    const commitTagAndTeardown = () => {
+      const val = input.value.trim();
+      if (val !== (note.tag || '')) {
+        updateNoteTag(noteId, val);
+      }
+      const card = picker.closest('.note-item');
+      if (card) card.classList.remove('tag-picker-open');
+      picker.remove();
+    };
+
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -1586,21 +1597,8 @@
       cancelBlur();
       blurTimer = setTimeout(() => {
         blurTimer = null;
-        if (!picker.isConnected) {
-          const val = input.value.trim();
-          if (val !== (note.tag || '')) {
-            updateNoteTag(noteId, val);
-          }
-          return;
-        }
-        if (picker.contains(document.activeElement)) return;
-        const val = input.value.trim();
-        if (val !== (note.tag || '')) {
-          updateNoteTag(noteId, val);
-        }
-        const card = picker.closest('.note-item');
-        if (card) card.classList.remove('tag-picker-open');
-        picker.remove();
+        if (picker.isConnected && picker.contains(document.activeElement)) return;
+        commitTagAndTeardown();
       }, 150);
     });
 
@@ -1612,13 +1610,7 @@
       }
       cancelBlur();
       if (!picker.isConnected) return;
-      const val = input.value.trim();
-      if (val !== (note.tag || '')) {
-        updateNoteTag(noteId, val);
-      }
-      const card = picker.closest('.note-item');
-      if (card) card.classList.remove('tag-picker-open');
-      picker.remove();
+      commitTagAndTeardown();
     });
 
     picker.addEventListener('mousedown', (e) => {
