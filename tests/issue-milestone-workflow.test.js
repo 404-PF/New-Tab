@@ -55,8 +55,8 @@ describe('issue-milestone assigns closest [v*.*.*] milestone (#880)', () => {
     expect(milestone).toMatch(/map\(select\(\.state == "open"\)\) \| first \| \.title \/\/ empty/);
   });
 
-  it('rolls over to the next patch once the target holds 30 or more issues', () => {
-    expect(milestone).toMatch(/MILESTONE_LIMIT: 30/);
+  it('rolls over to the next patch once the target holds 50 or more issues', () => {
+    expect(milestone).toMatch(/MILESTONE_LIMIT: 50/);
     expect(milestone).toMatch(/open_issues \+ \.closed_issues/);
     expect(milestone).toMatch(/-ge "\$MILESTONE_LIMIT"/);
     // Overflow bumps one patch segment, e.g. v0.5.3 -> v0.5.4, and keeps
