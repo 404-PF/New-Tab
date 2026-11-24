@@ -1609,7 +1609,6 @@
         return;
       }
       cancelBlur();
-      if (!picker.isConnected) return;
       commitTagAndTeardown();
     });
 
