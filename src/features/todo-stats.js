@@ -81,7 +81,7 @@
     const allDates = new Set(Object.keys(stats.days));
 
     // Calculate longest streak from all historical data
-    const sortedDates = Object.keys(stats.days).sort();
+    const sortedDates = Object.keys(stats.days).sort((a, b) => a.localeCompare(b));
     let prevDate = null;
     for (const dateStr of sortedDates) {
       if (stats.days[dateStr] > 0) {
