@@ -307,19 +307,78 @@
     }
   }
 
-  function setupFolderPopupListeners() {
-    const closeBtn = document.getElementById('folder-popup-close-btn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', closeFolderPopup);
-    }
+  // Built-in internal tiles (AI/Weather/Games/Settings) launch through
+  // click handlers bound to their grid ids; the popup's popup- prefixed
+  // tiles never match those bindings, so route clicks through the shared
+  // launcher instead of leaving a dead '#' link (issue #1010).
+  function bindPopupTileClicks(popupApps) {
+    popupApps.addEventListener('click', function (e) {
+      const icon = e.target.closest('.app-icon');
+      if (!icon || !icon.id.startsWith('popup-')) return;
+      if (typeof window.openInternalApp !== 'function') return;
+      if (window.openInternalApp(icon.id.slice('popup-'.length), e)) {
+        closeFolderPopup();
+      }
+    });
+  }
 
-    const renameBtn = document.getElementById('folder-popup-rename-btn');
-    if (renameBtn) {
-      renameBtn.addEventListener('click', function () {
-        if (currentFolderId) promptRenameFolder(currentFolderId);
-      });
-    }
+  function bindPopupDragReorder(popupApps) {
+    let dragSrcId = null;
+    let dragSrcElement = null;
 
+    popupApps.addEventListener('dragstart', function (e) {
+      const icon = e.target.closest('.app-icon');
+      if (!icon) return;
+      dragSrcId = icon.id.replace(/^popup-/, '');
+      dragSrcElement = icon;
+      icon.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcId);
+    });
+
+    popupApps.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const icon = e.target.closest('.app-icon');
+      if (icon) {
+        icon.classList.add('drag-over');
+      }
+    });
+
+    popupApps.addEventListener('dragleave', function (e) {
+      const icon = e.target.closest('.app-icon');
+      if (icon) {
+        icon.classList.remove('drag-over');
+      }
+    });
+
+    popupApps.addEventListener('drop', function (e) {
+      e.preventDefault();
+      const targetIcon = e.target.closest('.app-icon');
+      if (!targetIcon || !dragSrcId || !currentFolderId) return;
+
+      const targetId = targetIcon.id.replace(/^popup-/, '');
+      const folder = getFolder(currentFolderId);
+      if (!folder) return;
+
+      const toIdx = folder.apps.indexOf(targetId);
+      if (toIdx === -1) return;
+
+      window.AppGridState.reorderFolderApps(currentFolderId, dragSrcId, toIdx);
+      renderFolderAppsInPopup();
+    });
+
+    popupApps.addEventListener('dragend', function () {
+      if (dragSrcElement) {
+        dragSrcElement.classList.remove('dragging');
+      }
+      popupApps.querySelectorAll('.app-icon').forEach(el => el.classList.remove('drag-over'));
+      dragSrcId = null;
+      dragSrcElement = null;
+    });
+  }
+
+  function bindPopupDismissal() {
     const popup = document.getElementById('folder-popup');
     if (popup) {
       popup.addEventListener('click', function (e) {
@@ -337,77 +396,6 @@
       });
     }
 
-    // Drag-drop reordering within the folder popup
-    const popupApps = document.getElementById('folder-popup-apps');
-    if (popupApps) {
-      let dragSrcId = null;
-      let dragSrcElement = null;
-
-      // Built-in internal tiles (AI/Weather/Games/Settings) launch through
-      // click handlers bound to their grid ids; the popup's popup- prefixed
-      // tiles never match those bindings, so route clicks through the shared
-      // launcher instead of leaving a dead '#' link (issue #1010).
-      popupApps.addEventListener('click', function (e) {
-        const icon = e.target.closest('.app-icon');
-        if (!icon || !icon.id.startsWith('popup-')) return;
-        if (typeof window.openInternalApp !== 'function') return;
-        if (window.openInternalApp(icon.id.slice('popup-'.length), e)) {
-          closeFolderPopup();
-        }
-      });
-
-      popupApps.addEventListener('dragstart', function (e) {
-        const icon = e.target.closest('.app-icon');
-        if (!icon) return;
-        dragSrcId = icon.id.replace(/^popup-/, '');
-        dragSrcElement = icon;
-        icon.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', dragSrcId);
-      });
-
-      popupApps.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const icon = e.target.closest('.app-icon');
-        if (icon) {
-          icon.classList.add('drag-over');
-        }
-      });
-
-      popupApps.addEventListener('dragleave', function (e) {
-        const icon = e.target.closest('.app-icon');
-        if (icon) {
-          icon.classList.remove('drag-over');
-        }
-      });
-
-      popupApps.addEventListener('drop', function (e) {
-        e.preventDefault();
-        const targetIcon = e.target.closest('.app-icon');
-        if (!targetIcon || !dragSrcId || !currentFolderId) return;
-
-        const targetId = targetIcon.id.replace(/^popup-/, '');
-        const folder = getFolder(currentFolderId);
-        if (!folder) return;
-
-        const toIdx = folder.apps.indexOf(targetId);
-        if (toIdx === -1) return;
-
-        window.AppGridState.reorderFolderApps(currentFolderId, dragSrcId, toIdx);
-        renderFolderAppsInPopup();
-      });
-
-      popupApps.addEventListener('dragend', function () {
-        if (dragSrcElement) {
-          dragSrcElement.classList.remove('dragging');
-        }
-        popupApps.querySelectorAll('.app-icon').forEach(el => el.classList.remove('drag-over'));
-        dragSrcId = null;
-        dragSrcElement = null;
-      });
-    }
-
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         const selector = document.getElementById('move-to-folder-selector');
@@ -421,6 +409,28 @@
         }
       }
     });
+  }
+
+  function setupFolderPopupListeners() {
+    const closeBtn = document.getElementById('folder-popup-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeFolderPopup);
+    }
+
+    const renameBtn = document.getElementById('folder-popup-rename-btn');
+    if (renameBtn) {
+      renameBtn.addEventListener('click', function () {
+        if (currentFolderId) promptRenameFolder(currentFolderId);
+      });
+    }
+
+    const popupApps = document.getElementById('folder-popup-apps');
+    if (popupApps) {
+      bindPopupTileClicks(popupApps);
+      bindPopupDragReorder(popupApps);
+    }
+
+    bindPopupDismissal();
   }
 
   window.AppFolders = {
