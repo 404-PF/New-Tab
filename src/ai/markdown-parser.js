@@ -222,6 +222,34 @@ const MarkdownParser = (function() {
   }
 
   /**
+   * Find the closing parenthesis for a group whose opening '(' precedes `start`.
+   * @param {string} html - HTML-escaped inline text
+   * @param {number} start - Index just after the opening '('
+   * @returns {number} Index just after the matching ')', or -1 if unbalanced
+   */
+  function findClosingParen(html, start) {
+    let depth = 1;
+    let cursor = start;
+    while (cursor < html.length) {
+      const ch = html[cursor];
+      if (ch === '\\' && cursor + 1 < html.length) {
+        cursor += 2;
+        continue;
+      }
+      if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+        if (depth === 0) {
+          return cursor + 1;
+        }
+      }
+      cursor++;
+    }
+    return -1;
+  }
+
+  /**
    * Replace markdown links and images while preserving balanced parentheses in URLs.
    * @param {string} html - HTML-escaped inline text
    * @param {Function} [formatLabel] - Formatter for link labels (e.g. emphasis)
@@ -265,21 +293,8 @@ const MarkdownParser = (function() {
           }
           bracketDepth--;
           if (html[j + 1] === '(') {
-            let urlDepth = 1;
-            j += 2;
-            while (j < html.length && urlDepth > 0) {
-              if (html[j] === '\\' && j + 1 < html.length) {
-                j += 2;
-                continue;
-              }
-              if (html[j] === '(') {
-                urlDepth++;
-              } else if (html[j] === ')') {
-                urlDepth--;
-              }
-              j++;
-            }
-            j--;
+            const groupEnd = findClosingParen(html, j + 2);
+            j = (groupEnd === -1 ? html.length : groupEnd) - 1;
           }
         }
       }
@@ -291,27 +306,9 @@ const MarkdownParser = (function() {
       }
 
       const urlStart = textEnd + 2;
-      let cursor = urlStart;
-      let parenDepth = 1;
+      const cursor = findClosingParen(html, urlStart);
 
-      while (cursor < html.length && parenDepth > 0) {
-        const currentChar = html[cursor];
-
-        if (currentChar === '\\' && cursor + 1 < html.length) {
-          cursor += 2;
-          continue;
-        }
-
-        if (currentChar === '(') {
-          parenDepth++;
-        } else if (currentChar === ')') {
-          parenDepth--;
-        }
-
-        cursor++;
-      }
-
-      if (parenDepth !== 0) {
+      if (cursor === -1) {
         result += html[index];
         index++;
         continue;
