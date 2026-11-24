@@ -2,7 +2,7 @@ name: issue-milestone
 
 # Assigns the closest open [v*.*.*] milestone to every newly opened issue
 # (#880). "Closest" is the lowest still-open version; titles that do not match
-# v*.*.* are ignored. When that milestone already holds >= 30 issues
+# v*.*.* are ignored. When that milestone already holds >= 50 issues
 # (open + closed) at assignment time, the next patch milestone is assigned
 # instead, created on demand if it does not exist yet (v0.5.3 full ->
 # v0.5.4). Bot-created issues are skipped on purpose: bots do not triage, so
@@ -20,7 +20,7 @@ on:
 
 # One shared group (not per-issue): concurrent opens must serialize so each
 # run re-reads milestone counts after earlier assignments and rolls over
-# correctly once a milestone hits the 30-issue cap. cancel-in-progress is
+# correctly once a milestone hits the 50-issue cap. cancel-in-progress is
 # false so a queued run waits instead of being cancelled, and queue: max
 # makes every waiting run stay queued instead of letting each new issue
 # event replace the single pending run and silently drop assignments.
@@ -43,7 +43,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           ISSUE_USER_TYPE: ${{ github.event.issue.user.type }}
-          MILESTONE_LIMIT: 30
+          MILESTONE_LIMIT: 50
         run: |
           set -euo pipefail
 
@@ -91,7 +91,7 @@ jobs:
           # Count is read from the just-fetched list at assignment time; the
           # shared concurrency group above keeps concurrent runs from both
           # landing on a milestone that hits the cap between read and write.
-          # Keep advancing while the target already holds >= 30 issues: a
+          # Keep advancing while the target already holds >= 50 issues: a
           # bumped title may itself be full. A title that is absent from the
           # list counts as 0, which ends the loop.
           TOTAL="$(jq -r --arg t "$TITLE" 'map(select(.title == $t)) | first | (.open_issues + .closed_issues) // 0' "$FILE")"
