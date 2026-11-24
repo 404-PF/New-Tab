@@ -1292,6 +1292,38 @@
     renderNotes();
   }
 
+  function moveItemTo(list, fromIndex, toIndex) {
+    const result = [...list];
+    const [removed] = result.splice(fromIndex, 1);
+    const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+    result.splice(Math.min(insertionIndex, result.length), 0, removed);
+    return result;
+  }
+
+  function isGripFocused(noteId) {
+    const activeElement = document.activeElement;
+    return Boolean(activeElement && activeElement.classList.contains('note-grip')
+      && activeElement.closest('.note-item')?.dataset.id === noteId);
+  }
+
+  function restoreGripFocus(noteId, shouldRestore) {
+    if (!shouldRestore) return;
+    document.querySelector(`.note-item[data-id="${noteId}"] .note-grip`)?.focus();
+  }
+
+  function commitNotesOrRollback(previousNotes, noteId, shouldRestoreFocus) {
+    if (!saveNotes(notes)) {
+      notes = previousNotes;
+      renderNotes();
+      restoreGripFocus(noteId, shouldRestoreFocus);
+      return false;
+    }
+    bumpSemanticGeneration();
+    renderNotes();
+    restoreGripFocus(noteId, shouldRestoreFocus);
+    return true;
+  }
+
   function reorderNotes(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
     // Relevance order is computed, not user-owned: the slot logic below maps
@@ -1307,10 +1339,7 @@
       if (fromIndex < 0 || fromIndex >= visible.length || toIndex < 0 || toIndex > visible.length) return;
       const movedNote = visible[fromIndex];
       if (!movedNote) return;
-      const reorderedVisible = [...visible];
-      const [removed] = reorderedVisible.splice(fromIndex, 1);
-      const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
-      reorderedVisible.splice(Math.min(insertionIndex, reorderedVisible.length), 0, removed);
+      const reorderedVisible = moveItemTo(visible, fromIndex, toIndex);
       // A drop that leaves the visible order unchanged must not touch the
       // manual list (cubic review): with notes [A,B,C,D] ranked [A,D],
       // dropping D in its own slot would otherwise produce [A,D,B,C] via
@@ -1319,9 +1348,7 @@
       const sameVisibleOrder = reorderedVisible.length === visible.length
         && reorderedVisible.every(function (n, i) { return n && visible[i] && n.id === visible[i].id; });
       if (sameVisibleOrder) return;
-      const activeElement = document.activeElement;
-      const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
-        && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
+      const shouldRestoreFocus = isGripFocused(movedNote.id);
       // Leave relevance view first so the manual result persists on screen.
       setSearchQuery('');
       try {
@@ -1334,9 +1361,7 @@
       const manualIndex = notes.findIndex(n => n.id === movedNote.id);
       if (manualIndex === -1) {
         renderNotes();
-        if (shouldRestoreFocus) {
-          document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
-        }
+        restoreGripFocus(movedNote.id, shouldRestoreFocus);
         return;
       }
       const [manualMoved] = notes.splice(manualIndex, 1);
@@ -1360,19 +1385,7 @@
         else notes.push(manualMoved);
       }
       notes.forEach((n, i) => { n.order = i; });
-      if (!saveNotes(notes)) {
-        notes = previousNotes;
-        renderNotes();
-        if (shouldRestoreFocus) {
-          document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
-        }
-        return;
-      }
-      bumpSemanticGeneration();
-      renderNotes();
-      if (shouldRestoreFocus) {
-        document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
-      }
+      commitNotesOrRollback(previousNotes, movedNote.id, shouldRestoreFocus);
       return;
     }
     // Operate on the displayed order (sync pass), so a drag moves the card
@@ -1383,14 +1396,9 @@
     const previousNotes = notes.map(n => ({ ...n }));
     const movedNote = filtered[fromIndex];
     if (!movedNote) return;
-    const activeElement = document.activeElement;
-    const shouldRestoreFocus = activeElement && activeElement.classList.contains('note-grip')
-      && activeElement.closest('.note-item')?.dataset.id === movedNote.id;
+    const shouldRestoreFocus = isGripFocused(movedNote.id);
 
-    const reorderedFiltered = [...filtered];
-    const [removed] = reorderedFiltered.splice(fromIndex, 1);
-    const insertionIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
-    reorderedFiltered.splice(Math.min(insertionIndex, reorderedFiltered.length), 0, removed);
+    const reorderedFiltered = moveItemTo(filtered, fromIndex, toIndex);
 
     // When any filter is active, only replace the visible notes in their
     // existing slots so hidden notes keep their relative positions.
@@ -1403,20 +1411,7 @@
     });
 
     notes.forEach((n, i) => { n.order = i; });
-
-    if (!saveNotes(notes)) {
-      notes = previousNotes;
-      renderNotes();
-      if (shouldRestoreFocus) {
-        document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
-      }
-      return;
-    }
-    bumpSemanticGeneration();
-    renderNotes();
-    if (shouldRestoreFocus) {
-      document.querySelector(`.note-item[data-id="${movedNote.id}"] .note-grip`)?.focus();
-    }
+    commitNotesOrRollback(previousNotes, movedNote.id, shouldRestoreFocus);
   }
 
   function renderNotePreview(text) {
