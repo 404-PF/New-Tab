@@ -3607,6 +3607,27 @@ function initTodo() {
   elements.todoList.addEventListener('dragover', handleDragOver);
   elements.todoList.addEventListener('drop', handleDrop);
 
+  bindEditModalListeners();
+
+  // Initial render
+  applyFilters();
+  
+  // Initialize progress ring and counts
+  updateProgressRing();
+  updateFilterCounts();
+
+  // Re-run the filters at the next local midnight so the Today list and
+  // badge never go stale overnight (issue #1085).
+  scheduleTodoMidnightRefresh();
+  // Re-arm the due-minute refresh so timed todos flip overdue without a
+  // click even after a re-init (issue #1205).
+  scheduleTodoOverdueRefresh();
+
+  return true;
+}
+
+// Wire edit-modal close, cancel, save, keyboard, subtask, and outside-click listeners
+function bindEditModalListeners() {
   // Edit modal event listeners
   const editModalClose = document.getElementById('todo-edit-close');
   const editModalCancel = document.getElementById('todo-edit-cancel');
@@ -3671,22 +3692,6 @@ function initTodo() {
       }
     });
   }
-
-  // Initial render
-  applyFilters();
-  
-  // Initialize progress ring and counts
-  updateProgressRing();
-  updateFilterCounts();
-
-  // Re-run the filters at the next local midnight so the Today list and
-  // badge never go stale overnight (issue #1085).
-  scheduleTodoMidnightRefresh();
-  // Re-arm the due-minute refresh so timed todos flip overdue without a
-  // click even after a re-init (issue #1205).
-  scheduleTodoOverdueRefresh();
-
-  return true;
 }
 
 // Export todos to JSON file
