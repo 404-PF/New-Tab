@@ -355,10 +355,14 @@
     }
   }
 
-  /** Wrap Storage#getItem and capture the first local base for target keys. */
+  /**
+   * Wrap Storage#getItem and refresh the merge base for target keys. Every
+   * read reflects what this tab now holds, so a later write made from it must
+   * not treat items added by other windows since an older read as new.
+   */
   function wrappedGetItem(key) {
     const value = nativeGetItem(key);
-    if (TARGET_KEYS.has(key) && !lastLocalValues.has(key)) {
+    if (TARGET_KEYS.has(key)) {
       lastLocalValues.set(key, value);
     }
     return value;

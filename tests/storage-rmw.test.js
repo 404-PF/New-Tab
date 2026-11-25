@@ -370,6 +370,18 @@ describe('null merge base for keys absent at session start', () => {
     expect(merged[0].text).toBe('From tab A');
   });
 
+  it('keeps a local delete when another window added the item after an earlier read', () => {
+    const { context, persisted } = createStorageContext({ todos: JSON.stringify([{ id: 'x', text: 'x' }]) });
+    context.localStorage.getItem('todos');
+
+    persisted.set('todos', JSON.stringify([{ id: 'x', text: 'x' }, { id: 'y', text: 'y' }]));
+    const reread = JSON.parse(context.localStorage.getItem('todos'));
+    expect(reread.map(todo => todo.id)).toEqual(['x', 'y']);
+
+    context.localStorage.setItem('todos', JSON.stringify([{ id: 'x', text: 'x' }]));
+    expect(JSON.parse(persisted.get('todos'))).toEqual([{ id: 'x', text: 'x' }]);
+  });
+
   it('does not duplicate a todo created in another tab when this tab edits it with a stale base', () => {
     const { context, persisted } = createStorageContext();
     context.localStorage.getItem('todos');
