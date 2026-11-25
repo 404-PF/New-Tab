@@ -465,6 +465,52 @@
     }
   }
 
+  // Adds the dragged app to the folder under the drop target when allowed.
+  function handleFolderDrop(target, sourceId) {
+    target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
+    if (!isFolderableDragSource(dragState.sourceElement)) return;
+    const folderId = target.id;
+    if (window.AppFolders && window.AppGridState.getFolders().some(f => f.id === folderId)) {
+      const moved = window.AppGridState.moveAppToFolder(folderId, sourceId);
+      // Only patch the grid when the move persisted; otherwise the visible
+      // grid would disagree with the folders that storage still holds.
+      if (moved && typeof window.removeAppIcon === 'function') {
+        cleanupDragSession();
+        window.removeAppIcon(sourceId);
+        if (typeof window.AppFolders.refreshFolderUI === 'function') {
+          window.AppFolders.refreshFolderUI(folderId);
+        }
+      }
+    }
+  }
+
+  // Bounce landing animation on the moved icon. The `animationend`
+  // listener is the primary cleanup. The setTimeout fallback covers edge
+  // cases where `animationend` never fires (e.g. the element is removed
+  // from the DOM mid-animation, or a browser quirk swallows the event).
+  // The timer handle is tracked so `animationend` can cancel it; without
+  // this both paths run and a stale timer accumulates per drop during
+  // heavy drag sessions.
+  function playLandingAnimation(sourceId) {
+    requestAnimationFrame(() => {
+      const movedEl = document.getElementById(sourceId);
+      if (!movedEl) return;
+      movedEl.classList.add('drag-drop-landed');
+      let cleanupTimer = null;
+      const cleanup = () => {
+        movedEl.removeEventListener('animationend', onAnimationEnd);
+        if (cleanupTimer !== null) {
+          clearTimeout(cleanupTimer);
+          cleanupTimer = null;
+        }
+        movedEl.classList.remove('drag-drop-landed');
+      };
+      const onAnimationEnd = cleanup;
+      movedEl.addEventListener('animationend', onAnimationEnd, { once: true });
+      cleanupTimer = setTimeout(cleanup, 500);
+    });
+  }
+
   // Drop handler
   function handleDrop(e, target) {
     e.preventDefault();
@@ -479,25 +525,7 @@
 
     // If dropped on a folder icon, add the app to the folder
     if (target && target.classList.contains('folder-icon')) {
-      target.classList.remove('drag-over-folder', 'drag-over-folder-rejected');
-      if (!isFolderableDragSource(dragState.sourceElement)) {
-        removePlaceholder();
-        dragState.dropIndex = -1;
-        return;
-      }
-      const folderId = target.id;
-      if (window.AppFolders && window.AppGridState.getFolders().some(f => f.id === folderId)) {
-        const moved = window.AppGridState.moveAppToFolder(folderId, sourceId);
-        // Only patch the grid when the move persisted; otherwise the visible
-        // grid would disagree with the folders that storage still holds.
-        if (moved && typeof window.removeAppIcon === 'function') {
-          cleanupDragSession();
-          window.removeAppIcon(sourceId);
-          if (typeof window.AppFolders.refreshFolderUI === 'function') {
-            window.AppFolders.refreshFolderUI(folderId);
-          }
-        }
-      }
+      handleFolderDrop(target, sourceId);
       removePlaceholder();
       dragState.dropIndex = -1;
       return;
@@ -527,30 +555,7 @@
       window.syncAppGridOrder();
     }
 
-    // Apply bounce landing animation to the moved icon. The
-    // `animationend` listener is the primary cleanup. The setTimeout
-    // fallback covers edge cases where `animationend` never fires (e.g.
-    // the element is removed from the DOM mid-animation, or a browser
-    // quirk swallows the event). The timer handle is tracked so
-    // `animationend` can cancel it; without this both paths run and a
-    // stale timer accumulates per drop during heavy drag sessions.
-    requestAnimationFrame(() => {
-      const movedEl = document.getElementById(sourceId);
-      if (!movedEl) return;
-      movedEl.classList.add('drag-drop-landed');
-      let cleanupTimer = null;
-      const cleanup = () => {
-        movedEl.removeEventListener('animationend', onAnimationEnd);
-        if (cleanupTimer !== null) {
-          clearTimeout(cleanupTimer);
-          cleanupTimer = null;
-        }
-        movedEl.classList.remove('drag-drop-landed');
-      };
-      const onAnimationEnd = cleanup;
-      movedEl.addEventListener('animationend', onAnimationEnd, { once: true });
-      cleanupTimer = setTimeout(cleanup, 500);
-    });
+    playLandingAnimation(sourceId);
 
     // Clear placeholder & state (dragend will also run, but be safe)
     removePlaceholder();
