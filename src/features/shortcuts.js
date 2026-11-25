@@ -477,36 +477,28 @@
     }
   }
 
-  function toggleTodo() {
+  function toggleDefaultOnFeature({ key, applyFnName }) {
     let current = true;
     try {
-      current = window.readDefaultOnFlag('todoEnabled');
+      current = window.readDefaultOnFlag(key);
     } catch (e) {
-      console.warn('Failed to read todoEnabled:', e);
+      console.warn(`Failed to read ${key}:`, e);
     }
-    const persisted = persistToggleOrFallback('todoEnabled', current ? 'false' : 'true');
-    if (typeof window.applyTodoEnabled === 'function') {
-      window.applyTodoEnabled();
+    const persisted = persistToggleOrFallback(key, current ? 'false' : 'true');
+    if (typeof window[applyFnName] === 'function') {
+      window[applyFnName]();
     }
     if (!persisted) {
       reportToggleSaveError();
     }
   }
 
+  function toggleTodo() {
+    toggleDefaultOnFeature({ key: 'todoEnabled', applyFnName: 'applyTodoEnabled' });
+  }
+
   function toggleNotes() {
-    let current = true;
-    try {
-      current = window.readDefaultOnFlag('notesEnabled');
-    } catch (e) {
-      console.warn('Failed to read notesEnabled:', e);
-    }
-    const persisted = persistToggleOrFallback('notesEnabled', current ? 'false' : 'true');
-    if (typeof window.applyNotesEnabled === 'function') {
-      window.applyNotesEnabled();
-    }
-    if (!persisted) {
-      reportToggleSaveError();
-    }
+    toggleDefaultOnFeature({ key: 'notesEnabled', applyFnName: 'applyNotesEnabled' });
   }
 
   function closeModal() {
