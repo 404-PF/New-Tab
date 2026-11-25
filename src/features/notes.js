@@ -1155,30 +1155,14 @@
   }
 
   function flushPendingSaves() {
-    Object.keys(debounceTimers).forEach(id => {
-      clearTimeout(debounceTimers[id]);
-      delete debounceTimers[id];
-      if (notePreviewModes[id] === true) return;
-      const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
-      if (ta) {
-        const text = ta.value || '';
-        if (text) {
-          updateNoteText(id, text);
-        } else if (!isImportedEmptyNote(id)) {
-          deleteNote(id);
-        }
-      }
-    });
+    Object.keys(debounceTimers).forEach(id => flushDebouncedSave(id));
   }
 
   // Drop in-flight debounced saves without persisting them. The settings
   // import flow calls this before writing the backup (issue #824) so a
   // pre-import edit cannot overwrite imported notes when its timer fires.
   function cancelPendingNoteSaves() {
-    Object.keys(debounceTimers).forEach(id => {
-      clearTimeout(debounceTimers[id]);
-      delete debounceTimers[id];
-    });
+    Object.keys(debounceTimers).forEach(id => cancelDebouncedSave(id));
   }
 
   function addNote() {
@@ -1231,10 +1215,7 @@
   }
 
   function deleteNote(id) {
-    if (debounceTimers[id]) {
-      clearTimeout(debounceTimers[id]);
-      delete debounceTimers[id];
-    }
+    cancelDebouncedSave(id);
     delete notePreviewModes[id];
     hideRelatedPanel();
     if (_duplicateHint && (_duplicateHint.noteId === id || _duplicateHint.matchId === id)) hideDuplicateHint();
@@ -1434,20 +1415,7 @@
       return;
     }
     const isCurrentlyPreview = notePreviewModes[id] === true;
-    if (!isCurrentlyPreview && debounceTimers[id]) {
-      clearTimeout(debounceTimers[id]);
-      delete debounceTimers[id];
-      const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
-      if (ta) {
-        const text = ta.value || '';
-        if (text) {
-          updateNoteText(id, text);
-        } else if (!isImportedEmptyNote(id)) {
-          deleteNote(id);
-          return;
-        }
-      }
-    }
+    if (!isCurrentlyPreview && flushDebouncedSave(id)) return;
     notePreviewModes[id] = !isCurrentlyPreview;
     const isPreview = notePreviewModes[id];
 
@@ -1765,8 +1733,33 @@
     }
   }
 
+  // Returns whether a debounced save was pending for the note.
+  function cancelDebouncedSave(id) {
+    const hadPending = !!debounceTimers[id];
+    if (hadPending) clearTimeout(debounceTimers[id]);
+    delete debounceTimers[id];
+    return hadPending;
+  }
+
+  // Cancels the pending save and persists the textarea text (or deletes the
+  // note if it is empty). Returns true when the note was deleted.
+  function flushDebouncedSave(id) {
+    if (!cancelDebouncedSave(id)) return false;
+    if (notePreviewModes[id] === true) return false;
+    const ta = document.querySelector(`.note-textarea[data-id="${id}"]`);
+    if (!ta) return false;
+    const text = ta.value || '';
+    if (text) {
+      updateNoteText(id, text);
+      return false;
+    }
+    if (isImportedEmptyNote(id)) return false;
+    deleteNote(id);
+    return true;
+  }
+
   function debouncedSave(id, text) {
-    if (debounceTimers[id]) clearTimeout(debounceTimers[id]);
+    cancelDebouncedSave(id);
     debounceTimers[id] = setTimeout(() => {
       delete debounceTimers[id];
       const raw = text || '';
@@ -1804,11 +1797,7 @@
     const ta = e.target.closest('.note-textarea');
     if (!ta) return;
     const id = ta.dataset.id;
-    const hadPending = !!debounceTimers[id];
-    if (debounceTimers[id]) {
-      clearTimeout(debounceTimers[id]);
-      delete debounceTimers[id];
-    }
+    const hadPending = cancelDebouncedSave(id);
     if (notePreviewModes[id] === true) return;
     if (_previewMouseDown) {
       finishPreviewMouseDownBlur(ta, id, hadPending);
