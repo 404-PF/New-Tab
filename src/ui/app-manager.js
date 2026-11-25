@@ -229,6 +229,80 @@ function syncAppGridOrder() {
 }
 
 /**
+ * Repairs a corrupted app order without rebuilding it from scratch.
+ * @param {Array<string>} order - Stored order (may be invalid)
+ * @param {Set<string>} expectedOrderIds - IDs that must appear exactly once
+ * @param {Array<Object>} dedupedApps - Apps with unique IDs
+ * @param {Array<Object>} folders - Folder records
+ * @param {Array<Object>} defaultApps - Built-in app definitions
+ * @returns {Array<string>} Repaired order
+ */
+function repairAppOrder(order, expectedOrderIds, dedupedApps, folders, defaultApps) {
+  // Order of repair matters: keep valid user entries, prepend missing
+  // defaults, then append missing custom apps, then missing folders.
+  const seen = new Set();
+  const repaired = [];
+  (Array.isArray(order) ? order : []).forEach(id => {
+    if (expectedOrderIds.has(id) && !seen.has(id)) {
+      repaired.push(id);
+      seen.add(id);
+    }
+  });
+  const missingDefaults = defaultApps
+    .filter(app => expectedOrderIds.has(app.id) && !seen.has(app.id))
+    .map(app => app.id);
+  if (missingDefaults.length) {
+    repaired.unshift(...missingDefaults);
+    missingDefaults.forEach(id => seen.add(id));
+  }
+  dedupedApps.forEach(app => {
+    if (expectedOrderIds.has(app.id) && !seen.has(app.id)) {
+      repaired.push(app.id);
+      seen.add(app.id);
+    }
+  });
+  folders.forEach(f => {
+    if (expectedOrderIds.has(f.id) && !seen.has(f.id)) {
+      repaired.push(f.id);
+      seen.add(f.id);
+    }
+  });
+  return repaired;
+}
+
+/**
+ * Appends one order entry (folder or app) to the fragment. Folder entries are
+ * deferred until AppFolders is ready.
+ * @param {string} appId
+ * @param {Object<string, Object>} folderMap
+ * @param {Object<string, Object>} appMap
+ * @param {DocumentFragment} fragment
+ * @returns {void}
+ */
+function renderOrderEntry(appId, folderMap, appMap, fragment) {
+  if (folderMap[appId]) {
+    if (!window.AppFolders) {
+      console.warn('AppFolders not initialized, deferring folder render for:', appId);
+      if (window.__appGridState.phase === 'idle') {
+        window.__appGridState.setPhase('deferred');
+        document.addEventListener('appFoldersReady', function onReady() {
+          document.removeEventListener('appFoldersReady', onReady);
+          if (typeof window.renderAllApps === 'function') window.renderAllApps();
+        }, { once: true });
+      }
+      return;
+    }
+    const folder = folderMap[appId];
+    const folderEl = window.AppFolders.createFolderIconElement(folder);
+    fragment.appendChild(folderEl);
+    return;
+  }
+  const app = appMap[appId];
+  if (!app) return;
+  fragment.appendChild(createAppIconElement(app));
+}
+
+/**
  * Renders the app grid while validating every app URL at the DOM sink.
  * Invalid or bypassed app records fail closed to a harmless fragment URL.
  * @returns {void}
@@ -262,72 +336,12 @@ function renderAllApps() {
     && new Set(order).size === order.length
     && order.every(id => expectedOrderIds.has(id));
   if (!isValidOrder) {
-    // Repair the order instead of rebuilding from scratch:
-    //   1. Keep the user's valid existing entries in their original order
-    //      (preserves user reorders, including interleaved app/folder
-    //      positions, and drops foreign/duplicate IDs).
-    //   2. Prepend any default IDs that are entirely missing from the user's
-    //      order, in canonical order. Defaults already present in the user's
-    //      order are left in place, so the previous repair that swapped
-    //      the user's order for canonical defaults no longer happens.
-    //   3. Append any custom apps that are missing from the user's order, in
-    //      customApps insertion order.
-    //   4. Append any folders that are missing from the user's order, in
-    //      folders insertion order.
-    const seen = new Set();
-    const repaired = [];
-    (Array.isArray(order) ? order : []).forEach(id => {
-      if (expectedOrderIds.has(id) && !seen.has(id)) {
-        repaired.push(id);
-        seen.add(id);
-      }
-    });
-    const missingDefaults = defaultApps
-      .filter(app => expectedOrderIds.has(app.id) && !seen.has(app.id))
-      .map(app => app.id);
-    if (missingDefaults.length) {
-      repaired.unshift(...missingDefaults);
-      missingDefaults.forEach(id => seen.add(id));
-    }
-    dedupedApps.forEach(app => {
-      if (expectedOrderIds.has(app.id) && !seen.has(app.id)) {
-        repaired.push(app.id);
-        seen.add(app.id);
-      }
-    });
-    folders.forEach(f => {
-      if (expectedOrderIds.has(f.id) && !seen.has(f.id)) {
-        repaired.push(f.id);
-        seen.add(f.id);
-      }
-    });
-    order = repaired;
+    order = repairAppOrder(order, expectedOrderIds, dedupedApps, folders, defaultApps);
     saveAppOrder(order);
   }
   const folderMap = Object.fromEntries(folders.map(f => [f.id, f]));
   const appMap = Object.fromEntries(dedupedApps.map(app => [app.id, app]));
-  order.forEach(appId => {
-    if (folderMap[appId]) {
-      if (!window.AppFolders) {
-        console.warn('AppFolders not initialized, deferring folder render for:', appId);
-        if (window.__appGridState.phase === 'idle') {
-          window.__appGridState.setPhase('deferred');
-          document.addEventListener('appFoldersReady', function onReady() {
-            document.removeEventListener('appFoldersReady', onReady);
-            if (typeof window.renderAllApps === 'function') window.renderAllApps();
-          }, { once: true });
-        }
-        return;
-      }
-      const folder = folderMap[appId];
-      const folderEl = window.AppFolders.createFolderIconElement(folder);
-      fragment.appendChild(folderEl);
-      return;
-    }
-    const app = appMap[appId];
-    if (!app) return;
-    fragment.appendChild(createAppIconElement(app));
-  });
+  order.forEach(appId => renderOrderEntry(appId, folderMap, appMap, fragment));
 
   // Batch the rebuild into a single insertion (one relayout, not one per icon).
   appGrid.insertBefore(fragment, addApp);
