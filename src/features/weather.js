@@ -692,6 +692,25 @@
     }
   }
 
+  function syncChoiceGroup(group, btn) {
+    group.querySelectorAll('.weather-choice-button').forEach(function(b) {
+      const isActive = b === btn;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  function commitManualCity(input) {
+    const trimmed = input.value.trim();
+    if (trimmed === WeatherStorage.loadManualCity()) return;
+    if (!WeatherStorage.saveManualCity(trimmed)) {
+      input.value = WeatherStorage.loadManualCity();
+      reportSettingsSaveError();
+      return;
+    }
+    refreshWeatherSafely(true);
+  }
+
   function setupSettingsListeners() {
     const enabledCheckbox = document.getElementById('weather-enabled-setting');
     const manualInput = document.getElementById('weather-manual-city');
@@ -721,12 +740,7 @@
           reportSettingsSaveError();
           return;
         }
-        // Sync active state within group
-        unitGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
-          const isActive = b === btn;
-          b.classList.toggle('active', isActive);
-          b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        });
+        syncChoiceGroup(unitGroup, btn);
         const cache = WeatherStorage.loadCache();
         if (WeatherStorage.loadLocationMode() === 'auto') {
           refreshWeatherSafely(true);
@@ -754,12 +768,7 @@
           reportSettingsSaveError();
           return;
         }
-        // Sync active state within group
-        modeGroup.querySelectorAll('.weather-choice-button').forEach(function(b) {
-          const isActive = b === btn;
-          b.classList.toggle('active', isActive);
-          b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        });
+        syncChoiceGroup(modeGroup, btn);
         const manualGroup = document.getElementById('weather-manual-group');
         if (manualGroup) manualGroup.style.display = value === 'manual' ? 'block' : 'none';
         refreshWeatherSafely(true);
@@ -770,25 +779,11 @@
       manualInput.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
           event.preventDefault();
-          const trimmed = this.value.trim();
-          if (trimmed === WeatherStorage.loadManualCity()) return;
-          if (!WeatherStorage.saveManualCity(trimmed)) {
-            this.value = WeatherStorage.loadManualCity();
-            reportSettingsSaveError();
-            return;
-          }
-          refreshWeatherSafely(true);
+          commitManualCity(this);
         }
       });
       manualInput.addEventListener('blur', function() {
-        const trimmed = this.value.trim();
-        if (trimmed === WeatherStorage.loadManualCity()) return;
-        if (!WeatherStorage.saveManualCity(trimmed)) {
-          this.value = WeatherStorage.loadManualCity();
-          reportSettingsSaveError();
-          return;
-        }
-        refreshWeatherSafely(true);
+        commitManualCity(this);
       });
     }
 
