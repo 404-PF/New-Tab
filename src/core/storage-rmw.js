@@ -356,11 +356,12 @@
   }
 
   /**
-   * Wrap Storage#getItem and refresh the merge base for target keys. Every
-   * read reflects what this tab now holds, so a later write made from it must
-   * not treat items added by other windows since an older read as new.
+   * Read a key whose value the page is about to load into its in-memory state,
+   * and record it as the merge base. Only this explicit observation advances
+   * the base: generic reads must not, or a stale in-memory list would later be
+   * treated as having deleted items another window added since.
    */
-  function wrappedGetItem(key) {
+  function observeItem(key) {
     const value = nativeGetItem(key);
     if (TARGET_KEYS.has(key)) {
       lastLocalValues.set(key, value);
@@ -446,7 +447,7 @@
     return reseedAfterAsyncWrite(key, nativeRemoveItemAsync(key), generation);
   }
 
-  storage.getItem = wrappedGetItem;
+  globalThis.observeStorageItem = observeItem;
   storage.setItem = wrappedSetItem;
   if (nativeSetItemAsync) storage.setItemAsync = wrappedSetItemAsync;
   if (nativeRemoveItemAsync) storage.removeItemAsync = wrappedRemoveItemAsync;

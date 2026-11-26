@@ -312,7 +312,9 @@ const AIStore = (function() {
   function loadConversations() {
     let stored = null;
     try {
-      stored = localStorage.getItem(STORAGE_KEYS.conversations);
+      stored = typeof window.observeStorageItem === 'function'
+        ? window.observeStorageItem(STORAGE_KEYS.conversations)
+        : localStorage.getItem(STORAGE_KEYS.conversations);
       const conversations = stored ? JSON.parse(stored) : [];
 
       if (typeof window.isValidConversation !== 'function') {
@@ -462,7 +464,9 @@ const AIStore = (function() {
     if (!pendingExternalRefresh) return;
     if (state.isStreaming || state.isLoading || state.abortController !== null || saveQueue !== null) return;
     pendingExternalRefresh = false;
-    applyPersistedConversations(localStorage.getItem(STORAGE_KEYS.conversations));
+    applyPersistedConversations(typeof window.observeStorageItem === 'function'
+      ? window.observeStorageItem(STORAGE_KEYS.conversations)
+      : localStorage.getItem(STORAGE_KEYS.conversations));
   }
 
   function cloneSaveSnapshot(snapshot) {
