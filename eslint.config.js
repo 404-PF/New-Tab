@@ -133,7 +133,6 @@ const srcGlobals = {
   _initLiveBackgrounds: 'readonly',
   _initInteractiveBackgrounds: 'readonly',
   _findBackgroundUrlById: 'readonly',
-  _isVideoBackground: 'readonly',
   _getStaticBackgrounds: 'readonly',
   _getVideoBackgrounds: 'readonly',
   _getInteractiveBackgrounds: 'readonly',
