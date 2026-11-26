@@ -98,7 +98,9 @@
 
   function readPersistedNotes() {
     try {
-      const raw = localStorage.getItem('notes');
+      const raw = typeof window.observeStorageItem === 'function'
+        ? window.observeStorageItem('notes')
+        : localStorage.getItem('notes');
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       // Re-apply the order/tag repairs from loadNotes without writing back.

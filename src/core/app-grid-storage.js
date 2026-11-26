@@ -62,7 +62,9 @@ window.addEventListener('storageBridgeWriteError', (event) => {
 
 function readJsonArray(key, fallbackValue, warningLabel, fallbackLabel) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = typeof window.observeStorageItem === 'function'
+      ? window.observeStorageItem(key)
+      : localStorage.getItem(key);
     if (!raw) return fallbackValue;
 
     const parsed = JSON.parse(raw);

@@ -94,7 +94,9 @@
   // Load todos from localStorage
   function loadTodos() {
     try {
-      const raw = localStorage.getItem('todos');
+      const raw = typeof window.observeStorageItem === 'function'
+        ? window.observeStorageItem('todos')
+        : localStorage.getItem('todos');
       if (!raw) return [];
 
       let parsed = JSON.parse(raw);

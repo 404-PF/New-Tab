@@ -250,7 +250,7 @@ describe('null merge base for keys absent at session start', () => {
     const { context, persisted } = createStorageContext();
 
     // Session start: the key is absent, so the merge base seeds as null.
-    expect(context.localStorage.getItem('todos')).toBe(null);
+    expect(context.observeStorageItem('todos')).toBe(null);
 
     // Another tab writes first.
     const externalTodo = { id: 'todo-external', text: 'From tab B', completed: false, order: 0 };
@@ -266,8 +266,8 @@ describe('null merge base for keys absent at session start', () => {
 
   it('preserves concurrent notes and AI conversations when the base was null', () => {
     const { context, persisted } = createStorageContext();
-    expect(context.localStorage.getItem('notes')).toBe(null);
-    expect(context.localStorage.getItem('ai_conversations')).toBe(null);
+    expect(context.observeStorageItem('notes')).toBe(null);
+    expect(context.observeStorageItem('ai_conversations')).toBe(null);
 
     const externalNote = { id: 'note-external', text: 'Note B', tag: 'work', order: 0 };
     const localNote = { id: 'note-local', text: 'Note A', tag: '', order: 0 };
@@ -302,7 +302,7 @@ describe('null merge base for keys absent at session start', () => {
 
   it('stores the candidate verbatim on the first write into an absent key', () => {
     const { context, persisted } = createStorageContext();
-    expect(context.localStorage.getItem('todos')).toBe(null);
+    expect(context.observeStorageItem('todos')).toBe(null);
 
     const firstTodo = { id: 'todo-first', text: 'First write', completed: false, order: 0 };
     context.localStorage.setItem('todos', JSON.stringify([firstTodo]));
@@ -328,7 +328,7 @@ describe('null merge base for keys absent at session start', () => {
     };
     const context = vm.createContext({ localStorage: fakeStorage, console });
     injectScript('src/core/storage-rmw.js', context);
-    expect(context.localStorage.getItem('todos')).toBe(null);
+    expect(context.observeStorageItem('todos')).toBe(null);
 
     const externalTodo = { id: 'todo-external', text: 'From tab B', completed: false, order: 0 };
     const localTodo = { id: 'todo-local', text: 'From tab A', completed: false, order: 0 };
@@ -345,7 +345,7 @@ describe('null merge base for keys absent at session start', () => {
 
   it('keeps same-shaped concurrent records with distinct ids when the base was null', () => {
     const { context, persisted } = createStorageContext();
-    expect(context.localStorage.getItem('todos')).toBe(null);
+    expect(context.observeStorageItem('todos')).toBe(null);
 
     // Both tabs independently added the same-shaped todo under different ids.
     const externalTodo = { id: 'todo-external', text: 'Milk', completed: false, order: 0 };
@@ -466,8 +466,36 @@ describe('null merge base for keys absent at session start', () => {
       expect(persisted.get(name)).toBe(JSON.stringify(candidate));
     });
   });
-});
 
+  it('keeps another window\'s note when an unrelated getItem runs before a stale save', () => {
+    const n1 = { id: 'n1', text: 'one' };
+    const n2 = { id: 'n2', text: 'two' };
+    const { context, persisted } = createStorageContext({ notes: JSON.stringify([n1]) });
+
+    // Tab A loads its in-memory list, then tab B stores a new note.
+    context.observeStorageItem('notes');
+    persisted.set('notes', JSON.stringify([n1, n2]));
+
+    // An unrelated generic read (e.g. export) must not move the merge base.
+    context.localStorage.getItem('notes');
+
+    context.localStorage.setItem('notes', JSON.stringify([{ ...n1, text: 'edited' }]));
+    expect(JSON.parse(persisted.get('notes'))).toEqual([{ ...n1, text: 'edited' }, n2]);
+  });
+
+  it('drops another window\'s note when a save re-observes the key and trims it', () => {
+    const n1 = { id: 'n1', text: 'one' };
+    const n2 = { id: 'n2', text: 'two' };
+    const { context, persisted } = createStorageContext({ notes: JSON.stringify([n1]) });
+    context.observeStorageItem('notes');
+    persisted.set('notes', JSON.stringify([n1, n2]));
+
+    // Re-observing the key makes this trimmed write a deliberate delete of n2, which this page has already seen.
+    context.observeStorageItem('notes');
+    context.localStorage.setItem('notes', JSON.stringify([n1]));
+    expect(JSON.parse(persisted.get('notes'))).toEqual([n1]);
+  });
+});
 
 describe('rejected storage bridge writes', () => {
   it('keeps the original base when a non-concurrent write is rejected', () => {
@@ -510,7 +538,7 @@ describe('rejected storage bridge writes', () => {
     const context = vm.createContext({ localStorage: fakeStorage, console });
 
     injectScript('src/core/storage-rmw.js', context);
-    context.localStorage.getItem('notes');
+    context.observeStorageItem('notes');
 
     // This local write is rejected, so the stored value remains the original base.
     context.localStorage.setItem('notes', JSON.stringify(firstCandidate));
@@ -547,9 +575,9 @@ describe('rejected storage bridge writes', () => {
     };
     const context = vm.createContext({ localStorage: fakeStorage, console });
     injectScript('src/core/storage-rmw.js', context);
-    context.localStorage.getItem('todos');
-    context.localStorage.getItem('notes');
-    context.localStorage.getItem('ai_conversations');
+    context.observeStorageItem('todos');
+    context.observeStorageItem('notes');
+    context.observeStorageItem('ai_conversations');
 
     rejectWrites = true;
     expect(context.localStorage.setItem('todos', JSON.stringify([{ id: 'todo-1' }]))).toBe(false);
