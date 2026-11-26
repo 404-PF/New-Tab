@@ -3048,7 +3048,6 @@ function initCustomSearchProvidersSettings() {
 
   // Expose for import refresh and re-render after language change
   window.renderCustomSearchProvidersList = renderCustomProvidersList;
-  window.refreshCustomSearchProvidersSettings = renderCustomProvidersList;
 
   // Re-render when language changes so i18n-driven empty text stays consistent
   window.addEventListener('languageChanged', renderCustomProvidersList);

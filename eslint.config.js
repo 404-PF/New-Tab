@@ -251,12 +251,9 @@ const srcGlobals = {
   removeCustomProvider: 'readonly',
   getAllProviders: 'readonly',
   getActiveProviderUrl: 'readonly',
-  resolveSearchQuery: 'readonly',
-  cycleSearchProvider: 'readonly',
   parseRemoteSearchSuggestions: 'readonly',
   getProviderSuggestionEndpoint: 'readonly',
   fetchRemoteSearchSuggestions: 'readonly',
-  scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
   // Defined in src/core/languages.js, referenced by the lazy-loaded
   // src/core/locales/<code>.js tables (issue #927).
@@ -530,12 +527,9 @@ const testGlobals = {
   removeCustomProvider: 'readonly',
   getAllProviders: 'readonly',
   getActiveProviderUrl: 'readonly',
-  resolveSearchQuery: 'readonly',
-  cycleSearchProvider: 'readonly',
   parseRemoteSearchSuggestions: 'readonly',
   getProviderSuggestionEndpoint: 'readonly',
   fetchRemoteSearchSuggestions: 'readonly',
-  scheduleSearchSuggestionsFetch: 'readonly',
   updateProviderSelection: 'readonly',
   // Storage-write resync helper (issue #1089), mirrors srcGlobals.
   resyncSearchHistorySetting: 'readonly',
