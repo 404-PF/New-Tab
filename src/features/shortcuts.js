@@ -39,26 +39,114 @@
     return window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : key;
   }
 
+  // closeHook(el) returns true when it handled the close; otherwise the
+  // default class/display removal runs.
   const MODAL_SELECTORS = [
     // First so Escape always dismisses the topmost overlay before any modal
     // underneath it (e.g. Settings) that may also be open.
-    { selector: '#bg-confirm-dialog', cssClass: 'bg-confirm-open' },
+    {
+      // The confirm dialog owns a pending Promise: only stripping the class
+      // would strand it (and the node's 200ms removal), so route through
+      // the close hook instead.
+      selector: '#bg-confirm-dialog',
+      cssClass: 'bg-confirm-open',
+      closeHook() {
+        const bg = window._customBackgrounds;
+        if (bg && typeof bg.closeConfirmDialog === 'function') {
+          bg.closeConfirmDialog();
+          return true;
+        }
+        return false;
+      }
+    },
     { selector: '#ai-confirm-dialog', cssClass: 'ai-confirm-open' },
     { selector: '#todo-edit-modal', cssClass: 'modal-open' },
-    { selector: '#add-app-modal', cssClass: 'modal-open' },
+    {
+      selector: '#add-app-modal',
+      cssClass: 'modal-open',
+      // Escape must fully reset the Add App modal, not just hide it: the URL
+      // input keeps focus, so a later Enter would still save against a stale
+      // editingAppId. Blur it and route through the close hook that clears
+      // that state and the pending preview.
+      closeHook() {
+        const urlInput = document.getElementById('add-app-url');
+        if (urlInput) urlInput.blur();
+        if (typeof window.closeAddAppModal === 'function') {
+          window.closeAddAppModal();
+          return true;
+        }
+        return false;
+      }
+    },
     { selector: '#rename-app-modal', cssClass: 'modal-open' },
     { selector: '#thumbnail-app-modal', cssClass: 'modal-open' },
     { selector: '#delete-app-modal', cssClass: 'modal-open' },
-    { selector: '#clear-completed-dialog', cssClass: 'ai-confirm-open' },
+    {
+      // Clear-completed listeners live in todo.js: route through its hide
+      // hook so they are detached instead of only stripping the class.
+      selector: '#clear-completed-dialog',
+      cssClass: 'ai-confirm-open',
+      closeHook() {
+        if (typeof window.hideClearCompletedDialog === 'function') {
+          window.hideClearCompletedDialog();
+          return true;
+        }
+        return false;
+      }
+    },
     { selector: '#import-todos-dialog', cssClass: 'ai-confirm-open' },
     { selector: '#ai-chat-modal', cssClass: 'ai-modal-open' },
     { selector: '#settings-modal', cssClass: 'modal-open' },
-    { selector: '#weather-app-modal', cssClass: 'modal-open' },
-    { selector: '#todo-app-modal', cssClass: 'modal-open' },
+    {
+      selector: '#weather-app-modal',
+      cssClass: 'modal-open',
+      closeHook() {
+        if (typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
+          window.WeatherApp.close();
+          return true;
+        }
+        return false;
+      }
+    },
+    {
+      // The relocated .todo-section lives inside this modal: only stripping
+      // the class would strand the widget there, so route through
+      // TodoApp.close() like the weather entry above.
+      selector: '#todo-app-modal',
+      cssClass: 'modal-open',
+      closeHook() {
+        if (typeof window.TodoApp === 'object' && typeof window.TodoApp.close === 'function') {
+          window.TodoApp.close();
+          return true;
+        }
+        return false;
+      }
+    },
     { selector: '#games-app-modal', cssClass: 'modal-open' },
-    { selector: '#folder-popup', cssClass: 'folder-popup-open', bodyClass: true },
+    {
+      selector: '#folder-popup',
+      cssClass: 'folder-popup-open',
+      bodyClass: true,
+      closeHook() {
+        if (typeof window.AppFolders === 'object' && window.AppFolders.closeFolderPopup) {
+          window.AppFolders.closeFolderPopup();
+          return true;
+        }
+        return false;
+      }
+    },
     { selector: '#move-to-folder-selector', useDisplay: true },
-    { selector: '#app-context-menu', cssClass: 'context-menu-open', bodyClass: true }
+    {
+      selector: '#app-context-menu',
+      cssClass: 'context-menu-open',
+      bodyClass: true,
+      closeHook(el) {
+        el.style.display = 'none';
+        document.body.classList.remove('context-menu-open');
+        window.dispatchEvent(new CustomEvent('contextMenuClose'));
+        return true;
+      }
+    }
   ];
 
   let activeShortcuts = {};
@@ -520,14 +608,9 @@
 
       if (def.bodyClass) {
         if (def.cssClass && document.body.classList.contains(def.cssClass)) {
-          if (def.selector === '#folder-popup' && typeof window.AppFolders === 'object' && window.AppFolders.closeFolderPopup) {
-            window.AppFolders.closeFolderPopup();
-          } else {
+          if (!(def.closeHook && def.closeHook(el))) {
             el.style.display = 'none';
             document.body.classList.remove(def.cssClass);
-          }
-          if (def.selector === '#app-context-menu') {
-            window.dispatchEvent(new CustomEvent('contextMenuClose'));
           }
           return true;
         }
@@ -537,45 +620,7 @@
           return true;
         }
       } else if (def.cssClass && el.classList.contains(def.cssClass)) {
-        // Escape must fully reset the Add App modal, not just hide it: the URL
-        // input keeps focus, so a later Enter would still save against a stale
-        // editingAppId. Blur it and route through the close hook that clears
-        // that state and the pending preview.
-        if (def.selector === '#add-app-modal') {
-          const urlInput = document.getElementById('add-app-url');
-          if (urlInput) urlInput.blur();
-          if (typeof window.closeAddAppModal === 'function') {
-            window.closeAddAppModal();
-            return true;
-          }
-        }
-        // Route weather modal closing through WeatherApp.close() when available
-        if (def.selector === '#weather-app-modal' && typeof window.WeatherApp === 'object' && typeof window.WeatherApp.close === 'function') {
-          window.WeatherApp.close();
-          return true;
-        }
-        // The relocated .todo-section lives inside this modal: only stripping
-        // the class would strand the widget there, so route through
-        // TodoApp.close() like the weather branch above.
-        if (def.selector === '#todo-app-modal' && typeof window.TodoApp === 'object' && typeof window.TodoApp.close === 'function') {
-          window.TodoApp.close();
-          return true;
-        }
-        // The confirm dialog owns a pending Promise: only stripping the class
-        // would strand it (and the node's 200ms removal), so route through
-        // the close hook instead.
-        if (def.selector === '#bg-confirm-dialog' &&
-            window._customBackgrounds &&
-            typeof window._customBackgrounds.closeConfirmDialog === 'function') {
-          window._customBackgrounds.closeConfirmDialog();
-          return true;
-        }
-        // Clear-completed listeners live in todo.js: route through its hide
-        // hook so they are detached instead of only stripping the class.
-        if (def.selector === '#clear-completed-dialog' && typeof window.hideClearCompletedDialog === 'function') {
-          window.hideClearCompletedDialog();
-          return true;
-        }
+        if (def.closeHook && def.closeHook(el)) return true;
         el.classList.remove(def.cssClass);
         return true;
       }
