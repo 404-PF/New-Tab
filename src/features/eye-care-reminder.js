@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'eyeCareReminder';
   const REMINDER_DURATION_SECONDS = 20;
   const CHECK_INTERVAL_MS = 1000;
+  const MAX_VISIBLE_GAP_MS = 2 * CHECK_INTERVAL_MS;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const RING_RADIUS = 18;
   const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -370,6 +371,13 @@
     return state.elapsedVisibleMs >= state.intervalMinutes * 60 * 1000;
   }
 
+  // Gaps longer than a few check intervals mean the machine slept or the page was
+  // not running, so they are not counted as visible time.
+  function getVisibleGapMs(now, since) {
+    const gap = Math.max(0, now - since);
+    return gap > MAX_VISIBLE_GAP_MS ? 0 : gap;
+  }
+
   function syncVisibleElapsed(state, now) {
     if (!state.enabled || reminderActive) {
       return state;
@@ -417,16 +425,16 @@
       return initialized;
     }
 
-    const elapsed = Math.max(0, now - state.lastVisibleAt);
-    if (elapsed === 0) {
-      return state;
-    }
-
+    const elapsed = getVisibleGapMs(now, state.lastVisibleAt);
     const nextState = {
       ...state,
       elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
       lastVisibleAt: now
     };
+    saveState({
+      elapsedVisibleMs: nextState.elapsedVisibleMs,
+      lastVisibleAt: now
+    });
 
     return nextState;
   }
@@ -530,11 +538,11 @@
 
     if (!visible) {
       const elapsed = state.enabled && !reminderActive && typeof state.lastVisibleAt === 'number'
-        ? Math.max(0, now - state.lastVisibleAt)
+        ? getVisibleGapMs(now, state.lastVisibleAt)
         : 0;
       const activeElapsed = state.enabled && typeof state.activeReminderAt === 'number'
         && typeof state.activeLastVisibleAt === 'number'
-        ? Math.max(0, now - state.activeLastVisibleAt)
+        ? getVisibleGapMs(now, state.activeLastVisibleAt)
         : 0;
       saveState({
         elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
