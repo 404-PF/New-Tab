@@ -866,7 +866,9 @@ const AIStore = (function() {
     const persistedValues = {};
 
     try {
-      persistedValues[STORAGE_KEYS.conversations] = localStorage.getItem(STORAGE_KEYS.conversations);
+      persistedValues[STORAGE_KEYS.conversations] = typeof window.observeStorageItem === 'function'
+        ? window.observeStorageItem(STORAGE_KEYS.conversations)
+        : localStorage.getItem(STORAGE_KEYS.conversations);
       persistedValues[STORAGE_KEYS.currentId] = localStorage.getItem(STORAGE_KEYS.currentId);
     } catch (error) {
       return reportSaveFailure(error, previousState, saveGeneration, false);

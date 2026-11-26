@@ -482,6 +482,19 @@ describe('null merge base for keys absent at session start', () => {
     context.localStorage.setItem('notes', JSON.stringify([{ ...n1, text: 'edited' }]));
     expect(JSON.parse(persisted.get('notes'))).toEqual([{ ...n1, text: 'edited' }, n2]);
   });
+
+  it('drops another window\'s note when a save re-observes the key and trims it', () => {
+    const n1 = { id: 'n1', text: 'one' };
+    const n2 = { id: 'n2', text: 'two' };
+    const { context, persisted } = createStorageContext({ notes: JSON.stringify([n1]) });
+    context.observeStorageItem('notes');
+    persisted.set('notes', JSON.stringify([n1, n2]));
+
+    // The save path re-observes the key right before writing its trimmed payload.
+    context.observeStorageItem('notes');
+    context.localStorage.setItem('notes', JSON.stringify([n1]));
+    expect(JSON.parse(persisted.get('notes'))).toEqual([n1]);
+  });
 });
 
 describe('rejected storage bridge writes', () => {
