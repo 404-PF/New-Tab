@@ -490,7 +490,7 @@ describe('null merge base for keys absent at session start', () => {
     context.observeStorageItem('notes');
     persisted.set('notes', JSON.stringify([n1, n2]));
 
-    // The save path re-observes the key right before writing its trimmed payload.
+    // Re-observing the key makes this trimmed write a deliberate delete of n2, which this page has already seen.
     context.observeStorageItem('notes');
     context.localStorage.setItem('notes', JSON.stringify([n1]));
     expect(JSON.parse(persisted.get('notes'))).toEqual([n1]);
