@@ -161,20 +161,12 @@
 
   function startInterval() {
     stopInterval();
-    if (typeof window.VisibilityInterval === 'function') {
-      checkTimer = new window.VisibilityInterval(checkAndApply, CHECK_INTERVAL_MS);
-    } else {
-      checkTimer = setInterval(checkAndApply, CHECK_INTERVAL_MS);
-    }
+    checkTimer = window.createVisibilityTimer(checkAndApply, CHECK_INTERVAL_MS);
   }
 
   function stopInterval() {
     if (checkTimer) {
-      if (checkTimer.destroy) {
-        checkTimer.destroy();
-      } else {
-        clearInterval(checkTimer);
-      }
+      checkTimer.destroy();
       checkTimer = null;
     }
   }

@@ -417,15 +417,9 @@
     nightPool.forEach(function (bg) { ids.add(bg.id); });
     const noSwapPossible = ids.size === 0 || (ids.size === 1 && dayPool.length > 0 && nightPool.length > 0);
     if (startupResult === 'skipped' && noSwapPossible) return;
-    if (window.VisibilityInterval) {
-      rotationTimer = new window.VisibilityInterval(function () {
-        checkTodSide();
-      }, TOD_CHECK_INTERVAL_MS);
-    } else {
-      rotationTimer = setInterval(function () {
-        checkTodSide();
-      }, TOD_CHECK_INTERVAL_MS);
-    }
+    rotationTimer = window.createVisibilityTimer(function () {
+      checkTodSide();
+    }, TOD_CHECK_INTERVAL_MS);
   }
 
   function startRotation() {
@@ -464,20 +458,12 @@
       // Use setTimeout for initial delay, then setInterval for subsequent runs
       rotationTimer = setTimeout(function () {
         advanceBackground();
-        rotationTimer = window.VisibilityInterval
-          ? new window.VisibilityInterval(function () { advanceBackground(); }, intervalMs, false, false)
-          : setInterval(function () { advanceBackground(); }, intervalMs);
+        rotationTimer = window.createVisibilityTimer(function () { advanceBackground(); }, intervalMs, false, false);
       }, initialDelay);
     } else {
-      if (window.VisibilityInterval) {
-        rotationTimer = new window.VisibilityInterval(function () {
-          advanceBackground();
-        }, intervalMs, false, false);
-      } else {
-        rotationTimer = setInterval(function () {
-          advanceBackground();
-        }, intervalMs);
-      }
+      rotationTimer = window.createVisibilityTimer(function () {
+        advanceBackground();
+      }, intervalMs, false, false);
     }
 
     shuffledPool = shuffleArray(pool);
