@@ -572,6 +572,8 @@
     if (window.VisibilityInterval) {
       return new window.VisibilityInterval(callback, ms, ...flags);
     }
+    const [runImmediately] = flags;
+    if (runImmediately) callback();
     const intervalId = window.setInterval(callback, ms);
     return {
       destroy: function () {
