@@ -366,4 +366,26 @@ describe('eye-care reminder', () => {
     vi.advanceTimersByTime(1000);
     expect(document.querySelector('.eye-care-reminder').hidden).toBe(false);
   });
+
+  it('does not count a multi-hour wall-clock gap (sleep) as visible time', () => {
+    const startedAt = Date.now();
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: startedAt,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: startedAt,
+      activeReminderAt: null,
+      visibilityPaused: false
+    }));
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+
+    vi.setSystemTime(startedAt + (2 * 60 * 60 * 1000));
+    window.refreshEyeCareReminder();
+
+    const state = JSON.parse(localStorage.getItem('eyeCareReminder'));
+    expect(state.elapsedVisibleMs).toBeLessThanOrEqual(1000);
+    expect(document.querySelector('.eye-care-reminder').hidden).toBe(true);
+  });
 });
