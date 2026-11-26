@@ -2464,22 +2464,23 @@ function bindSemanticDelete(els) {
       applyNotesSemanticEnabled();
       if (!persisted) window.reportFeatureToggleSaveError();
     };
+    const reportDeleteError = function () {
+      if (typeof window.showToast === 'function') {
+        window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
+      }
+    };
+    const settleDelete = function (ok) {
+      finishDelete(ok !== false);
+      if (ok === false) reportDeleteError();
+    };
     const runDelete = function () {
       try {
         if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
-          return window.EmbeddingService.deleteModel().then(function (ok) {
-            // deleteModel resolves false when vector or cache cleanup fails:
-            // keep the toggle so the leftover data stays visible/retryable.
-            finishDelete(ok !== false);
-            if (ok === false && typeof window.showToast === 'function') {
-              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-            }
-          }).catch(function (err) {
+          // deleteModel resolves false when vector or cache cleanup fails:
+          // keep the toggle so the leftover data stays visible/retryable.
+          return window.EmbeddingService.deleteModel().then(settleDelete).catch(function (err) {
             console.warn('Failed to delete embedding model:', err);
-            finishDelete(false);
-            if (typeof window.showToast === 'function') {
-              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-            }
+            settleDelete(false);
           });
         }
       } catch (err) {
@@ -2495,23 +2496,12 @@ function bindSemanticDelete(els) {
       // load failure keep the marker/toggle so the bytes stay retryable.
       return ensureEmbeddingScripts().then(function () {
         if (window.EmbeddingService && typeof window.EmbeddingService.deleteModel === 'function') {
-          return window.EmbeddingService.deleteModel().then(function (ok) {
-            finishDelete(ok !== false);
-            if (ok === false && typeof window.showToast === 'function') {
-              window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-            }
-          });
+          return window.EmbeddingService.deleteModel().then(settleDelete);
         }
-        finishDelete(false);
-        if (typeof window.showToast === 'function') {
-          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-        }
+        settleDelete(false);
       }).catch(function (err) {
         console.warn('Failed to load embedding modules for delete:', err);
-        finishDelete(false);
-        if (typeof window.showToast === 'function') {
-          window.showToast(tSemantic('notesSemanticDeleteError', 'Failed to delete the model. Check storage and try again.'), 'error');
-        }
+        settleDelete(false);
       });
     };
     const btn = els.deleteBtn;
