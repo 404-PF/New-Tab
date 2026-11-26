@@ -442,17 +442,6 @@ function renderDefaultAppsList() {
     nameSpan.className = 'quick-add-name';
     nameSpan.textContent = app.name || '';
     button.appendChild(nameSpan);
-    // Mark duplicates defensively (shouldn't appear since we filtered),
-    // but keep the attribute in case canonicalization differs.
-    try {
-      if (app.url && window.AppGridState && window.AppGridState.getCanonicalUrl) {
-        const canonical = window.AppGridState.getCanonicalUrl(normalizeAppUrl(app.url));
-        if (existingUrls.has(canonical) || existingNames.has(normalizeAppName(app.name))) {
-          button.classList.add('duplicate');
-          button.title = window.translate('appAlreadyAdded', 'This URL is already in your apps');
-        }
-      }
-    } catch { void 0; }
     button.addEventListener('click', async function () {
       if (isQuickAddInProgress) {
         return;
