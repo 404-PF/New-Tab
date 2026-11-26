@@ -13,7 +13,7 @@ const OpenRouterAPI = (function() {
     // Cloudflare Worker URL - UPDATE THIS AFTER DEPLOYMENT
     // Run: cd cloudflare && wrangler deploy
     // Then copy the worker URL here
-    baseURL: 'https://new-tab-openrouter-proxy.lucas20220605.workers.dev',
+    baseURL: 'https://new-tab-openrouter-proxy.404-page-found.workers.dev',
     // Shared secret sent as the X-New-Tab-Token header (#1086). The worker
     // rejects POSTs whose header does not match its EXTENSION_TOKEN secret
     // (wrangler secret put EXTENSION_TOKEN), so keep the two in sync when
