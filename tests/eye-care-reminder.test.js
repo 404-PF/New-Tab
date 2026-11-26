@@ -388,4 +388,28 @@ describe('eye-care reminder', () => {
     expect(state.elapsedVisibleMs).toBeLessThanOrEqual(1000);
     expect(document.querySelector('.eye-care-reminder').hidden).toBe(true);
   });
+
+  it('keeps accumulating visible time across consecutive one-second checks', () => {
+    const startedAt = Date.now();
+    localStorage.setItem('eyeCareReminder', JSON.stringify({
+      enabled: true,
+      intervalMinutes: 20,
+      browserNotification: false,
+      lastReminder: startedAt,
+      elapsedVisibleMs: 0,
+      lastVisibleAt: startedAt,
+      activeReminderAt: null,
+      visibilityPaused: false
+    }));
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+
+    for (let tick = 1; tick <= 20 * 60; tick++) {
+      vi.setSystemTime(startedAt + tick * 1000);
+      window.refreshEyeCareReminder();
+    }
+
+    const state = JSON.parse(localStorage.getItem('eyeCareReminder'));
+    expect(state.activeReminderAt).not.toBeNull();
+    expect(document.querySelector('.eye-care-reminder').hidden).toBe(false);
+  });
 });

@@ -426,15 +426,15 @@
     }
 
     const elapsed = getVisibleGapMs(now, state.lastVisibleAt);
-    if (elapsed === 0) {
-      return state;
-    }
-
     const nextState = {
       ...state,
       elapsedVisibleMs: state.elapsedVisibleMs + elapsed,
       lastVisibleAt: now
     };
+    saveState({
+      elapsedVisibleMs: nextState.elapsedVisibleMs,
+      lastVisibleAt: now
+    });
 
     return nextState;
   }
