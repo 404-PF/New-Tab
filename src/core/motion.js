@@ -122,19 +122,6 @@
     setReduced(!!reduced, true);
   }
 
-  // Test hook: replace the cached mql. The next call to `init` (or
-  // `prefersReducedMotion` after a `_setReducedForTests`) will read from the
-  // injected object. Useful when overriding `window.matchMedia` after this
-  // file has already loaded.
-  function _setMqlForTests(list) {
-    if (detachBrowserListener) {
-      detachBrowserListener();
-    }
-    mql = list;
-    initialized = false;
-    init();
-  }
-
   // Test hook: clear all registered subscribers. Tests that re-inject a
   // module (and therefore re-register its motion-change handler) should
   // call this first to avoid duplicate handler accumulation in `subscribers`.
@@ -147,8 +134,6 @@
   window.prefersReducedMotion = prefersReducedMotion;
   window.onReducedMotionChange = onReducedMotionChange;
   window.crossfadeDelayMs = crossfadeDelayMs;
-  window.__motionInit = init;
   window._setReducedForTests = _setReducedForTests;
-  window._setMqlForTests = _setMqlForTests;
   window._resetSubscribersForTests = _resetSubscribersForTests;
 })();

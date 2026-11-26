@@ -277,7 +277,6 @@ window._initStaticBackgrounds = initStaticBackgrounds;
 window._initLiveBackgrounds = initLiveBackgrounds;
 window._initInteractiveBackgrounds = initInteractiveBackgrounds;
 window._findBackgroundUrlById = findBackgroundUrlById;
-window._isVideoBackground = isVideoBackground;
 window._getStaticBackgrounds = getStaticBackgrounds;
 window._getVideoBackgrounds = getVideoBackgrounds;
 window._getInteractiveBackgrounds = getInteractiveBackgrounds;
