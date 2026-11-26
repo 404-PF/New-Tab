@@ -728,18 +728,12 @@
   function startInterval() {
     stopInterval();
     if (!state.active || state.paused || !_isLeader) return;
-    _timerInterval = window.VisibilityInterval
-      ? new window.VisibilityInterval(tick, 1000)
-      : setInterval(tick, 1000);
+    _timerInterval = window.createVisibilityTimer(tick, 1000);
   }
 
   function stopInterval() {
     if (_timerInterval) {
-      if (typeof _timerInterval.destroy === 'function') {
-        _timerInterval.destroy();
-      } else {
-        clearInterval(_timerInterval);
-      }
+      _timerInterval.destroy();
       _timerInterval = null;
     }
   }
@@ -749,18 +743,12 @@
   // so it runs at lease cadence and pauses with the tab like every other timer here.
   function startCoordinationInterval() {
     if (_coordinationInterval || !state.active || _isLeader) return;
-    _coordinationInterval = window.VisibilityInterval
-      ? new window.VisibilityInterval(reconcileTimerState, LEASE_DURATION_MS)
-      : setInterval(reconcileTimerState, LEASE_DURATION_MS);
+    _coordinationInterval = window.createVisibilityTimer(reconcileTimerState, LEASE_DURATION_MS);
   }
 
   function stopCoordinationInterval() {
     if (_coordinationInterval) {
-      if (typeof _coordinationInterval.destroy === 'function') {
-        _coordinationInterval.destroy();
-      } else {
-        clearInterval(_coordinationInterval);
-      }
+      _coordinationInterval.destroy();
       _coordinationInterval = null;
     }
   }

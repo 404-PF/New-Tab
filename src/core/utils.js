@@ -566,6 +566,20 @@
     }
   }
 
+  // Falls back to a plain setInterval when VisibilityInterval is unavailable.
+  // Always returns a handle with destroy(), so callers need no type check.
+  function createVisibilityTimer(callback, ms, ...flags) {
+    if (window.VisibilityInterval) {
+      return new window.VisibilityInterval(callback, ms, ...flags);
+    }
+    const intervalId = window.setInterval(callback, ms);
+    return {
+      destroy: function () {
+        window.clearInterval(intervalId);
+      }
+    };
+  }
+
   // Initialize visibility manager
   visibilityManager.init();
 
@@ -944,6 +958,7 @@
   window.createPickerListenerManager = createPickerListenerManager;
   window.visibilityManager = visibilityManager;
   window.VisibilityInterval = VisibilityInterval;
+  window.createVisibilityTimer = createVisibilityTimer;
   window.validateUrl = validateUrl;
   window.isValidUrl = isValidUrl;
   window.isMalformedUrl = isMalformedUrl;

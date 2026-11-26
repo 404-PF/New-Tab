@@ -18,19 +18,6 @@
   let reminderActive = false;
   let remainingSeconds = REMINDER_DURATION_SECONDS;
 
-  function createTimer(callback, interval) {
-    if (window.VisibilityInterval) {
-      return new window.VisibilityInterval(callback, interval);
-    }
-
-    const intervalId = window.setInterval(callback, interval);
-    return {
-      destroy: function () {
-        window.clearInterval(intervalId);
-      }
-    };
-  }
-
   function createCountdownTimer(callback, interval) {
     if (!window.VisibilityInterval || !window.visibilityManager) {
       let intervalId = null;
@@ -529,7 +516,7 @@
     stopCheckTimer();
     ensureBanner();
     refreshEyeCareReminder();
-    checkTimer = createTimer(evaluateReminder, CHECK_INTERVAL_MS);
+    checkTimer = window.createVisibilityTimer(evaluateReminder, CHECK_INTERVAL_MS);
   }
 
   function handleVisibilityChange(visible) {
