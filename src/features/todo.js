@@ -4226,12 +4226,7 @@ try {
   window.RECURRENCE_VALUES = RECURRENCE_VALUES;
   window.parseLocalDate = parseLocalDate;
   window.parseTodoDatePhrase = parseTodoDatePhrase;
-  window.getDueDateTime = getDueDateTime;
-  window.formatDueTime = formatDueTime;
-  window.isValidDueTime = isValidDueTime;
-  window.parseDueTime = parseDueTime;
   window.DUE_TIME_PATTERN = DUE_TIME_PATTERN;
-  window.syncDueTimeInputState = syncDueTimeInputState;
   window.currentFilters = currentFilters;
   window.setTodoSort = setTodoSort;
   window.getTodoSort = getTodoSort;
@@ -4239,16 +4234,11 @@ try {
   window.handleTodoSortChange = handleTodoSortChange;
   window.setTodoSearchQuery = setTodoSearchQuery;
   window.getTodoSearchQuery = getTodoSearchQuery;
-  window.handleTodoSearchInput = handleTodoSearchInput;
   // Shared with data-manager.js so the import validator stays in sync with
   // the modes todo.js actually supports (issue #1056).
   window.TODO_SORT_MODES = SORT_MODES;
   window.selectedIds = selectedIds;
-  window.handleTodoSelect = handleTodoSelect;
-  window.handleTodoListClick = handleTodoListClick;
-  window.updateBulkActions = updateBulkActions;
   window.clearTodoSelection = clearTodoSelection;
-  window.pruneTodoSelection = pruneTodoSelection;
   window.bulkCompleteSelected = bulkCompleteSelected;
   window.bulkDeleteSelected = bulkDeleteSelected;
   window.getSelectedPriority = getSelectedPriority;
