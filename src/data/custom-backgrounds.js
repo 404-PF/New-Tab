@@ -423,13 +423,12 @@
         delBtn.setAttribute('data-i18n-aria-label', 'delete');
       }
 
-      // Insert custom static backgrounds into the thumbnail grid
-      staticBgs.forEach(function (bg) {
+      function buildCustomThumbWrapper(bg, imgClass) {
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-bg-thumb-wrapper';
 
         const img = document.createElement('img');
-        img.className = 'bg-thumb';
+        img.className = imgClass;
         img.setAttribute('data-bg', bg.id);
         img.setAttribute('data-custom', 'true');
         img.src = bg.thumb;
@@ -444,33 +443,15 @@
 
         wrapper.appendChild(img);
         wrapper.appendChild(delBtn);
+        return wrapper;
+      }
 
-        staticContainer.appendChild(wrapper);
+      staticBgs.forEach(function (bg) {
+        staticContainer.appendChild(buildCustomThumbWrapper(bg, 'bg-thumb'));
       });
 
-      // Insert custom live backgrounds into the thumbnail grid
       liveBgs.forEach(function (bg) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'custom-bg-thumb-wrapper';
-
-        const img = document.createElement('img');
-        img.className = 'bg-thumb bg-thumb-video';
-        img.setAttribute('data-bg', bg.id);
-        img.setAttribute('data-custom', 'true');
-        img.src = bg.thumb;
-        img.title = bg.title;
-        img.alt = bg.title;
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'custom-bg-delete-btn';
-        delBtn.setAttribute('data-bg-id', bg.id);
-        delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-        labelDeleteButton(delBtn);
-
-        wrapper.appendChild(img);
-        wrapper.appendChild(delBtn);
-
-        liveContainer.appendChild(wrapper);
+        liveContainer.appendChild(buildCustomThumbWrapper(bg, 'bg-thumb bg-thumb-video'));
       });
 
       // Update selected state
