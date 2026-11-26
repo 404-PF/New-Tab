@@ -219,28 +219,38 @@
     return err;
   }
 
+  // The timeout covers the body read too; JSON parse failures are returned as parseError, while aborts/network errors throw.
+  async function fetchJsonWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return { ok: false };
+      try {
+        return { ok: true, data: await response.json() };
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+        return { ok: true, parseError: e };
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async function geocodeCity(city) {
     let response;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     try {
       const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${getOpenMeteoLang()}&format=json`;
-      response = await fetch(url, { signal: controller.signal });
+      response = await fetchJsonWithTimeout(url, GEO_TIMEOUT_MS);
     } catch (e) {
       if (e.name === 'AbortError') {
         throw createWeatherError('Geocoding timed out', 'GEOCODING_TIMEOUT');
       }
       throw createWeatherError('Geocoding network error', 'NETWORK_ERROR');
-    } finally {
-      clearTimeout(timeoutId);
     }
     if (!response.ok) throw createWeatherError('Geocoding failed', 'GEOCODING_FAILED');
-    let data;
-    try {
-      data = await response.json();
-    } catch {
-      throw createWeatherError('Geocoding response invalid', 'GEOCODING_INVALID');
-    }
+    if (response.parseError) throw createWeatherError('Geocoding response invalid', 'GEOCODING_INVALID');
+    const data = response.data;
     if (!data.results || data.results.length === 0) throw createWeatherError('City not found', 'CITY_NOT_FOUND');
     const result = data.results[0];
     if (typeof result.latitude !== 'number' || typeof result.longitude !== 'number') {
@@ -255,22 +265,19 @@
   }
 
   async function fetchWeather(lat, lon) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GEO_TIMEOUT_MS);
     let response;
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7&hourly=temperature_2m,weather_code,precipitation_probability&forecast_hours=24&timezone=auto`;
-      response = await fetch(url, { signal: controller.signal });
+      response = await fetchJsonWithTimeout(url, GEO_TIMEOUT_MS);
     } catch (e) {
       if (e.name === 'AbortError') {
         throw new Error('Weather API timed out');
       }
       throw new Error('Weather API failed');
-    } finally {
-      clearTimeout(timeoutId);
     }
     if (!response.ok) throw new Error('Weather API failed');
-    return await response.json();
+    if (response.parseError) throw response.parseError;
+    return response.data;
   }
 
   function getLocation() {

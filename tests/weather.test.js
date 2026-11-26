@@ -468,6 +468,67 @@ describe('Weather widget', () => {
     expect(document.querySelector('.weather-error')).not.toBeNull();
   });
 
+  describe('manual city geocoding response handling', () => {
+    async function refreshManualCityWith(geocodingResponse) {
+      const manualInput = document.getElementById('weather-manual-city');
+      const originalInputValue = manualInput.value;
+      localStorage.setItem('weatherEnabled', 'true');
+      localStorage.setItem('weatherUnit', 'celsius');
+      localStorage.setItem('weatherLocationMode', 'manual');
+      localStorage.setItem('weatherManualCity', 'Paris');
+      manualInput.value = 'Paris';
+      const hosts = [];
+      global.fetch = async (url) => {
+        hosts.push(new URL(url).hostname);
+        return geocodingResponse();
+      };
+      try {
+        const result = await window.WeatherWidget.refresh(true);
+        return { result, hosts };
+      } finally {
+        manualInput.value = originalInputValue;
+      }
+    }
+
+    it('reports a timeout when reading the geocoding body is aborted', async () => {
+      const { result, hosts } = await refreshManualCityWith(() => ({
+        ok: true,
+        json: async () => {
+          const abortError = new Error('aborted');
+          abortError.name = 'AbortError';
+          throw abortError;
+        }
+      }));
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toBe('Unable to load weather');
+      expect(hosts).toEqual(['geocoding-api.open-meteo.com']);
+    });
+
+    it('reports an invalid geocoding response when the body fails to parse', async () => {
+      const { result, hosts } = await refreshManualCityWith(() => ({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON');
+        }
+      }));
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toBe('Unable to load weather');
+      expect(hosts).toEqual(['geocoding-api.open-meteo.com']);
+    });
+
+    it('reports city not found when geocoding returns no results', async () => {
+      const { result } = await refreshManualCityWith(() => ({
+        ok: true,
+        json: async () => ({ results: [] })
+      }));
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toBe('City not found');
+    });
+  });
+
   it('does not fall back to a stale manual-city cache when geocoding fails (#1264)', async () => {
     const manualInput = document.getElementById('weather-manual-city');
     const originalInputValue = manualInput.value;
