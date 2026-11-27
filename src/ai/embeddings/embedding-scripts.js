@@ -2,10 +2,10 @@
 //
 // src/ui/settings.js and src/features/notes.js both need the embedding
 // modules on demand (lazy opt-in; the seven modules below are never in the
-// bootstrap bundle). This file is the single canonical implementation;
-// both callers delegate to it when present and fall back to their local
-// twin only when this file has not been loaded (e.g. unit tests that
-// inject a single module in isolation).
+// bootstrap bundle). This file is the canonical implementation; both
+// callers delegate to it when present. Each caller keeps an identical
+// six-global fallback copy because it is used when this file has not been
+// loaded (e.g. unit tests that inject a single module in isolation).
 //
 // This loader itself ships in the bootstrap scriptSources list and must
 // execute before src/ui/settings.js and src/features/notes.js so Settings

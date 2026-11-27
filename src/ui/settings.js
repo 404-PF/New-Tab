@@ -2064,11 +2064,10 @@ function applyNotesSemanticEnabled() {
 // (issue #1186): they load on demand the first time the user opts in,
 // mirroring the games-app lazy loader. The canonical source list and loader
 // live in src/ai/embeddings/embedding-scripts.js (loaded via bootstrap
-// before this file); the thin wrappers below delegate to it. No local twin
-// is kept here: duplicating the loader across settings.js/notes.js tripped
-// the Sonar duplication gate and lets the copies drift (PR #1187 review).
-// Isolated unit tests inject embedding-scripts.js (or all globals, in
-// which case embeddingScriptsLoaded short-circuits true).
+// before this file). The wrappers below delegate to it when present;
+// otherwise they check the six globals directly. This fallback copy must
+// stay identical to the one in notes.js: it is needed when the loader is
+// absent (isolated unit tests), so it cannot be removed.
 function embeddingScriptsLoaded() {
   try {
     if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {

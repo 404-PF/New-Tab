@@ -752,8 +752,9 @@
   // (issue #1186): they load on demand, mirroring the games-app lazy
   // loader. The canonical source list and loader live in
   // src/ai/embeddings/embedding-scripts.js (loaded via bootstrap before
-  // settings.js); the thin wrappers below delegate to it with no local
-  // twin (PR #1187 review: twins drift and trip the duplication gate).
+  // settings.js). These wrappers delegate to window.EmbeddingScripts when
+  // present; otherwise they check the six globals directly. This copy must
+  // stay identical to the one in settings.js.
   function embeddingScriptsLoaded() {
     try {
       if (window.EmbeddingScripts && typeof window.EmbeddingScripts.scriptsLoaded === 'function') {
