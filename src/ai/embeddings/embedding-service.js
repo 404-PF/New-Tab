@@ -203,12 +203,6 @@
     return null;
   }
 
-  function isVendorReady() {
-    try {
-      return !!(window.__embeddingVendor && window.__embeddingVendor.pipeline);
-    } catch { return false; }
-  }
-
   // onLoad can fire before the module finishes executing; the event
   // listener / poll in waitForVendorGlobal resolves once globals land.
   function injectVendorLoaderScript(onLoad, onError) {
@@ -260,7 +254,8 @@
       }
 
       function onVendorLoaded() {
-        if (isVendorReady()) settleResolve(window.__embeddingVendor);
+        const vendor = getCachedVendor();
+        if (vendor) settleResolve(vendor);
       }
 
       if (signal) {
