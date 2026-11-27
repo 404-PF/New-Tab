@@ -697,6 +697,30 @@
     handleAppShortcutKeydown(e);
   }
 
+  function createSettingIcon(innerMarkup) {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('class', 'setting-icon');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'currentColor');
+    icon.setAttribute('stroke-width', '2');
+    icon.innerHTML = innerMarkup;
+    return icon;
+  }
+
+  function createSettingOption(iconEl, contentEl) {
+    const option = document.createElement('div');
+    option.className = 'general-option';
+
+    const card = document.createElement('div');
+    card.className = 'setting-card';
+
+    card.appendChild(iconEl);
+    card.appendChild(contentEl);
+    option.appendChild(card);
+    return option;
+  }
+
   function renderShortcutsSection() {
     const container = document.getElementById('shortcuts-options');
     if (!container) return;
@@ -709,20 +733,8 @@
       const combo = activeShortcuts[action] || DEFAULT_SHORTCUTS[action];
       const label = t(ACTION_LABEL_KEYS[action] || action);
 
-      const option = document.createElement('div');
-      option.className = 'general-option';
-
-      const card = document.createElement('div');
-      card.className = 'setting-card';
-
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('class', 'setting-icon');
-      icon.setAttribute('viewBox', '0 0 24 24');
-      icon.setAttribute('fill', 'none');
-      icon.setAttribute('stroke', 'currentColor');
-      icon.setAttribute('stroke-width', '2');
-      icon.innerHTML = '<rect x="2" y="4" width="20" height="16" rx="2"></rect>' +
-        '<path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path>';
+      const icon = createSettingIcon('<rect x="2" y="4" width="20" height="16" rx="2"></rect>' +
+        '<path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path>');
 
       const content = document.createElement('div');
       content.className = 'setting-content';
@@ -740,27 +752,12 @@
 
       content.appendChild(labelEl);
       content.appendChild(comboBtn);
-      card.appendChild(icon);
-      card.appendChild(content);
-      option.appendChild(card);
-      container.appendChild(option);
+      container.appendChild(createSettingOption(icon, content));
     }
 
     // Positional app-launch toggle: Alt+1..9 over the grid (issue #1061).
-    const toggleOption = document.createElement('div');
-    toggleOption.className = 'general-option';
-
-    const toggleCard = document.createElement('div');
-    toggleCard.className = 'setting-card';
-
-    const toggleIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    toggleIcon.setAttribute('class', 'setting-icon');
-    toggleIcon.setAttribute('viewBox', '0 0 24 24');
-    toggleIcon.setAttribute('fill', 'none');
-    toggleIcon.setAttribute('stroke', 'currentColor');
-    toggleIcon.setAttribute('stroke-width', '2');
-    toggleIcon.innerHTML = '<rect x="2" y="4" width="20" height="16" rx="2"></rect>' +
-      '<path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 15h8"></path>';
+    const toggleIcon = createSettingIcon('<rect x="2" y="4" width="20" height="16" rx="2"></rect>' +
+      '<path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 15h8"></path>');
 
     const toggleContent = document.createElement('div');
     toggleContent.className = 'setting-content';
@@ -785,10 +782,7 @@
 
     toggleContent.appendChild(toggleLabel);
     toggleContent.appendChild(toggleCheckbox);
-    toggleCard.appendChild(toggleIcon);
-    toggleCard.appendChild(toggleContent);
-    toggleOption.appendChild(toggleCard);
-    container.appendChild(toggleOption);
+    container.appendChild(createSettingOption(toggleIcon, toggleContent));
   }
 
   function startRebinding(action, btn) {
