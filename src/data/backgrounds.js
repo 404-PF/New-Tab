@@ -186,11 +186,6 @@ const videoBackgrounds = backgrounds.filter(bg => bg.type === 'video');
 const interactiveBackgrounds = backgrounds.filter(bg => bg.type === 'interactive');
 
 // Helper functions
-function isVideoBackground(id) {
-  const bg = backgroundsMap[id];
-  return bg && bg.type === 'video';
-}
-
 function getStaticBackgrounds() {
   return staticBackgrounds;
 }
