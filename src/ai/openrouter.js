@@ -150,7 +150,7 @@ const OpenRouterAPI = (function() {
   /**
    * Persist the local-notes opt-in.
    * @param {boolean} enabled - Whether local notes should be included
-   * @returns {boolean} Whether the setting was persisted
+   * @returns {Promise<boolean>} Whether the setting was persisted
    */
   function setLocalContextEnabled(enabled) {
     return persistPreference(
