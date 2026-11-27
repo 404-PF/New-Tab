@@ -84,115 +84,100 @@ const AIRenderer = (function() {
     return !!document.getElementById('ai-chat-modal');
   }
 
-  function createWebGroundingControl() {
-    if (elements.webGroundingControl) return elements.webGroundingControl;
+  // Shared builder for the checkbox toggles that persist a preference through
+  // window.OpenRouterAPI. `read`/`write` wrap the API; a failed or rejected
+  // write restores the checkbox from `read`, falling back to `fallback`.
+  function createPreferenceToggle({ cacheKey, labelKey, descriptionKey, className, read, write, fallback, onLanguageChange, onPersistFailed }) {
+    if (elements[cacheKey]) return elements[cacheKey];
 
     const inputContainer = elements.input?.parentElement;
     if (!inputContainer) return null;
 
     const label = document.createElement('label');
-    label.className = 'ai-grounding-toggle';
-    label.title = getTranslation('aiGroundWithWebDescription');
+    label.className = className;
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true;
-    checkbox.setAttribute('aria-label', getTranslation('aiGroundWithWeb'));
+    checkbox.checked = read() ?? fallback;
 
     const text = document.createElement('span');
     text.className = 'ai-grounding-toggle-label';
-    text.textContent = getTranslation('aiGroundWithWeb');
 
     const refreshLabels = () => {
-      const labelText = getTranslation('aiGroundWithWeb');
-      label.title = getTranslation('aiGroundWithWebDescription');
+      const labelText = getTranslation(labelKey);
+      label.title = getTranslation(descriptionKey);
       checkbox.setAttribute('aria-label', labelText);
       text.textContent = labelText;
     };
+    refreshLabels();
 
-    const restoreWebGroundingCheckbox = () => {
-      checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? checkbox.checked;
-      console.warn('Web grounding preference could not be saved; reverted to the previous value for this session.');
+    const restoreCheckbox = () => {
+      checkbox.checked = read() ?? fallback;
+      onPersistFailed?.();
     };
 
     checkbox.addEventListener('change', () => {
-      if (window.OpenRouterAPI?.setWebGroundingEnabled) {
-        Promise.resolve(window.OpenRouterAPI.setWebGroundingEnabled(checkbox.checked)).then((persisted) => {
-          if (persisted === false) {
-            restoreWebGroundingCheckbox();
-          }
-        }).catch(restoreWebGroundingCheckbox);
-      }
+      Promise.resolve(write(checkbox.checked)).then((persisted) => {
+        if (persisted === false) restoreCheckbox();
+      }).catch(restoreCheckbox);
     });
 
     label.append(checkbox, text);
     inputContainer.appendChild(label);
     window.addEventListener('languageChanged', () => {
       refreshLabels();
-      renderMessages();
+      onLanguageChange?.();
     });
-    elements.webGroundingControl = { label, checkbox, text, refreshLabels };
-    return elements.webGroundingControl;
+    elements[cacheKey] = { label, checkbox, text, refreshLabels };
+    return elements[cacheKey];
+  }
+
+  function applyPreferenceToggleState(control, isEnabled, isOffline) {
+    control.checkbox.checked = isEnabled;
+    control.checkbox.disabled = !!isOffline;
+    control.refreshLabels();
+    control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
+  }
+
+  function createWebGroundingControl() {
+    return createPreferenceToggle({
+      cacheKey: 'webGroundingControl',
+      labelKey: 'aiGroundWithWeb',
+      descriptionKey: 'aiGroundWithWebDescription',
+      className: 'ai-grounding-toggle',
+      read: () => window.OpenRouterAPI?.isWebGroundingEnabled?.(),
+      write: (enabled) => window.OpenRouterAPI?.setWebGroundingEnabled?.(enabled),
+      fallback: true,
+      onLanguageChange: () => renderMessages(),
+      onPersistFailed: () => console.warn('Web grounding preference could not be saved; reverted to the previous value for this session.')
+    });
   }
 
   function updateWebGroundingControl(isOffline) {
     const control = createWebGroundingControl();
     if (!control) return;
-    control.checkbox.checked = window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true;
-    control.checkbox.disabled = !!isOffline;
-    control.refreshLabels();
-    control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
+    applyPreferenceToggleState(control, window.OpenRouterAPI?.isWebGroundingEnabled?.() ?? true, isOffline);
     updateLocalContextControl(isOffline);
   }
 
   // Opt-in for adding the user's notes to the prompt (issue #1333). Off by
   // default; the checkbox reflects the stored choice, not model readiness.
   function createLocalContextControl() {
-    if (elements.localContextControl) return elements.localContextControl;
-
-    const inputContainer = elements.input?.parentElement;
-    if (!inputContainer) return null;
-
-    const label = document.createElement('label');
-    label.className = 'ai-grounding-toggle ai-local-context-toggle';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-
-    const text = document.createElement('span');
-    text.className = 'ai-grounding-toggle-label';
-
-    const refreshLabels = () => {
-      const labelText = getTranslation('aiIncludeNotes');
-      label.title = getTranslation('aiIncludeNotesDescription');
-      checkbox.setAttribute('aria-label', labelText);
-      text.textContent = labelText;
-    };
-
-    checkbox.addEventListener('change', () => {
-      if (!window.OpenRouterAPI?.setLocalContextEnabled) return;
-      const restoreLocalContextCheckbox = () => {
-        checkbox.checked = window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false;
-      };
-      Promise.resolve(window.OpenRouterAPI.setLocalContextEnabled(checkbox.checked)).then((persisted) => {
-        if (persisted === false) restoreLocalContextCheckbox();
-      }).catch(restoreLocalContextCheckbox);
+    return createPreferenceToggle({
+      cacheKey: 'localContextControl',
+      labelKey: 'aiIncludeNotes',
+      descriptionKey: 'aiIncludeNotesDescription',
+      className: 'ai-grounding-toggle ai-local-context-toggle',
+      read: () => window.OpenRouterAPI?.isLocalContextEnabled?.(),
+      write: (enabled) => window.OpenRouterAPI?.setLocalContextEnabled?.(enabled),
+      fallback: false
     });
-
-    label.append(checkbox, text);
-    inputContainer.appendChild(label);
-    window.addEventListener('languageChanged', refreshLabels);
-    elements.localContextControl = { label, checkbox, text, refreshLabels };
-    return elements.localContextControl;
   }
 
   function updateLocalContextControl(isOffline) {
     const control = createLocalContextControl();
     if (!control) return;
-    control.checkbox.checked = window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false;
-    control.checkbox.disabled = !!isOffline;
-    control.refreshLabels();
-    control.label.classList.toggle('ai-grounding-disabled', !!isOffline);
+    applyPreferenceToggleState(control, window.OpenRouterAPI?.isLocalContextEnabled?.() ?? false, isOffline);
   }
 
   function initWebGroundingControl() {
