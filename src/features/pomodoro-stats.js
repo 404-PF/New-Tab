@@ -478,18 +478,6 @@
   window.getPomodoroHeatmapData = heatmapRows;
   window.getPomodoroHeatLevel = level;
   window.loadPomodoroStatsEnabled = function () { return localStorage.getItem('pomodoroStatsEnabled') === 'true'; };
-  // Convenience aggregate for callers that need all current totals in one call.
-  // This shape is specific to pomodoro stats (sessions + minutes) and does not
-  // exist in todo-stats, helping keep the modules distinct for CPD.
-  window.getPomodoroSummary = function () {
-    const store = read();
-    return {
-      today: { sessions: sessionsToday(store), minutes: minutesToday(store) },
-      week: { sessions: sessionsWeek(store), minutes: minutesWeek(store) },
-      heatmap: heatmapRows(store),
-      enabled: enabled()
-    };
-  };
   /**
    * Average minutes per completed session across the 30-day window.
    * Unique to pomodoro stats — todo-stats tracks plain counts without durations.
@@ -530,16 +518,6 @@
       cur.setDate(cur.getDate() + 1);
     }
     return agg;
-  };
-  /**
-   * Total distinct days with at least one session in the 30-day window.
-   * Useful for the settings summary without exposing the raw heatmap.
-   */
-  window.getPomodoroActiveDaysInWindow = function () {
-    const rows = heatmapRows();
-    let c = 0;
-    for (let i = 0; i < rows.length; i++) if (rows[i].count > 0) c++;
-    return c;
   };
   // ---------------------------------------------------------------------------
   // Additional pomodoro-specific analytics — intentionally distinct from
@@ -591,25 +569,6 @@
     if (h === 0) return r + 'm';
     if (r === 0) return h + 'h';
     return h + 'h ' + r + 'm';
-  };
-  // Legacy migration helper — normalises any pre-existing numeric day values
-  // that predate the {sessions,minutes} object shape.
-  window.migratePomodoroStatsIfNeeded = function () {
-    const data = read();
-    let changed = false;
-    const keys = Object.keys(data.days);
-    for (let i = 0; i < keys.length; i++) {
-      const k = keys[i];
-      const v = data.days[k];
-      if (typeof v === 'number') { data.days[k] = { sessions: v, minutes: 0 }; changed = true; }
-    }
-    if (!changed) return false;
-
-    const persisted = write(data);
-    if (persisted && typeof persisted.then === 'function') {
-      return persisted.then(success => success);
-    }
-    return persisted;
   };
   // Export 30-day window as CSV for external analysis.
   window.exportPomodoroStatsCsv = function () {

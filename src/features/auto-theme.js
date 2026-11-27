@@ -422,9 +422,6 @@
     });
   }
 
-  // Expose for settings.js to call after initSettings
-  window.initAutoTheme = init;
-
   // Expose for data-manager to re-apply imported auto-theme settings live
   window.refreshAutoTheme = refresh;
 
