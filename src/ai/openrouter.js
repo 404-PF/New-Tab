@@ -77,6 +77,35 @@ const OpenRouterAPI = (function() {
   }
 
   /**
+   * Write a boolean preference to localStorage, preferring the async bridge write when present.
+   * @param {string} key - Storage key
+   * @param {boolean} enabled - Value to store as 'true' or 'false'
+   * @param {string} failureLabel - Warning text logged when the write fails
+   * @returns {Promise<boolean>} Whether the write was persisted
+   */
+  function persistPreference(key, enabled, failureLabel) {
+    const value = enabled === true ? 'true' : 'false';
+    const onFailure = (error) => {
+      console.warn(failureLabel, error);
+      return false;
+    };
+
+    try {
+      if (typeof localStorage.setItemAsync === 'function') {
+        return Promise.resolve(localStorage.setItemAsync(key, value)).then(
+          (persisted) => persisted !== false,
+          onFailure
+        );
+      }
+      // The storage bridge returns false when it rejects a write; the native
+      // Storage API returns undefined. Treat only an explicit false as failure.
+      return Promise.resolve(localStorage.setItem(key, value) !== false); // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
+    } catch (error) {
+      return Promise.resolve(onFailure(error));
+    }
+  }
+
+  /**
    * Persist the user's web-grounding preference.
    * The write is awaited, so a bridge-accepted write that fails later still
    * rolls the in-memory flag back once it settles; memory then matches what
@@ -97,35 +126,11 @@ const OpenRouterAPI = (function() {
       return false;
     };
 
-    const value = nextEnabled ? 'true' : 'false';
-
-    if (typeof localStorage.setItemAsync === 'function') {
-      try {
-        return Promise.resolve(localStorage.setItemAsync(GROUNDING_STORAGE_KEY, value)).then(
-          (persisted) => (persisted === false ? rollback() : true),
-          (error) => {
-            console.warn('Failed to save web grounding preference:', error);
-            return rollback();
-          }
-        );
-      } catch (error) {
-        console.warn('Failed to save web grounding preference:', error);
-        return Promise.resolve(rollback());
-      }
-    }
-
-    try {
-      // The storage bridge returns false when it rejects a write; the native
-      // Storage API returns undefined. Treat only an explicit false as failure.
-      const persisted = localStorage.setItem(GROUNDING_STORAGE_KEY, value) !== false; // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-      if (!persisted) {
-        return Promise.resolve(rollback());
-      }
-      return Promise.resolve(true);
-    } catch (error) {
-      console.warn('Failed to save web grounding preference:', error);
-      return Promise.resolve(rollback());
-    }
+    return persistPreference(
+      GROUNDING_STORAGE_KEY,
+      nextEnabled,
+      'Failed to save web grounding preference:'
+    ).then((ok) => (ok ? true : rollback()));
   }
 
   /**
@@ -145,27 +150,14 @@ const OpenRouterAPI = (function() {
   /**
    * Persist the local-notes opt-in.
    * @param {boolean} enabled - Whether local notes should be included
-   * @returns {boolean} Whether the setting was persisted
+   * @returns {Promise<boolean>} Whether the setting was persisted
    */
   function setLocalContextEnabled(enabled) {
-    const value = enabled === true ? 'true' : 'false';
-    try {
-      if (typeof localStorage.setItemAsync === 'function') {
-        return Promise.resolve(localStorage.setItemAsync(LOCAL_CONTEXT_STORAGE_KEY, value)).then(
-          (persisted) => persisted !== false,
-          (error) => {
-            console.warn('Failed to save local context preference:', error);
-            return false;
-          }
-        );
-      }
-      // The storage bridge returns false when it rejects a write; the native
-      // Storage API returns undefined. Treat only an explicit false as failure.
-      return Promise.resolve(localStorage.setItem(LOCAL_CONTEXT_STORAGE_KEY, value) !== false); // NOSONAR - the storage bridge may return false while native Storage#setItem returns void.
-    } catch (error) {
-      console.warn('Failed to save local context preference:', error);
-      return Promise.resolve(false);
-    }
+    return persistPreference(
+      LOCAL_CONTEXT_STORAGE_KEY,
+      enabled,
+      'Failed to save local context preference:'
+    );
   }
 
   /**
