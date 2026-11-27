@@ -203,16 +203,22 @@
     return null;
   }
 
-  function loadVendorModule(signal) {
-    const hooks = getTestHooks();
-    if (hooks && typeof hooks.vendorLoader === 'function') {
-      return hooks.vendorLoader(signal);
-    }
-    const cached = getCachedVendor();
-    if (cached) return Promise.resolve(cached);
+  // onLoad can fire before the module finishes executing; the event
+  // listener / poll in waitForVendorGlobal resolves once globals land.
+  function injectVendorLoaderScript(onLoad, onError) {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = VENDOR_LOADER_SRC;
+    script.onload = function () { onLoad(); };
+    script.onerror = function () {
+      onError(new Error('Failed to load ' + VENDOR_LOADER_SRC + ' (run vendor population step)'));
+    };
+    loaderScript = script;
+    document.body.appendChild(script);
+  }
 
-    return checkVendorPresent().then(function () {
-      return new Promise(function (resolve, reject) {
+  function waitForVendorGlobal(signal) {
+    return new Promise(function (resolve, reject) {
       let settled = false;
       let timeoutId = null;
       let pollId = null;
@@ -248,11 +254,8 @@
       }
 
       function onVendorLoaded() {
-        try {
-          if (window.__embeddingVendor && window.__embeddingVendor.pipeline) {
-            settleResolve(window.__embeddingVendor);
-          }
-        } catch { /* ignore */ }
+        const vendor = getCachedVendor();
+        if (vendor) settleResolve(vendor);
       }
 
       if (signal) {
@@ -269,13 +272,7 @@
         settleReject(new Error('Timed out loading embedding runtime (vendor/)'));
       }, VENDOR_LOAD_TIMEOUT_MS);
 
-      pollId = setInterval(function () {
-        try {
-          if (window.__embeddingVendor && window.__embeddingVendor.pipeline) {
-            settleResolve(window.__embeddingVendor);
-          }
-        } catch { /* ignore */ }
-      }, 100);
+      pollId = setInterval(onVendorLoaded, 100);
 
       try {
         if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
@@ -287,23 +284,23 @@
         try {
           document.addEventListener('embedding-vendor-loaded', onVendorLoaded);
         } catch { /* ignore */ }
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = VENDOR_LOADER_SRC;
-        script.onload = function () {
-          // onload can fire before the module finishes executing; the
-          // event listener / poll resolves once globals land.
-          onVendorLoaded();
-        };
-        script.onerror = function () {
-          settleReject(new Error('Failed to load ' + VENDOR_LOADER_SRC + ' (run vendor population step)'));
-        };
-        loaderScript = script;
-        document.body.appendChild(script);
+        injectVendorLoaderScript(onVendorLoaded, settleReject);
       } catch (e) {
         settleReject(e);
       }
-      });
+    });
+  }
+
+  function loadVendorModule(signal) {
+    const hooks = getTestHooks();
+    if (hooks && typeof hooks.vendorLoader === 'function') {
+      return hooks.vendorLoader(signal);
+    }
+    const cached = getCachedVendor();
+    if (cached) return Promise.resolve(cached);
+
+    return checkVendorPresent().then(function () {
+      return waitForVendorGlobal(signal);
     });
   }
 
