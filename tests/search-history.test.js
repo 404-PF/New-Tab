@@ -270,11 +270,14 @@ describe('search history', () => {
     input.value = '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
-    document.querySelector('.search-history-item').click();
+    try {
+      document.querySelector('.search-history-item').click();
 
-    expect(assigned).toBe('https://example.com/docs');
-    expect(setItemSpy).not.toHaveBeenCalledWith('searchHistory', expect.anything());
-    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+      expect(assigned).toBe('https://example.com/docs');
+      expect(setItemSpy).not.toHaveBeenCalledWith('searchHistory', expect.anything());
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+    }
   });
 
   it('routes google provider through its URL instead of chrome.search.query', () => {
