@@ -447,6 +447,18 @@ class OnboardingTour {
     spotlight.style.borderRadius = `${parseFloat(getComputedStyle(target).borderRadius) + 5}px`;
   }
 
+  // Save the next step, cancel pending auto-advances, then advance after 500 ms
+  scheduleAutoAdvance() {
+    // Save progress immediately before the delayed advance
+    if (this.currentStep < this.steps.length - 1) {
+      localStorage.setItem('onboardingStep', String(this.currentStep + 1));
+    }
+    // Cancel any pending auto-advance before scheduling a new one
+    this._clearActionTimeouts();
+    const tid = setTimeout(() => this.nextStep(), 500);
+    this._actionTimeouts.push(tid);
+  }
+
   // Handle special actions for certain steps
   handleAction(action, step) {
     switch (action) {
@@ -488,14 +500,7 @@ class OnboardingTour {
           if (window.i18n && window.i18n.applyLanguage) {
             window.i18n.applyLanguage(selectedLanguage);
           }
-          // Save progress immediately before the delayed advance
-          if (this.currentStep < this.steps.length - 1) {
-            localStorage.setItem('onboardingStep', String(this.currentStep + 1));
-          }
-          // Cancel any pending auto-advance before scheduling a new one
-          this._clearActionTimeouts();
-          const tid = setTimeout(() => this.nextStep(), 500);
-          this._actionTimeouts.push(tid);
+          this.scheduleAutoAdvance();
         };
         languageRadios.forEach(radio => {
           radio.addEventListener('change', langHandler);
@@ -525,14 +530,7 @@ class OnboardingTour {
           }
           // Notify other components of theme change
           window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: resolvedTheme } }));
-          // Save progress immediately before the delayed advance
-          if (this.currentStep < this.steps.length - 1) {
-            localStorage.setItem('onboardingStep', String(this.currentStep + 1));
-          }
-          // Cancel any pending auto-advance before scheduling a new one
-          this._clearActionTimeouts();
-          const tid = setTimeout(() => this.nextStep(), 500);
-          this._actionTimeouts.push(tid);
+          this.scheduleAutoAdvance();
         };
         themeRadios.forEach(radio => {
           radio.addEventListener('change', themeHandler);
