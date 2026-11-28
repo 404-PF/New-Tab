@@ -198,14 +198,14 @@ function getInteractiveBackgrounds() {
   return interactiveBackgrounds;
 }
 
-// Initialize static backgrounds section
-function initStaticBackgrounds() {
-  const container = document.getElementById('bg-thumbnails-static');
+// Rebuild the thumbnail <img> list inside a container
+function buildBackgroundThumbs(containerId, list, extraClass) {
+  const container = document.getElementById(containerId);
   if (!container) return;
   container.querySelectorAll('.bg-thumb').forEach(el => el.remove());
-  staticBackgrounds.forEach((bg) => {
+  list.forEach((bg) => {
     const img = document.createElement('img');
-    img.className = 'bg-thumb';
+    img.className = extraClass;
     img.setAttribute('data-bg', bg.id);
     img.src = bg.thumb;
     img.loading = 'lazy';
@@ -216,39 +216,16 @@ function initStaticBackgrounds() {
   });
 }
 
-// Initialize live backgrounds section
+function initStaticBackgrounds() {
+  buildBackgroundThumbs('bg-thumbnails-static', staticBackgrounds, 'bg-thumb');
+}
+
 function initLiveBackgrounds() {
-  const container = document.getElementById('bg-thumbnails-live');
-  if (!container) return;
-  container.querySelectorAll('.bg-thumb').forEach(el => el.remove());
-  videoBackgrounds.forEach((bg) => {
-    const img = document.createElement('img');
-    img.className = 'bg-thumb bg-thumb-video';
-    img.setAttribute('data-bg', bg.id);
-    img.src = bg.thumb;
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.title = bg.title;
-    img.alt = bg.title;
-    container.appendChild(img);
-  });
+  buildBackgroundThumbs('bg-thumbnails-live', videoBackgrounds, 'bg-thumb bg-thumb-video');
 }
 
 function initInteractiveBackgrounds() {
-  const container = document.getElementById('bg-thumbnails-interactive');
-  if (!container) return;
-  container.querySelectorAll('.bg-thumb').forEach(el => el.remove());
-  interactiveBackgrounds.forEach((bg) => {
-    const img = document.createElement('img');
-    img.className = 'bg-thumb bg-thumb-interactive';
-    img.setAttribute('data-bg', bg.id);
-    img.src = bg.thumb;
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.title = bg.title;
-    img.alt = bg.title;
-    container.appendChild(img);
-  });
+  buildBackgroundThumbs('bg-thumbnails-interactive', interactiveBackgrounds, 'bg-thumb bg-thumb-interactive');
 }
 
 function findBackgroundUrlById(id) {
