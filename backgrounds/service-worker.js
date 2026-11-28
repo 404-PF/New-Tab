@@ -178,15 +178,20 @@ function clearAllNotified(notified) {
   return {};
 }
 
-function clearEntriesForTodo(notified, todoId) {
+// An undefined mark deletes the todo's entries; any other value overwrites them.
+function setEntriesForTodo(notified, todoId, mark) {
   let updated = false;
   for (const key of Object.keys(notified)) {
-    if (getTodoIdFromKey(key) === todoId) {
-      delete notified[key];
-      updated = true;
-    }
+    if (getTodoIdFromKey(key) !== todoId) continue;
+    if (mark === undefined) delete notified[key];
+    else notified[key] = mark;
+    updated = true;
   }
   return updated;
+}
+
+function clearEntriesForTodo(notified, todoId) {
+  return setEntriesForTodo(notified, todoId, undefined);
 }
 
 function applySyncMutations(notified, snoozedUntil, options) {
@@ -532,11 +537,9 @@ async function markTodoDoneFromNotification(todoId) {
   const notified = data.todoReminderNotified || {};
   const snoozedUntil = data.todoReminderSnoozedUntil || {};
   const warnedInvalidDueDates = data.warnedInvalidDueDates || {};
-  const stateChanged = clearEntriesForTodo(notified, todoId) ||
-    Object.prototype.hasOwnProperty.call(snoozedUntil, todoId);
-  if (Object.prototype.hasOwnProperty.call(snoozedUntil, todoId)) {
-    delete snoozedUntil[todoId];
-  }
+  const hadSnooze = Object.prototype.hasOwnProperty.call(snoozedUntil, todoId);
+  const stateChanged = clearEntriesForTodo(notified, todoId) || hadSnooze;
+  delete snoozedUntil[todoId];
   const update = { todoReminderNotified: notified, todoReminderSnoozedUntil: snoozedUntil, warnedInvalidDueDates };
 
   let todosJson = (await getFromStorage(['todos'])).todos;
@@ -624,9 +627,7 @@ async function snoozeTodoReminderFromNotification(todoId) {
     chrome.notifications.clear('todo_reminder_' + todoId);
     return;
   }
-  for (const key of Object.keys(notified)) {
-    if (getTodoIdFromKey(key) === todoId) notified[key] = PENDING_NOTIFIED_MARK;
-  }
+  setEntriesForTodo(notified, todoId, PENDING_NOTIFIED_MARK);
   if (typeof todo.dueDate === 'string') {
     const timePart = todo.dueTime && DUE_TIME_PATTERN.test(todo.dueTime) ? '_' + todo.dueTime : '';
     notified[todo.id + '_' + todo.dueDate + timePart] = PENDING_NOTIFIED_MARK;
