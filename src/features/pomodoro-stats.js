@@ -225,27 +225,31 @@
     start.setDate(d.getDate() - dow);
     return { start: start, len: dow + 1 };
   }
-  function sessionsWeek(store) {
-    const data = store || read();
+  function weekDates() {
     const b = weekBounds();
     const cur = new Date(b.start);
-    let total = 0;
+    const out = [];
     for (let i = 0; i < b.len; i++) {
-      total += coerceEntry(data.days[toISO(cur)]).sessions;
+      out.push(toISO(cur));
       cur.setDate(cur.getDate() + 1);
     }
-    return total;
+    return out;
+  }
+  function sumEntries(store, dates) {
+    let sessions = 0;
+    let minutes = 0;
+    for (let i = 0; i < dates.length; i++) {
+      const e = coerceEntry(store.days[dates[i]]);
+      sessions += e.sessions;
+      minutes += e.minutes;
+    }
+    return { sessions: sessions, minutes: minutes };
+  }
+  function sessionsWeek(store) {
+    return sumEntries(store || read(), weekDates()).sessions;
   }
   function minutesWeek(store) {
-    const data = store || read();
-    const b = weekBounds();
-    const cur = new Date(b.start);
-    let total = 0;
-    for (let i = 0; i < b.len; i++) {
-      total += coerceEntry(data.days[toISO(cur)]).minutes;
-      cur.setDate(cur.getDate() + 1);
-    }
-    return total;
+    return sumEntries(store || read(), weekDates()).minutes;
   }
   function heatmapRows(store) {
     const data = store || read();
@@ -484,16 +488,9 @@
    */
   window.getPomodoroAverageMinutes = function () {
     const store = read();
-    const rows = heatmapRows(store);
-    let s = 0;
-    let m = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const e = coerceEntry(store.days[rows[i].date]);
-      s += e.sessions;
-      m += e.minutes;
-    }
-    if (s === 0) return 0;
-    return Math.round((m / s) * 10) / 10;
+    const totals = sumEntries(store, heatmapRows(store).map(function (r) { return r.date; }));
+    if (totals.sessions === 0) return 0;
+    return Math.round((totals.minutes / totals.sessions) * 10) / 10;
   };
   /**
    * Minutes aggregated per todo for the current calendar week (Sun-Sat).
@@ -587,12 +584,9 @@
   // duplication does not count toward the New Code gate.
   window.getPomodoroTotalFormatted = function () {
     const store = read();
-    const rows = heatmapRows(store);
-    let s = 0; let m = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const e = coerceEntry(store.days[rows[i].date]);
-      s += e.sessions; m += e.minutes;
-    }
+    const totals = sumEntries(store, heatmapRows(store).map(function (r) { return r.date; }));
+    const s = totals.sessions;
+    const m = totals.minutes;
     const rawUnit = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('pomodoroStatsSessionsUnit') : null;
     const unit = rawUnit && rawUnit !== 'pomodoroStatsSessionsUnit' ? rawUnit : 'sessions';
     return { sessions: s, minutes: m, formatted: window.formatPomodoroDuration(m) + ' / ' + s + ' ' + unit };
