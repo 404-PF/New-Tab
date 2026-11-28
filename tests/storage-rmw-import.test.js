@@ -235,4 +235,25 @@ describe('settings import merge-base reseeding (issue #904)', () => {
     await localStorage.removeItemAsync('theme');
     expect(nativeGetItem('theme')).toBeNull();
   });
+
+  it('does not resurrect a key another window removed when this tab saves an unchanged snapshot', () => {
+    const noteA = { id: 'note-a', text: 'A', tag: '', order: 0 };
+    const noteB = { id: 'note-b', text: 'B', tag: '', order: 1 };
+
+    // Both tabs hold [A, B]; the base is recorded by this tab's read.
+    localStorage.setItem('notes', JSON.stringify([noteA, noteB]));
+    globalThis.observeStorageItem('notes');
+
+    // Another window's replace import removes the key.
+    nativeRemoveItem('notes');
+
+    // This tab saves its unchanged list; the removal must stick.
+    localStorage.setItem('notes', JSON.stringify([noteA, noteB]));
+    expect(nativeGetItem('notes')).toBeNull();
+
+    // A genuinely changed list is still written.
+    const noteC = { id: 'note-c', text: 'C', tag: '', order: 2 };
+    localStorage.setItem('notes', JSON.stringify([noteA, noteB, noteC]));
+    expect(JSON.parse(nativeGetItem('notes'))).toEqual([noteA, noteB, noteC]);
+  });
 });
