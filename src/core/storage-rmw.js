@@ -342,7 +342,7 @@
 
     // Another window removed the key. An unchanged snapshot must not
     // resurrect it; a changed one is a genuine new write.
-    if (current === missing && candidate !== missing && deepEqual(candidate, base)) {
+    if (currentRaw === null && candidate !== missing && deepEqual(candidate, base)) {
       return removed;
     }
 
