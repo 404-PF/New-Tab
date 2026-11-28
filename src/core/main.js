@@ -1264,6 +1264,29 @@ function hideSearchHistorySuggestions() {
   }
 }
 
+function tryHandleUrlQuery(resolved, beforeNavigate = null) {
+  if (resolved.hasBang) {
+    return false;
+  }
+
+  const validation = validateUrl(resolved.query);
+
+  if (validation.status === 'valid') {
+    if (beforeNavigate) {
+      beforeNavigate();
+    }
+    window.location.href = validation.url.href;
+    return true;
+  }
+
+  if (validation.status === 'malformed') {
+    showSearchValidationFeedback(translateValidationMessage(validation.message));
+    return true;
+  }
+
+  return false;
+}
+
 function executeSearch(query, providerIdOverride = null) {
   clearSearchValidationFeedback();
   const resolved = resolveSearchQuery(query);
@@ -1273,18 +1296,8 @@ function executeSearch(query, providerIdOverride = null) {
     return;
   }
 
-  if (!resolved.hasBang) {
-    const validation = validateUrl(resolved.query);
-
-    if (validation.status === 'valid') {
-      window.location.href = validation.url.href;
-      return;
-    }
-
-    if (validation.status === 'malformed') {
-      showSearchValidationFeedback(translateValidationMessage(validation.message));
-      return;
-    }
+  if (tryHandleUrlQuery(resolved)) {
+    return;
   }
 
   runDefaultSearch(resolved.query, null, providerId);
@@ -1491,19 +1504,8 @@ function runSearch(query) {
     return;
   }
 
-  if (!resolved.hasBang) {
-    const validation = validateUrl(resolved.query);
-
-    if (validation.status === 'valid') {
-      recordSearchHistory(resolved.query);
-      window.location.href = validation.url.href;
-      return;
-    }
-
-    if (validation.status === 'malformed') {
-      showSearchValidationFeedback(translateValidationMessage(validation.message));
-      return;
-    }
+  if (tryHandleUrlQuery(resolved, () => recordSearchHistory(resolved.query))) {
+    return;
   }
 
   runDefaultSearch(resolved.query, () => recordSearchHistory(resolved.query), resolved.providerId);

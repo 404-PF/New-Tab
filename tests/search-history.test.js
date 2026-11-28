@@ -254,6 +254,29 @@ describe('search history', () => {
     expect(JSON.parse(localStorage.getItem('searchHistory'))).toEqual(['beta', 'alpha']);
   });
 
+  it('clicking a URL suggestion navigates without recording history again', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    let assigned = null;
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { set href(value) { assigned = value; }, get href() { return ''; } },
+    });
+
+    recordSearchHistory('https://example.com/docs');
+    setItemSpy.mockClear();
+
+    const input = focusSearchInput();
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    document.querySelector('.search-history-item').click();
+
+    expect(assigned).toBe('https://example.com/docs');
+    expect(setItemSpy).not.toHaveBeenCalledWith('searchHistory', expect.anything());
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+  });
+
   it('routes google provider through its URL instead of chrome.search.query', () => {
     window.saveActiveProvider('google');
     const searchQuerySpy = vi.spyOn(chrome.search, 'query');
