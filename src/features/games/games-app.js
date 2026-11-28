@@ -22,17 +22,6 @@
   let gamesLoadPromise = null;
   let gamesLoaded = false;
 
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = false;
-      script.onload = resolve;
-      script.onerror = function () { reject(new Error('Failed to load ' + src)); };
-      document.body.appendChild(script);
-    });
-  }
-
   function ensureGamesLoaded() {
     if (gamesLoaded) return Promise.resolve();
     if (gamesLoadPromise) return gamesLoadPromise;
@@ -44,7 +33,7 @@
     // even when the browser optimizes parallel fetches.
     let chain = Promise.resolve();
     GAME_SCRIPTS.forEach(function (src) {
-      chain = chain.then(function () { return loadScript(src); });
+      chain = chain.then(function () { return window.loadScriptElement(src); });
     });
     gamesLoadPromise = chain.then(function () {
       gamesLoaded = true;

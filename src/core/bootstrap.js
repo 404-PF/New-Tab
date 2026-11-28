@@ -109,6 +109,8 @@
       document.body.appendChild(script);
     });
   }
+  // Shared with lazy-loaded modules (e.g. games-app.js) that need the same loader.
+  window.loadScriptElement = loadScript;
 
   const ready = window.__storageBridgeReady || Promise.resolve();
 
