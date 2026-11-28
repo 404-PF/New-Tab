@@ -9,6 +9,7 @@
     'ai_conversations'
   ]);
   const missing = Symbol('missing');
+  const removed = Symbol('removed');
   const storage = globalThis.localStorage;
 
   if (!storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') {
@@ -339,6 +340,12 @@
       return candidateRaw;
     }
 
+    // Another window removed the key. An unchanged snapshot must not
+    // resurrect it; a changed one is a genuine new write.
+    if (currentRaw === null && candidate !== missing && deepEqual(candidate, base)) {
+      return removed;
+    }
+
     if (current === missing || candidate === missing) {
       return candidateRaw;
     }
@@ -380,6 +387,8 @@
     const currentRaw = nativeGetItem(key);
     const baseRaw = lastLocalValues.has(key) ? lastLocalValues.get(key) : currentRaw;
     const mergedRaw = mergeStoredValue(baseRaw, currentRaw, candidateRaw);
+    // Skip the write so the key stays removed; the base is left unchanged.
+    if (mergedRaw === removed) return undefined;
     const result = nativeSetItem(key, mergedRaw);
 
     // A successful write establishes the caller's snapshot as the new base.
