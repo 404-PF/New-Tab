@@ -99,6 +99,14 @@ body.glass-liquid .app-icon .icon[data-liquid-glass] > svg {
   z-index: 1;
 }
 
+/* Built-in SVG glyphs are drawn in currentColor, which an <img> resolves to
+   black. Liquid glass shows them white in both themes; custom app icons are
+   left alone. */
+body.glass-liquid .app-icon.default-app .icon > img,
+body.glass-liquid .folder-preview-icon.default-app-icon {
+  filter: brightness(0) invert(1);
+}
+
 /* Folder tiles take the dark theme's border so both themes match; the drop
    and rejection outlines keep their own colours. */
 body.glass-liquid.light-theme .app-icon.folder-icon:not(.drag-over-folder):not(.drag-over-folder-rejected) .icon[data-liquid-glass].glass--liquid {
